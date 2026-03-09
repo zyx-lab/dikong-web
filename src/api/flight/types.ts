@@ -14,26 +14,50 @@ export enum RouteType {
   LOOP = "loop",
 }
 
-export interface FlightTaskQuery extends PageQuery {
+/** 任务策略 */
+export enum TaskStrategy {
+  PERIODIC = "periodic",
+  SCHEDULED = "scheduled",
+  MANUAL = "manual",
+}
+
+export interface FlightTaskQuery {
+  pageNum?: number;
+  pageSize?: number;
   taskName?: string;
   status?: TaskStatus;
-  droneId?: number;
-  startTime?: string;
-  endTime?: string;
+  routeName?: string;
+  airportName?: string;
+  droneName?: string;
 }
 
 export interface FlightTask {
   id: number;
   taskName: string;
-  routeId: number;
+  routeId?: number;
   routeName: string;
-  droneId: number;
+  airportName: string;
+  droneId?: number;
   droneName: string;
-  inspectionArea: string;
+  algorithm: string;
+  taskContent: string;
+  taskStrategy: string;
   status: TaskStatus;
-  startTime?: string;
-  endTime?: string;
+  creator: string;
   createTime: string;
+}
+
+export interface FlightTaskForm {
+  id?: number;
+  taskName: string;
+  routeId?: number;
+  droneId?: number;
+  airportId?: number;
+  algorithmId?: number;
+  taskStrategy: string;
+  executeDate?: string;
+  executeTime?: string;
+  status?: TaskStatus;
 }
 
 export interface RouteQuery extends PageQuery {
