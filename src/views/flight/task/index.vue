@@ -1,199 +1,205 @@
 <template>
-  <div class="task-container">
-    <!-- 顶部渐变搜索区 -->
-    <div class="search-header">
-      <el-form :model="queryParams" :inline="true" class="search-form">
-        <el-form-item label="任务名称：" class="search-item">
+  <div class="app-container">
+    <div class="filter-section">
+      <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+        <el-form-item label="任务名称" prop="name">
           <el-input
-            v-model="queryParams.taskName"
-            placeholder="请输入"
+            v-model="queryParams.name"
+            placeholder="请输入任务名称"
             clearable
-            class="search-input"
             @keyup.enter="handleQuery"
           />
         </el-form-item>
-        <el-form-item label="任务航线：" class="search-item">
-          <el-input
-            v-model="queryParams.routeName"
-            placeholder="请输入"
-            clearable
-            class="search-input"
-            @keyup.enter="handleQuery"
-          />
-        </el-form-item>
-        <el-form-item label="执行机场：" class="search-item">
-          <el-select
-            v-model="queryParams.airportName"
-            placeholder="请选择"
-            clearable
-            class="search-select"
-          >
-            <el-option label="市应急基地主舱" value="市应急基地主舱" />
-            <el-option label="城西河道机巢-A1" value="城西河道机巢-A1" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="执行状态：" class="search-item">
-          <el-select
-            v-model="queryParams.status"
-            placeholder="请选择"
-            clearable
-            class="search-select"
-          >
+        <el-form-item label="执行状态" prop="status">
+          <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 200px">
             <el-option label="待执行" :value="0" />
             <el-option label="执行中" :value="1" />
-            <el-option label="已完成" :value="2" />
-            <el-option label="执行失败" :value="3" />
+            <el-option label="已暂停" :value="2" />
+            <el-option label="已完成" :value="3" />
+            <el-option label="已取消" :value="4" />
+            <el-option label="执行失败" :value="5" />
           </el-select>
         </el-form-item>
-        <el-form-item class="search-btns">
-          <el-button type="primary" class="btn-query" @click="handleQuery">查 询</el-button>
-          <el-button class="btn-reset" @click="handleReset">重 置</el-button>
+        <el-form-item class="search-buttons">
+          <el-button type="primary" icon="search" @click="handleQuery">查询</el-button>
+          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
         </el-form-item>
       </el-form>
     </div>
 
-    <!-- 工具栏 -->
-    <div class="toolbar">
-      <el-button type="primary" class="btn-add" @click="handleAdd">
-        <el-icon><Plus /></el-icon>
-        新 增
-      </el-button>
-    </div>
+    <el-card shadow="hover" class="table-section">
+      <div class="table-section__toolbar">
+        <div class="table-section__toolbar--actions">
+          <el-button type="primary" icon="plus" @click="handleCreateClick">新增任务</el-button>
+          <el-button
+            type="danger"
+            :disabled="ids.length === 0"
+            icon="delete"
+            @click="handleDelete()"
+          >
+            批量删除
+          </el-button>
+        </div>
+        <div class="table-section__toolbar--right">
+          <el-tag type="info">总共 {{ total }} 个数据</el-tag>
+        </div>
+      </div>
 
-    <!-- 数据表格 -->
-    <div class="table-wrapper">
       <el-table
+        v-loading="loading"
+        highlight-current-row
         :data="tableData"
-        :header-cell-style="headerCellStyle"
-        :cell-style="cellStyle"
         border
-        class="dark-table"
+        class="table-section__content"
+        @selection-change="handleSelectionChange"
       >
-        <el-table-column type="index" label="序号" width="80" align="center" />
-        <el-table-column prop="taskName" label="任务名称" min-width="160" align="center" />
-        <el-table-column prop="routeName" label="任务航线" min-width="140" align="center" />
-        <el-table-column prop="airportName" label="执行机场" min-width="140" align="center" />
-        <el-table-column prop="droneName" label="执行无人机" min-width="160" align="center" />
-        <el-table-column prop="algorithm" label="应用算法" min-width="120" align="center" />
-        <el-table-column prop="taskContent" label="任务内容" min-width="180" align="center" />
-        <el-table-column prop="taskStrategy" label="任务策略" min-width="100" align="center" />
-        <el-table-column prop="status" label="执行状态" width="100" align="center">
-          <template #default="{ row }">
-            <span :class="getStatusClass(row.status)">
-              {{ getStatusLabel(row.status) }}
-            </span>
+        <el-table-column type="selection" width="55" align="center" />
+        <el-table-column label="任务名称" prop="name" min-width="150" show-overflow-tooltip />
+        <el-table-column label="任务航线" prop="routeName" min-width="150" show-overflow-tooltip />
+        <el-table-column label="所属部门" prop="department" min-width="120" show-overflow-tooltip />
+        <el-table-column
+          label="执行机场"
+          prop="airportName"
+          min-width="120"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="执行无人机"
+          prop="droneName"
+          min-width="120"
+          show-overflow-tooltip
+        />
+        <el-table-column label="执行飞手" prop="pilotName" min-width="100" show-overflow-tooltip />
+        <el-table-column label="应用算法" prop="algorithm" min-width="150" show-overflow-tooltip />
+        <el-table-column label="任务策略" prop="strategy" min-width="100" />
+        <el-table-column label="执行状态" prop="status" align="center" width="100">
+          <template #default="scope">
+            <el-tag v-if="scope.row.status === 0" type="info">待执行</el-tag>
+            <el-tag v-else-if="scope.row.status === 1" type="primary">执行中</el-tag>
+            <el-tag v-else-if="scope.row.status === 2" type="warning">已暂停</el-tag>
+            <el-tag v-else-if="scope.row.status === 3" type="success">已完成</el-tag>
+            <el-tag v-else-if="scope.row.status === 4" type="info">已取消</el-tag>
+            <el-tag v-else-if="scope.row.status === 5" type="danger">执行失败</el-tag>
+            <el-tag v-else type="info">未知</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="creator" label="创建人" width="100" align="center" />
-        <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
-        <el-table-column label="操作" width="250" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button link class="action-link" @click="handleRecord(row)">飞行记录</el-button>
-            <el-button link class="action-link" @click="handleDetail(row)">详情</el-button>
-            <el-button link class="action-link" @click="handleEdit(row)">编辑</el-button>
-            <el-button link class="action-link action-link--danger" @click="handleDelete(row)">
+        <el-table-column label="创建人" prop="creatorName" min-width="100" />
+        <el-table-column label="创建时间" prop="createdAt" min-width="160" />
+        <el-table-column fixed="right" label="操作" align="center" width="260">
+          <template #default="scope">
+            <el-button
+              type="primary"
+              link
+              size="small"
+              @click.stop="handleFlightRecords(scope.row)"
+            >
+              飞行记录
+            </el-button>
+            <el-button type="primary" link size="small" @click.stop="handleDetailClick(scope.row)">
+              详情
+            </el-button>
+            <el-button
+              type="primary"
+              link
+              size="small"
+              icon="edit"
+              @click.stop="handleEditClick(scope.row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              type="danger"
+              link
+              size="small"
+              icon="delete"
+              @click.stop="handleDelete(scope.row.id)"
+            >
               删除
             </el-button>
           </template>
         </el-table-column>
       </el-table>
-    </div>
 
-    <!-- 分页 -->
-    <div class="pagination-wrapper">
-      <el-pagination
-        v-model:current-page="queryParams.pageNum"
-        v-model:page-size="queryParams.pageSize"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="total"
-        background
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleQuery"
-        @current-change="handleQuery"
+      <pagination
+        v-if="total > 0"
+        v-model:total="total"
+        v-model:page="queryParams.pageNum"
+        v-model:limit="queryParams.pageSize"
+        @pagination="fetchData"
       />
-    </div>
+    </el-card>
 
-    <!-- 新增/编辑 弹窗 -->
+    <!-- 表单弹窗 -->
     <el-dialog
-      v-model="dialogVisible"
-      :title="dialogTitle"
-      width="680px"
-      class="task-dialog"
-      destroy-on-close
+      v-model="dialogState.visible"
+      :title="dialogState.title"
+      width="600px"
+      custom-class="dialog-form-decorated"
+      class="dialog-form-decorated"
+      @close="closeDialog"
     >
-      <el-form
-        ref="formRef"
-        :model="formData"
-        :rules="formRules"
-        label-width="110px"
-        class="task-form"
-      >
-        <el-form-item label="任务名称" prop="taskName">
-          <el-input v-model="formData.taskName" placeholder="请输入任务名称" />
+      <el-form ref="dataFormRef" :model="formData" :rules="rules" label-width="100px">
+        <el-form-item label="任务名称" prop="name">
+          <el-input v-model="formData.name" placeholder="请输入任务名称" />
         </el-form-item>
         <el-form-item label="任务航线" prop="routeId">
-          <el-select v-model="formData.routeId" placeholder="请选择" style="width: 100%">
-            <el-option label="港区全景航线" :value="1" />
-            <el-option label="秦淮河东段航线" :value="2" />
-            <el-option label="紫金山核心区航线" :value="3" />
+          <el-select v-model="formData.routeId" placeholder="请选择航线" class="w-full">
+            <el-option label="前山河汛前岸线勘察" :value="1" />
+            <el-option label="珠海岸线巡查航线" :value="2" />
           </el-select>
         </el-form-item>
-        <el-form-item label="执行无人机" prop="droneId">
-          <el-select v-model="formData.droneId" placeholder="请选择" style="width: 100%">
+        <el-form-item label="所属部门" prop="department">
+          <el-input v-model="formData.department" placeholder="请输入所属部门" />
+        </el-form-item>
+        <el-form-item label="执行机场" prop="airportName">
+          <el-input v-model="formData.airportName" placeholder="请选择或输入执行机场" />
+        </el-form-item>
+        <el-form-item label="执行机型">
+          <el-select v-model="formData.droneId" placeholder="请选择无人机" class="w-full">
             <el-option label="应急测绘-01 (CW-15)" :value="1" />
             <el-option label="河道巡检-03 (M3E)" :value="2" />
-            <el-option label="林火预警-02 (M300)" :value="3" />
           </el-select>
         </el-form-item>
-        <el-form-item label="执行机场" prop="airportId">
-          <el-select v-model="formData.airportId" placeholder="请选择" style="width: 100%">
-            <el-option label="市应急基地主舱" :value="1" />
-            <el-option label="城西河道机巢-A1" :value="2" />
+        <el-form-item label="执行飞手" prop="pilotId">
+          <el-select v-model="formData.pilotId" placeholder="请选择飞手" class="w-full">
+            <el-option label="孙工" :value="1" />
+            <el-option label="李主任" :value="2" />
           </el-select>
         </el-form-item>
-        <el-form-item label="应用算法" prop="algorithmId">
-          <el-select v-model="formData.algorithmId" placeholder="请选择" style="width: 100%">
-            <el-option label="岸线变化分析" :value="1" />
-            <el-option label="水面漂浮物检测" :value="2" />
-            <el-option label="热成像火点识别" :value="3" />
+        <el-form-item label="应用算法" prop="algorithm">
+          <el-input v-model="formData.algorithm" placeholder="例如：水面漂浮物检测" />
+        </el-form-item>
+        <el-form-item label="任务策略" prop="strategy">
+          <el-select v-model="formData.strategy" placeholder="请选择策略" class="w-full">
+            <el-option label="手动执行" value="手动执行" />
+            <el-option label="周期定时" value="周期定时" />
+            <el-option label="定时执行" value="定时执行" />
           </el-select>
         </el-form-item>
-        <el-form-item label="任务策略" prop="taskStrategy">
-          <el-radio-group v-model="formData.taskStrategy">
-            <el-radio value="periodic">周期定时</el-radio>
-            <el-radio value="scheduled">定时执行</el-radio>
-            <el-radio value="manual">手动执行</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="选择日期" prop="executeDate">
+        <el-form-item label="计划时间" prop="scheduledAt">
           <el-date-picker
-            v-model="formData.executeDate"
-            type="date"
-            placeholder="请选择日期"
-            value-format="YYYY-MM-DD"
-            style="width: 100%"
+            v-model="formData.scheduledAt"
+            type="datetime"
+            placeholder="选择计划执行时间"
+            format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            class="w-full"
           />
         </el-form-item>
-        <el-form-item label="选择时间" prop="executeTime">
-          <el-time-picker
-            v-model="formData.executeTime"
-            placeholder="请选择时间"
-            value-format="HH:mm:ss"
-            style="width: 100%"
+        <el-form-item label="任务备注">
+          <el-input
+            v-model="formData.remark"
+            type="textarea"
+            placeholder="请输入备注信息"
+            :rows="3"
           />
-        </el-form-item>
-        <el-form-item label="执行状态" prop="status">
-          <el-select v-model="formData.status" placeholder="请选择" style="width: 100%">
-            <el-option label="待执行" :value="0" />
-            <el-option label="执行中" :value="1" />
-            <el-option label="已完成" :value="2" />
-          </el-select>
         </el-form-item>
       </el-form>
+
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="dialogVisible = false">取 消</el-button>
-          <el-button type="primary" @click="handleSubmit">确 定</el-button>
+          <el-button @click="closeDialog">取消</el-button>
+          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
         </div>
       </template>
     </el-dialog>
@@ -201,630 +207,289 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
-import { Plus } from "@element-plus/icons-vue";
-import type { FlightTask, FlightTaskForm, FlightTaskQuery } from "@/api/flight/types";
-import { TaskStatus } from "@/api/flight/types";
+import { ref, reactive, onMounted } from "vue";
+import type { FormInstance, FormRules } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
+import type { TaskPageQuery, TaskVO, TaskForm } from "@/api/flight/task";
 
-defineOptions({ name: "FlightTask" });
+defineOptions({
+  name: "FlightTask",
+  inheritAttrs: false,
+});
 
-const queryParams = reactive<FlightTaskQuery>({
+// 表单引用
+const queryFormRef = ref<FormInstance>();
+const dataFormRef = ref<FormInstance>();
+
+// 查询参数
+const queryParams = reactive<TaskPageQuery>({
   pageNum: 1,
   pageSize: 10,
-  taskName: undefined,
-  routeName: undefined,
-  airportName: undefined,
-  status: undefined,
-  droneName: undefined,
 });
 
+// 列表数据
+const tableData = ref<TaskVO[]>([]);
 const total = ref(0);
-const dialogVisible = ref(false);
-const dialogTitle = ref("新增任务");
-const formRef = ref<FormInstance>();
+const loading = ref(false);
+const submitLoading = ref(false);
+const ids = ref<string[]>([]);
 
-const initFormData = (): FlightTaskForm => ({
-  taskName: "",
+// 弹窗状态
+const dialogState = reactive({
+  title: "",
+  visible: false,
+});
+
+// 表单数据
+const formData = reactive<TaskForm>({
+  name: "",
   routeId: undefined,
   droneId: undefined,
-  airportId: undefined,
-  algorithmId: undefined,
-  taskStrategy: "periodic",
-  executeDate: undefined,
-  executeTime: undefined,
-  status: undefined,
+  pilotId: undefined,
+  scheduledAt: "",
+  remark: "",
+  algorithm: "",
+  strategy: "",
+  department: "",
+  airportName: "",
 });
 
-const formData = reactive<FlightTaskForm>(initFormData());
-
-const formRules: FormRules = {
-  taskName: [{ required: true, message: "请输入任务名称", trigger: "blur" }],
+// 验证规则
+const rules: FormRules = {
+  name: [{ required: true, message: "请输入任务名称", trigger: "blur" }],
   routeId: [{ required: true, message: "请选择任务航线", trigger: "change" }],
-  droneId: [{ required: true, message: "请选择执行无人机", trigger: "change" }],
-  airportId: [{ required: true, message: "请选择执行机场", trigger: "change" }],
-  algorithmId: [{ required: true, message: "请选择应用算法", trigger: "change" }],
-  taskStrategy: [{ required: true, message: "请选择任务策略", trigger: "change" }],
-  executeDate: [{ required: true, message: "请选择日期", trigger: "change" }],
-  executeTime: [{ required: true, message: "请选择时间", trigger: "change" }],
-  status: [{ required: true, message: "请选择执行状态", trigger: "change" }],
 };
 
-const mockData: FlightTask[] = [
-  {
-    id: 1,
-    taskName: "南京港口应急测绘",
-    routeName: "港区全景航线",
-    airportName: "市应急基地主舱",
-    droneName: "应急测绘-01 (CW-15)",
-    algorithm: "岸线变化分析",
-    taskContent: "岸线变化分析、三维建模",
-    taskStrategy: "周期定时",
-    status: TaskStatus.COMPLETED,
-    creator: "孙工",
-    createTime: "2025-11-14 08:43:35",
-  },
-  {
-    id: 2,
-    taskName: "秦淮河河道日常巡检",
-    routeName: "秦淮河东段航线",
-    airportName: "城西河道机巢-A1",
-    droneName: "河道巡检-03 (M3E)",
-    algorithm: "水面漂浮物检测",
-    taskContent: "水面漂浮物检测、排污口识别",
-    taskStrategy: "定时执行",
-    status: TaskStatus.EXECUTING,
-    creator: "李主任",
-    createTime: "2025-11-14 09:30:55",
-  },
-  {
-    id: 3,
-    taskName: "紫金山林火预警巡飞",
-    routeName: "紫金山核心区航线",
-    airportName: "市应急基地主舱",
-    droneName: "林火预警-02 (M300)",
-    algorithm: "热成像火点识别",
-    taskContent: "热红外巡查、火点识别",
-    taskStrategy: "周期定时",
-    status: TaskStatus.PENDING,
-    creator: "张队长",
-    createTime: "2025-11-15 07:00:00",
-  },
-  {
-    id: 4,
-    taskName: "高栏港区域安全巡检",
-    routeName: "港区东区航线",
-    airportName: "市应急基地主舱",
-    droneName: "应急测绘-01 (CW-15)",
-    algorithm: "目标检测",
-    taskContent: "异常人员检测、车辆识别",
-    taskStrategy: "定时执行",
-    status: TaskStatus.COMPLETED,
-    creator: "王工",
-    createTime: "2025-11-15 10:15:20",
-  },
-  {
-    id: 5,
-    taskName: "化工园区气体泄漏监测",
-    routeName: "化工园区环线",
-    airportName: "城西河道机巢-A1",
-    droneName: "河道巡检-03 (M3E)",
-    algorithm: "气体浓度分析",
-    taskContent: "VOC浓度检测、泄漏定位",
-    taskStrategy: "手动执行",
-    status: TaskStatus.FAILED,
-    creator: "刘工",
-    createTime: "2025-11-16 14:22:10",
-  },
-];
+/**
+ * 加载任务列表数据 (Mock由于没有真实后端)
+ */
+function fetchData(): void {
+  loading.value = true;
 
-const tableData = ref<FlightTask[]>(mockData);
+  // TODO: 后续接入真实接口
+  // TaskAPI.getPage(queryParams).then(...);
 
-const headerCellStyle = () => ({
-  backgroundColor: "rgba(23, 44, 81, 1)",
-  color: "#FFFFFF",
-  borderColor: "rgba(85, 85, 85, 1)",
-  fontSize: "14px",
-  fontWeight: "600",
-});
+  // 这里使用前端Mock以实现原型页面效果
+  setTimeout(() => {
+    let mockData: TaskVO[] = [
+      {
+        id: 1,
+        name: "前山河汛前岸线勘察",
+        routeId: 1,
+        routeName: "珠海岸线巡查航线",
+        department: "市应急局",
+        airportName: "市应急基地主舱",
+        droneId: 1,
+        droneName: "应急测绘-01 (CW-15)",
+        pilotId: 1,
+        pilotName: "孙工",
+        algorithm: "岸线变化分析、三维建模",
+        strategy: "周期定时",
+        status: 3,
+        creatorName: "孙工",
+        createdAt: "2025-11-14 08:43:35",
+      },
+      {
+        id: 2,
+        name: "秦淮河河道日常巡检",
+        routeId: 2,
+        routeName: "秦淮河东段航线",
+        department: "市水务局",
+        airportName: "城西河道机巢-A1",
+        droneId: 2,
+        droneName: "河道巡检-03 (M3E)",
+        pilotId: 2,
+        pilotName: "李主任",
+        algorithm: "水面漂浮物检测、排污口识别",
+        strategy: "定时执行",
+        status: 0,
+        creatorName: "李主任",
+        createdAt: "2025-11-14 09:30:55",
+      },
+      {
+        id: 3,
+        name: "紫金山林火预警巡飞",
+        routeId: 3,
+        routeName: "紫金山核心区航线",
+        department: "市林业局",
+        airportName: "紫金山顶停机坪",
+        droneId: 3,
+        droneName: "林火监测-02 (M3T)",
+        pilotId: 1,
+        pilotName: "王伟",
+        algorithm: "热成像火点识别",
+        strategy: "手动执行",
+        status: 1,
+        creatorName: "王工",
+        createdAt: "2025-11-14 10:15:20",
+      },
+    ];
 
-const cellStyle = () => ({
-  backgroundColor: "rgba(15, 31, 58, 1)",
-  color: "#FFFFFF",
-  borderColor: "rgba(85, 85, 85, 1)",
-  fontSize: "13px",
-});
+    // 本地过滤
+    if (queryParams.name) {
+      mockData = mockData.filter((m) => m.name.includes(queryParams.name!));
+    }
+    if (queryParams.status !== undefined && queryParams.status !== null) {
+      mockData = mockData.filter((m) => m.status === queryParams.status);
+    }
 
-const statusMap: Record<number, { label: string; class: string }> = {
-  [TaskStatus.PENDING]: { label: "待执行", class: "status--pending" },
-  [TaskStatus.EXECUTING]: { label: "执行中", class: "status--executing" },
-  [TaskStatus.COMPLETED]: { label: "已完成", class: "status--completed" },
-  [TaskStatus.FAILED]: { label: "执行失败", class: "status--failed" },
-  [TaskStatus.CANCELLED]: { label: "已取消", class: "status--cancelled" },
-};
-
-function getStatusLabel(status: TaskStatus) {
-  return statusMap[status]?.label ?? "未知";
+    tableData.value = mockData;
+    total.value = 85; // Mock总数
+    loading.value = false;
+  }, 500);
 }
 
-function getStatusClass(status: TaskStatus) {
-  return statusMap[status]?.class ?? "";
-}
-
-function handleQuery() {
+/**
+ * 查询按钮点击事件
+ */
+function handleQuery(): void {
   queryParams.pageNum = 1;
-  ElMessage.info("查询功能将对接后端接口");
+  fetchData();
 }
 
-function handleReset() {
-  queryParams.taskName = undefined;
-  queryParams.routeName = undefined;
-  queryParams.airportName = undefined;
-  queryParams.status = undefined;
-  queryParams.droneName = undefined;
+/**
+ * 重置查询
+ */
+function handleResetQuery(): void {
+  queryFormRef.value?.resetFields();
+  queryParams.status = undefined; // 强制重置
   queryParams.pageNum = 1;
-  handleQuery();
+  fetchData();
 }
 
-function handleAdd() {
-  dialogTitle.value = "新增任务";
-  Object.assign(formData, initFormData());
-  dialogVisible.value = true;
+/**
+ * 表格选择变化事件
+ */
+function handleSelectionChange(selection: TaskVO[]): void {
+  ids.value = selection.map((item) => String(item.id));
 }
 
-function handleEdit(row: FlightTask) {
-  dialogTitle.value = "编辑任务";
-  Object.assign(formData, {
-    id: row.id,
-    taskName: row.taskName,
-    taskStrategy:
-      row.taskStrategy === "周期定时"
-        ? "periodic"
-        : row.taskStrategy === "定时执行"
-          ? "scheduled"
-          : "manual",
+/**
+ * 新增按钮点击事件
+ */
+function handleCreateClick(): void {
+  resetForm();
+  dialogState.visible = true;
+  dialogState.title = "新增任务";
+}
+
+/**
+ * 编辑按钮点击事件
+ */
+function handleEditClick(row: TaskVO): void {
+  resetForm();
+  dialogState.visible = true;
+  dialogState.title = "修改任务";
+
+  // 表单回显
+  formData.id = row.id;
+  formData.name = row.name;
+  formData.routeId = row.routeId;
+  formData.droneId = row.droneId;
+  formData.pilotId = row.pilotId;
+  formData.department = row.department;
+  formData.airportName = row.airportName;
+  formData.algorithm = row.algorithm;
+  formData.strategy = row.strategy;
+}
+
+/**
+ * 详情按钮点击事件
+ */
+function handleDetailClick(row: TaskVO): void {
+  ElMessage.info("查看任务详情: " + row.name);
+}
+
+/**
+ * 飞行记录按钮点击事件
+ */
+function handleFlightRecords(row: TaskVO): void {
+  ElMessage.info("查看飞行记录: " + row.name);
+}
+
+function resetForm(): void {
+  dataFormRef.value?.clearValidate();
+  formData.id = undefined;
+  formData.name = "";
+  formData.routeId = undefined;
+  formData.droneId = undefined;
+  formData.pilotId = undefined;
+  formData.scheduledAt = "";
+  formData.remark = "";
+  formData.algorithm = "";
+  formData.strategy = "";
+  formData.department = "";
+  formData.airportName = "";
+}
+
+/**
+ * 提交表单
+ */
+function handleSubmit(): void {
+  dataFormRef.value?.validate((isValid) => {
+    if (isValid) {
+      submitLoading.value = true;
+      // 模拟提交
+      setTimeout(() => {
+        if (formData.id) {
+          ElMessage.success("修改成功");
+        } else {
+          ElMessage.success("新增成功");
+        }
+        closeDialog();
+        handleQuery();
+        submitLoading.value = false;
+      }, 500);
+    }
   });
-  dialogVisible.value = true;
 }
 
-function handleDetail(row: FlightTask) {
-  ElMessage.info(`查看任务详情: ${row.taskName}`);
+/**
+ * 关闭弹窗
+ */
+function closeDialog(): void {
+  dialogState.visible = false;
+  dataFormRef.value?.resetFields();
+  resetForm();
 }
 
-function handleRecord(row: FlightTask) {
-  ElMessage.info(`查看飞行记录: ${row.taskName}`);
-}
-
-function handleDelete(row: FlightTask) {
-  ElMessageBox.confirm(`确认删除任务【${row.taskName}】?`, "提示", {
+/**
+ * 删除任务
+ * @param id 任务ID
+ */
+function handleDelete(id?: number): void {
+  const taskIds = [id || ids.value].join(",");
+  if (!taskIds) {
+    ElMessage.warning("请勾选删除项");
+    return;
+  }
+  ElMessageBox.confirm("确认删除已选中的数据项?", "警告", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
-    customClass: "dark-message-box",
-  })
-    .then(() => {
-      ElMessage.success("删除成功");
-    })
-    .catch(() => {});
+  }).then(
+    () => {
+      // 模拟调接口
+      loading.value = true;
+      setTimeout(() => {
+        ElMessage.success("删除成功");
+        handleResetQuery();
+        loading.value = false;
+      }, 500);
+    },
+    () => {
+      ElMessage.info("已取消删除");
+    }
+  );
 }
 
-async function handleSubmit() {
-  if (!formRef.value) return;
-  await formRef.value.validate();
-  ElMessage.success(formData.id ? "编辑成功" : "新增成功");
-  dialogVisible.value = false;
-}
-
-total.value = mockData.length;
+onMounted(() => {
+  handleQuery();
+});
 </script>
 
-<style lang="scss" scoped>
-.task-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  height: 100%;
-  padding: 0;
-  overflow: auto;
-  background: #0a1628;
-}
-
-/* === 顶部渐变搜索区 === */
-.search-header {
-  flex-shrink: 0;
-  padding: 20px 24px 16px;
-  background: linear-gradient(180deg, #2b4b85 0%, rgba(46, 87, 153, 0.3) 100%);
-}
-
-.search-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 24px;
-  align-items: flex-end;
-}
-
-.search-item {
-  margin-bottom: 0 !important;
-
-  :deep(.el-form-item__label) {
-    font-size: 14px;
-    font-weight: 400;
-    color: #0abaff !important;
-  }
-}
-
-.search-input,
-.search-select {
-  width: 200px;
-
-  :deep(.el-input__wrapper) {
-    background-color: rgba(15, 31, 58, 0.8);
-    border: 1px solid rgba(85, 85, 85, 1);
-    box-shadow: none;
-
-    .el-input__inner {
-      color: #fff;
-
-      &::placeholder {
-        color: rgba(255, 255, 255, 0.4);
-      }
-    }
-  }
-
-  :deep(.el-select__wrapper) {
-    color: #fff;
-    background-color: rgba(15, 31, 58, 0.8);
-    border: 1px solid rgba(85, 85, 85, 1);
-    box-shadow: none;
-  }
-}
-
-.search-btns {
-  margin-bottom: 0 !important;
-  margin-left: auto;
-}
-
-.btn-query {
-  min-width: 88px;
-  font-size: 14px;
-  color: #fff;
-  letter-spacing: 2px;
-  background-color: rgba(24, 144, 255, 1);
-  border: 1px solid rgba(10, 186, 255, 1);
-  border-radius: 6px;
-
-  &:hover {
-    background-color: rgba(37, 97, 239, 0.6);
-    border-color: rgba(10, 186, 255, 1);
-  }
-}
-
-.btn-reset {
-  min-width: 88px;
-  font-size: 14px;
-  color: #0abaff;
-  letter-spacing: 2px;
-  background-color: transparent;
-  border: 1px solid rgba(10, 186, 255, 1);
-  border-radius: 6px;
-
-  &:hover {
-    color: #0abaff;
-    background-color: rgba(37, 97, 239, 0.2);
-    border-color: rgba(10, 186, 255, 1);
-  }
-}
-
-/* === 工具栏 === */
-.toolbar {
-  flex-shrink: 0;
-  padding: 12px 24px;
-}
-
-.btn-add {
-  font-size: 14px;
-  color: #fff;
-  background-color: rgba(24, 144, 255, 1);
-  border: 1px solid rgba(10, 186, 255, 1);
-  border-radius: 6px;
-
-  &:hover {
-    background-color: rgba(37, 97, 239, 0.6);
-    border-color: rgba(10, 186, 255, 1);
-  }
-}
-
-/* === 表格区域 === */
-.table-wrapper {
-  flex: 1;
-  padding: 0 24px;
-  overflow: hidden;
-}
-
-.dark-table {
+<style scoped>
+.w-full {
   width: 100%;
-  background-color: transparent !important;
-
-  &::before {
-    background-color: rgba(85, 85, 85, 1);
-  }
-
-  :deep(.el-table__inner-wrapper) {
-    &::before {
-      background-color: rgba(85, 85, 85, 1);
-    }
-  }
-
-  :deep(th.el-table__cell) {
-    padding: 14px 0;
-    font-size: 14px;
-    color: #fff;
-    background-color: rgba(23, 44, 81, 1) !important;
-    border-color: rgba(85, 85, 85, 1) !important;
-  }
-
-  :deep(td.el-table__cell) {
-    padding: 12px 0;
-    font-size: 13px;
-    color: #fff;
-    background-color: rgba(15, 31, 58, 1) !important;
-    border-color: rgba(85, 85, 85, 1) !important;
-  }
-
-  :deep(tr:hover > td.el-table__cell) {
-    background-color: rgba(23, 44, 81, 0.6) !important;
-  }
-
-  :deep(.el-table__fixed-right-patch) {
-    background-color: rgba(23, 44, 81, 1) !important;
-  }
-
-  :deep(.el-table__border-left-patch) {
-    background-color: rgba(85, 85, 85, 1);
-  }
-
-  :deep(.el-scrollbar__bar) {
-    opacity: 0.3;
-  }
-
-  :deep(.el-table__empty-block) {
-    background-color: rgba(15, 31, 58, 1);
-  }
-
-  :deep(.el-table__empty-text) {
-    color: rgba(255, 255, 255, 0.5);
-  }
-}
-
-/* 状态标签 */
-.status--pending {
-  color: #e6a23c;
-}
-
-.status--executing {
-  color: #0abaff;
-}
-
-.status--completed {
-  color: #19be6b;
-}
-
-.status--failed {
-  color: #ff6666;
-}
-
-.status--cancelled {
-  color: #909399;
-}
-
-/* 操作链接 */
-.action-link {
-  padding: 0 4px;
-  font-size: 13px;
-  color: #0abaff !important;
-
-  &:hover {
-    color: #40c9ff !important;
-  }
-
-  &--danger {
-    color: #ff6666 !important;
-
-    &:hover {
-      color: #ff8888 !important;
-    }
-  }
-}
-
-/* === 分页 === */
-.pagination-wrapper {
-  display: flex;
-  flex-shrink: 0;
-  justify-content: flex-end;
-  padding: 16px 24px;
-
-  :deep(.el-pagination) {
-    --el-pagination-bg-color: transparent;
-    --el-pagination-text-color: #fff;
-    --el-pagination-button-bg-color: rgba(23, 44, 81, 1);
-    --el-pagination-button-color: #fff;
-    --el-pagination-hover-color: #0abaff;
-
-    .el-pager li {
-      min-width: 32px;
-      color: #fff;
-      background-color: rgba(23, 44, 81, 1);
-      border-radius: 4px;
-
-      &.is-active {
-        color: #fff;
-        background-color: rgba(24, 144, 255, 1);
-      }
-
-      &:hover {
-        color: #0abaff;
-      }
-    }
-
-    .btn-prev,
-    .btn-next {
-      color: #fff;
-      background-color: rgba(23, 44, 81, 1) !important;
-      border-radius: 4px;
-    }
-
-    .el-pagination__total,
-    .el-pagination__jump {
-      color: rgba(255, 255, 255, 0.7);
-    }
-
-    .el-input__wrapper {
-      background-color: rgba(15, 31, 58, 0.8);
-      border: 1px solid rgba(85, 85, 85, 1);
-      box-shadow: none;
-
-      .el-input__inner {
-        color: #fff;
-      }
-    }
-
-    .el-select {
-      .el-select__wrapper {
-        color: #fff;
-        background-color: rgba(15, 31, 58, 0.8);
-        border: 1px solid rgba(85, 85, 85, 1);
-        box-shadow: none;
-      }
-    }
-  }
-}
-
-/* === 弹窗样式 === */
-.task-dialog {
-  :deep(.el-dialog) {
-    background-color: #0f1f3a;
-    border: 1px solid rgba(85, 85, 85, 0.5);
-    border-radius: 8px;
-  }
-
-  :deep(.el-dialog__header) {
-    padding: 16px 24px;
-    margin-right: 0;
-    background-color: rgba(23, 44, 81, 1);
-    border-bottom: 1px solid rgba(85, 85, 85, 0.5);
-    border-radius: 8px 8px 0 0;
-
-    .el-dialog__title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    .el-dialog__headerbtn .el-dialog__close {
-      color: rgba(255, 255, 255, 0.6);
-
-      &:hover {
-        color: #0abaff;
-      }
-    }
-  }
-
-  :deep(.el-dialog__body) {
-    padding: 24px;
-    background-color: #0f1f3a;
-  }
-
-  :deep(.el-dialog__footer) {
-    padding: 12px 24px;
-    background-color: #0f1f3a;
-    border-top: 1px solid rgba(85, 85, 85, 0.3);
-    border-radius: 0 0 8px 8px;
-  }
-}
-
-.task-form {
-  :deep(.el-form-item__label) {
-    font-size: 14px;
-    color: #0abaff;
-  }
-
-  :deep(.el-input__wrapper) {
-    background-color: rgba(15, 31, 58, 0.8);
-    border: 1px solid rgba(85, 85, 85, 1);
-    box-shadow: none;
-
-    .el-input__inner {
-      color: #fff;
-
-      &::placeholder {
-        color: rgba(255, 255, 255, 0.4);
-      }
-    }
-  }
-
-  :deep(.el-select__wrapper) {
-    color: #fff;
-    background-color: rgba(15, 31, 58, 0.8);
-    border: 1px solid rgba(85, 85, 85, 1);
-    box-shadow: none;
-  }
-
-  :deep(.el-radio) {
-    color: #fff;
-
-    .el-radio__inner {
-      background-color: transparent;
-      border-color: rgba(37, 97, 239, 1);
-    }
-
-    &.is-checked {
-      .el-radio__inner {
-        background-color: rgba(37, 97, 239, 1);
-        border-color: rgba(37, 97, 239, 1);
-      }
-
-      .el-radio__label {
-        color: #0abaff;
-      }
-    }
-  }
-
-  :deep(.el-date-editor) {
-    --el-date-editor-width: 100%;
-
-    .el-input__wrapper {
-      background-color: rgba(15, 31, 58, 0.8);
-      border: 1px solid rgba(85, 85, 85, 1);
-      box-shadow: none;
-
-      .el-input__inner {
-        color: #fff;
-      }
-    }
-  }
-}
-
-.dialog-footer {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-
-  .el-button--primary {
-    background-color: rgba(24, 144, 255, 1);
-    border-color: rgba(10, 186, 255, 1);
-    border-radius: 6px;
-  }
-
-  .el-button:not(.el-button--primary) {
-    color: #fff;
-    background-color: transparent;
-    border: 1px solid rgba(85, 85, 85, 1);
-    border-radius: 6px;
-
-    &:hover {
-      color: #0abaff;
-      border-color: rgba(10, 186, 255, 1);
-    }
-  }
 }
 </style>
