@@ -207,3 +207,100 @@ Thanks to all the contributors!
 ② 直接添加微信 **`haoxianrui`** 备注「前端/后端/全栈」。
 
 ![有来技术公众号](https://foruda.gitee.com/images/1737108820762592766/3390ed0d_716974.png)
+
+
+## Git 协作流程
+
+### 分支说明
+
+| 分支 | 类型 | 说明 | 是否保护 |
+| --- | --- | --- | --- |
+| `main` | 长期 | 生产环境分支，始终保持可发布状态，**严禁直接 push** | ✅ |
+| `dev` | 长期 | 日常集成开发分支，所有功能在此汇聚联调，**严禁直接 push** | ✅ |
+| `feature/xxx` | 短期 | 功能开发分支，每个功能模块独立一个，完成后合并到 `dev` | — |
+| `bugfix/xxx` | 短期 | Bug 修复分支，测试阶段发现的问题，合并到 `dev` 或 `release` | — |
+| `release/x.x.x` | 短期 | 版本发布预备分支，功能冻结后从 `dev` 创建，合并到 `main` 和 `dev` | — |
+| `hotfix/xxx` | 短期 | 线上紧急修复分支，从 `main` 创建，修复后合并到 `main` 和 `dev` | — |
+
+### 完整工作流
+
+```
+main  ──────────────────────────────────────────────● v1.1.0
+                                                    ↑ merge
+dev   ──────●──────●──────●────────────────────────●
+            ↑      ↑      ↑                        ↑
+     feature/A  feature/B  feature/C        release/1.1.0
+```
+
+### 日常开发步骤
+
+```bash
+# 1. 从最新的 dev 分支创建功能分支
+git checkout dev
+git pull origin dev
+git checkout -b feature/你的功能名称
+
+# 2. 开发过程中，规范提交（使用 commitizen）
+pnpm run commit
+
+# 3. 开发完成，推送远程分支
+git push origin feature/你的功能名称
+
+# 4. 在 GitHub 提交 Pull Request：feature/xxx → dev
+#    需至少 1 人 Code Review 通过后方可合并
+
+# 5. 合并后，删除远程功能分支
+git push origin --delete feature/你的功能名称
+```
+
+### 版本发布步骤
+
+```bash
+# 1. 从 dev 创建 release 分支
+git checkout dev && git pull
+git checkout -b release/1.1.0
+
+# 2. 修改版本号、更新 CHANGELOG，测试稳定后提 PR 合并到 main
+# 3. 同时将 release 分支合并回 dev，保持两端同步
+git checkout dev
+git merge release/1.1.0
+git push origin dev
+```
+
+### 紧急线上修复
+
+```bash
+# 1. 从 main 创建 hotfix 分支
+git checkout main && git pull
+git checkout -b hotfix/问题描述
+
+# 2. 修复完成后，分别合并到 main 和 dev
+# 提交 PR: hotfix/xxx → main
+# 提交 PR: hotfix/xxx → dev
+```
+
+### Commit 提交规范
+
+本项目使用 **Commitlint + Commitizen** 规范提交信息，执行以下命令唤起交互式提交：
+
+```bash
+pnpm run commit
+```
+
+| 类型 | 说明 |
+| --- | --- |
+| `feat` | 新功能 |
+| `fix` | Bug 修复 |
+| `docs` | 文档更新 |
+| `style` | 代码格式（不影响功能） |
+| `refactor` | 代码重构 |
+| `perf` | 性能优化 |
+| `test` | 添加或修改测试 |
+| `chore` | 构建/工具链/依赖变更 |
+
+### PR 规则
+
+- `feature/*` → `dev`：需 **1 人以上** Review 通过
+- `release/*` → `main`：需 **2 人以上** Review 通过，并确保 CI 通过
+- `hotfix/*` → `main`：需 **1 人以上** Review 通过（紧急情况可事后补充）
+- **禁止**直接向 `main` / `dev` push 代码
