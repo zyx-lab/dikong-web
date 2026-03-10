@@ -55,18 +55,68 @@ html.sidebar-color-blue {
   --sidebar-logo-text-color: #fff;
 }
 
-// 暗黑主题
+// 暗黑主题 — 深蓝科技风（对接组件设计规范）
 html.dark {
-  --menu-background: var(--el-bg-color-overlay);
-  --menu-text: #fff;
-  --menu-active-text: var(--el-menu-active-color);
-  --menu-hover: rgb(0 0 0 / 20%);
-  --sidebar-logo-background: rgb(0 0 0 / 20%);
+  // ---- 背景色 ----
+  --el-bg-color: #0f1f3a; // 主背景（数据行）
+  --el-bg-color-page: #0a1628; // 页面底色（最深层）
+  --el-bg-color-overlay: #172c51; // 弹出层 / 卡片 / 表头
+
+  // ---- 文字色 ----
+  --el-text-color-primary: #ffffff;
+  --el-text-color-regular: rgba(255, 255, 255, 0.85);
+  --el-text-color-secondary: rgba(255, 255, 255, 0.65);
+  --el-text-color-placeholder: rgba(255, 255, 255, 0.4);
+  --el-text-color-disabled: rgba(255, 255, 255, 0.25);
+
+  // ---- 边框色 ----
+  --el-border-color: #2a4a7f;
+  --el-border-color-light: #1e3a64;
+  --el-border-color-lighter: #183056;
+  --el-border-color-extra-light: #142846;
+  --el-border-color-dark: #3460a0;
+
+  // ---- 填充色 ----
+  --el-fill-color: rgba(255, 255, 255, 0.08);
+  --el-fill-color-light: rgba(255, 255, 255, 0.05);
+  --el-fill-color-lighter: rgba(255, 255, 255, 0.03);
+  --el-fill-color-extra-light: rgba(255, 255, 255, 0.02);
+  --el-fill-color-dark: rgba(255, 255, 255, 0.12);
+  --el-fill-color-blank: #0f1f3a;
+
+  // ---- 遮罩色 ----
+  --el-mask-color: rgba(5, 15, 30, 0.8);
+  --el-mask-color-extra-light: rgba(5, 15, 30, 0.3);
+
+  // ---- 盒子阴影 ----
+  --el-box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --el-box-shadow-light: 0 2px 12px rgba(0, 0, 0, 0.3);
+  --el-box-shadow-lighter: 0 1px 4px rgba(0, 0, 0, 0.2);
+  --el-box-shadow-dark: 0 6px 24px rgba(0, 0, 0, 0.5);
+
+  // ---- 菜单 / 侧边栏 ----
+  --menu-background: #172c51;
+  --menu-text: rgba(255, 255, 255, 0.65);
+  --menu-active-text: #ffffff;
+  --menu-hover: rgba(43, 91, 158, 0.4);
+  --sidebar-logo-background: #0f1f3a;
   --sidebar-logo-text-color: #fff;
 
-  // Element Plus 表格选中行背景色
+  // ---- 组件级补充 ----
+  // Element Plus 表格
   .el-table {
-    --el-table-current-row-bg-color: var(--el-fill-color-light);
+    --el-table-border-color: #1e3a64;
+    --el-table-header-bg-color: #172c51;
+    --el-table-row-hover-bg-color: rgba(43, 91, 158, 0.15);
+    --el-table-current-row-bg-color: rgba(43, 91, 158, 0.2);
+    --el-table-bg-color: #0f1f3a;
+    --el-table-tr-bg-color: #0f1f3a;
+  }
+
+  // Element Plus 卡片
+  .el-card {
+    --el-card-bg-color: #0f1f3a;
+    border-color: #1e3a64;
   }
 }
 

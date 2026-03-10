@@ -30,7 +30,7 @@
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button type="success" icon="plus" @click="handleCreateClick">新增任务</el-button>
+          <el-button type="primary" icon="plus" @click="handleCreateClick">新增任务</el-button>
           <el-button
             type="danger"
             :disabled="ids.length === 0"
@@ -134,6 +134,8 @@
       v-model="dialogState.visible"
       :title="dialogState.title"
       width="600px"
+      custom-class="dialog-form-decorated"
+      class="dialog-form-decorated"
       @close="closeDialog"
     >
       <el-form ref="dataFormRef" :model="formData" :rules="rules" label-width="100px">

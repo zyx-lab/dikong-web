@@ -46,3 +46,45 @@ $border: 1px solid var(--el-border-color-light);
   gap: 8px;
   justify-content: flex-end;
 }
+
+// ============================================
+// 深色模式 — 弹窗 / 抽屉科技风样式
+// ============================================
+html.dark {
+  // 弹窗深蓝色背景
+  .el-dialog {
+    --el-dialog-bg-color: #0f1f3a;
+    border: 1px solid #1e3a64;
+  }
+
+  // 抽屉深蓝色背景
+  .el-drawer {
+    --el-drawer-bg-color: #0f1f3a;
+    border-color: #1e3a64;
+  }
+
+  // 确认弹窗（MessageBox）深蓝色背景
+  .el-message-box {
+    --el-messagebox-bg-color: #0f1f3a;
+    border: 1px solid #1e3a64;
+  }
+
+  // 带表单弹窗的标题蓝色竖线装饰
+  // 使用方式：在 el-dialog 上添加 custom-class="dialog-form-decorated"
+  .dialog-form-decorated .el-dialog__header {
+    position: relative;
+    padding-left: 28px;
+
+    &::before {
+      position: absolute;
+      top: 50%;
+      left: 16px;
+      width: 3px;
+      height: 60%;
+      content: "";
+      background: var(--el-color-primary);
+      border-radius: 2px;
+      transform: translateY(-50%);
+    }
+  }
+}
