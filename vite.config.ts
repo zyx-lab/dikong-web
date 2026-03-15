@@ -6,9 +6,11 @@ import Components from "unplugin-vue-components/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 
 import { mockDevServerPlugin } from "vite-plugin-mock-dev-server";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 
 import UnoCSS from "unocss/vite";
-import { resolve } from "path";
+import { createReadStream, existsSync, statSync } from "fs";
+import { extname, relative, resolve } from "path";
 import { name, version, engines, dependencies, devDependencies } from "./package.json";
 
 // 平台的名称、版本、运行所需的 node 版本、依赖、构建时间的类型提示
@@ -18,6 +20,53 @@ const __APP_INFO__ = {
 };
 
 const pathSrc = resolve(__dirname, "src");
+const cesiumBuildRoot = resolve(__dirname, "node_modules/cesium/Build/Cesium");
+
+const cesiumMimeTypes: Record<string, string> = {
+  ".css": "text/css",
+  ".gif": "image/gif",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".js": "text/javascript",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".wasm": "application/wasm",
+  ".xml": "application/xml",
+};
+
+function cesiumDevAssetPlugin(): PluginOption {
+  return {
+    name: "cesium-dev-asset-plugin",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const requestPath = req.url?.split("?")[0];
+        if (!requestPath?.startsWith("/cesiumStatic/")) {
+          next();
+          return;
+        }
+
+        const relativePath = requestPath.slice("/cesiumStatic/".length);
+        const filePath = resolve(cesiumBuildRoot, relativePath);
+        const safeRelativePath = relative(cesiumBuildRoot, filePath);
+
+        if (
+          safeRelativePath.startsWith("..") ||
+          !existsSync(filePath) ||
+          !statSync(filePath).isFile()
+        ) {
+          next();
+          return;
+        }
+
+        const extension = extname(filePath).toLowerCase();
+        res.setHeader("Content-Type", cesiumMimeTypes[extension] ?? "application/octet-stream");
+        createReadStream(filePath).pipe(res);
+      });
+    },
+  };
+}
 
 // Vite配置  https://cn.vitejs.dev/config
 export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
@@ -54,7 +103,28 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     },
     plugins: [
       vue(),
+      cesiumDevAssetPlugin(),
       ...(env.VITE_MOCK_DEV_SERVER === "true" ? [mockDevServerPlugin()] : []),
+      viteStaticCopy({
+        targets: [
+          {
+            src: resolve(__dirname, "node_modules/cesium/Build/Cesium/Workers"),
+            dest: "cesiumStatic/Workers",
+          },
+          {
+            src: resolve(__dirname, "node_modules/cesium/Build/Cesium/ThirdParty"),
+            dest: "cesiumStatic/ThirdParty",
+          },
+          {
+            src: resolve(__dirname, "node_modules/cesium/Build/Cesium/Assets"),
+            dest: "cesiumStatic/Assets",
+          },
+          {
+            src: resolve(__dirname, "node_modules/cesium/Build/Cesium/Widgets"),
+            dest: "cesiumStatic/Widgets",
+          },
+        ],
+      }),
       UnoCSS(),
       // API 自动导入
       AutoImport({
@@ -110,6 +180,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         "path-browserify",
         "@stomp/stompjs",
         "@element-plus/icons-vue",
+        "cesium",
         "element-plus/es",
         "element-plus/es/locale/lang/en",
         "element-plus/es/locale/lang/zh-cn",
@@ -226,6 +297,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     },
     define: {
       __APP_INFO__: JSON.stringify(__APP_INFO__),
+      CESIUM_BASE_URL: JSON.stringify("/cesiumStatic"),
     },
   };
 });
