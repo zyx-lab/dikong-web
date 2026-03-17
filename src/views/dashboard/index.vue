@@ -95,49 +95,43 @@
     <!-- 中间图表区域 -->
     <el-row :gutter="16" class="chart-row">
       <el-col :xs="24" :lg="14">
-        <el-card shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span class="card-header__title">本周飞行趋势</span>
-              <el-radio-group v-model="trendRange" size="small">
-                <el-radio-button label="近7天" :value="7" />
-                <el-radio-button label="近30天" :value="30" />
-              </el-radio-group>
-            </div>
+        <InfoPanel title="本周飞行趋势">
+          <template #header-extra>
+            <el-radio-group v-model="trendRange" size="small">
+              <el-radio-button label="近7天" :value="7" />
+              <el-radio-button label="近30天" :value="30" />
+            </el-radio-group>
           </template>
+
           <div class="chart-placeholder">
             <el-icon :size="48" color="#c0c4cc"><TrendCharts /></el-icon>
             <p>[ECharts 飞行趋势图 - 待集成]</p>
           </div>
-        </el-card>
+        </InfoPanel>
       </el-col>
 
       <el-col :xs="24" :lg="10">
-        <el-card shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span class="card-header__title">告警分布</span>
-              <el-tag size="small">本月</el-tag>
-            </div>
+        <InfoPanel title="告警分布">
+          <template #header-extra>
+            <el-tag size="small">本月</el-tag>
           </template>
+
           <div class="chart-placeholder">
             <el-icon :size="48" color="#c0c4cc"><PieChart /></el-icon>
             <p>[ECharts 告警分布饼图 - 待集成]</p>
           </div>
-        </el-card>
+        </InfoPanel>
       </el-col>
     </el-row>
 
     <!-- 底部数据区域 -->
     <el-row :gutter="16" class="table-row">
       <el-col :xs="24" :lg="12">
-        <el-card shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span class="card-header__title">最近飞行记录</span>
-              <el-button type="primary" link size="small">查看更多</el-button>
-            </div>
+        <InfoPanel title="最近飞行记录">
+          <template #header-extra>
+            <el-button type="primary" link size="small">查看更多</el-button>
           </template>
+
           <el-table :data="recentFlights" stripe style="width: 100%" size="small">
             <el-table-column
               prop="taskName"
@@ -155,17 +149,15 @@
               </template>
             </el-table-column>
           </el-table>
-        </el-card>
+        </InfoPanel>
       </el-col>
 
       <el-col :xs="24" :lg="12">
-        <el-card shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span class="card-header__title">最新告警</span>
-              <el-button type="primary" link size="small">查看更多</el-button>
-            </div>
+        <InfoPanel title="最新告警">
+          <template #header-extra>
+            <el-button type="primary" link size="small">查看更多</el-button>
           </template>
+
           <div class="alert-list">
             <div v-for="item in recentAlerts" :key="item.id" class="alert-list__item">
               <div class="alert-list__left">
@@ -185,7 +177,7 @@
               <span class="alert-list__time">{{ item.triggerTime }}</span>
             </div>
           </div>
-        </el-card>
+        </InfoPanel>
       </el-col>
     </el-row>
   </div>
@@ -197,16 +189,17 @@ defineOptions({
   inheritAttrs: false,
 });
 
-import { ref, computed } from "vue";
+import { computed, ref } from "vue";
 import {
-  Promotion,
-  Position,
   Bell,
+  PieChart,
+  Position,
+  Promotion,
   Tickets,
   Top,
   TrendCharts,
-  PieChart,
 } from "@element-plus/icons-vue";
+import InfoPanel from "@/components/InfoPanel.vue";
 
 const trendRange = ref(7);
 
@@ -288,7 +281,13 @@ const recentAlerts = ref([
     source: "激光雷达 LID-01",
     triggerTime: "08:55",
   },
-  { id: 5, level: 3, description: "航线偏移预警", source: "DJI M300 #01", triggerTime: "08:32" },
+  {
+    id: 5,
+    level: 3,
+    description: "航线偏移预警",
+    source: "DJI M300 #01",
+    triggerTime: "08:32",
+  },
 ]);
 
 function flightStatusType(status: number) {
@@ -419,18 +418,6 @@ function alertLevelText(level: number) {
     @media (min-width: 1200px) {
       margin-bottom: 0;
     }
-  }
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  &__title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--el-text-color-primary);
   }
 }
 
