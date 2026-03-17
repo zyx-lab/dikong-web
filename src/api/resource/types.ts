@@ -5,6 +5,33 @@ export enum DroneStatus {
   MAINTENANCE = 2,
 }
 
+/** 无人机控制模式 */
+export enum DroneControlMode {
+  PLATFORM = "PLATFORM",
+  REMOTE = "REMOTE",
+}
+
+/** 无人机控制权类型 */
+export enum DroneControlAuthority {
+  EXCLUSIVE = "EXCLUSIVE",
+  SHARED = "SHARED",
+  TEAM = "TEAM",
+}
+
+/** 无人机保养状态 */
+export enum DroneMaintenanceStatus {
+  NORMAL = "NORMAL",
+  NEEDS_MAINTENANCE = "NEEDS_MAINTENANCE",
+  OVERDUE = "OVERDUE",
+}
+
+/** 无人机保险状态 */
+export enum DroneInsuranceStatus {
+  NORMAL = "NORMAL",
+  EXPIRING_SOON = "EXPIRING_SOON",
+  EXPIRED = "EXPIRED",
+}
+
 /** 负载类型 */
 export enum PayloadType {
   VISIBLE_CAMERA = "visible_camera",
@@ -34,20 +61,52 @@ export enum PilotAccountStatus {
 }
 
 export interface DroneQuery extends BaseQueryParams {
+  snCode?: string;
   droneName?: string;
   model?: string;
+  organization?: string;
+  controlMode?: DroneControlMode;
+  controlAuthority?: DroneControlAuthority;
+  maintenanceStatus?: DroneMaintenanceStatus;
+  insuranceStatus?: DroneInsuranceStatus;
   status?: DroneStatus;
 }
 
 export interface DroneInfo {
   id: number;
-  droneName: string;
-  model: string;
   snCode: string;
+  droneName: string;
+  brand: string;
+  model: string;
+  controlMode: DroneControlMode;
+  airportName?: string;
+  organization: string;
+  controlAuthority: DroneControlAuthority[];
+  controlAuthorityNames?: string[];
   status: DroneStatus;
-  batteryLevel: number;
+  maintenanceStatus: DroneMaintenanceStatus;
+  insuranceStatus: DroneInsuranceStatus;
+  createdAt: string;
+  remark?: string;
+  batteryLevel?: number;
   lastFlightTime?: string;
-  totalFlightHours: number;
+  totalFlightHours?: number;
+}
+
+export interface DroneForm {
+  id?: number;
+  snCode: string;
+  droneName: string;
+  brand: string;
+  model: string;
+  controlMode?: DroneControlMode;
+  airportName?: string;
+  organization?: string;
+  controlAuthority: DroneControlAuthority[];
+  status?: DroneStatus;
+  maintenanceStatus?: DroneMaintenanceStatus;
+  insuranceStatus?: DroneInsuranceStatus;
+  remark?: string;
 }
 
 export interface AirportQuery extends BaseQueryParams {
