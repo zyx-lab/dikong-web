@@ -242,7 +242,9 @@
             class="planner-shell__side"
             :draft="activeDraft"
             :pending-area-selection="Boolean(areaSelectionStart)"
+            :dispatching="dispatchLoading"
             :saving="saveLoading"
+            @dispatch="openDispatchDialog"
             @preview="previewDraft"
             @save="saveDraft"
             @reset="resetDraft"
@@ -268,13 +270,154 @@
         </div>
       </section>
     </template>
+
+    <el-dialog
+      v-model="dispatchDialogVisible"
+      width="760px"
+      class="route-create-dialog route-dispatch-dialog"
+      :teleported="false"
+      modal-class="route-create-dialog-mask"
+    >
+      <template #header>
+        <div class="route-create-dialog__header">
+          <span class="route-create-dialog__bar"></span>
+          <span>下发航线</span>
+        </div>
+      </template>
+
+      <div class="route-create-dialog__content">
+        <div class="route-dispatch-dialog__summary">
+          <div class="route-dispatch-dialog__summary-item">
+            <span>航线名称</span>
+            <strong>{{ activeDraft?.routeName || "-" }}</strong>
+          </div>
+          <div class="route-dispatch-dialog__summary-item">
+            <span>航线类型</span>
+            <strong>{{ activeDraft ? getRouteTypeLabel(activeDraft.routeType) : "-" }}</strong>
+          </div>
+          <div class="route-dispatch-dialog__summary-item">
+            <span>KMZ 文件名</span>
+            <strong>{{ dispatchFileName }}</strong>
+          </div>
+        </div>
+
+        <el-form :model="dispatchForm" label-position="top">
+          <div class="route-dispatch-dialog__grid">
+            <el-form-item label="后端地址">
+              <el-input
+                v-model="dispatchForm.baseUrl"
+                placeholder="默认：http://192.168.3.26:6789"
+              />
+            </el-form-item>
+            <el-form-item label="当前工作区">
+              <el-input :model-value="dispatchWorkspaceDisplay" readonly />
+            </el-form-item>
+            <el-form-item label="机型模板">
+              <el-select
+                v-model="dispatchForm.devicePresetKey"
+                placeholder="请选择机型模板"
+                :teleported="false"
+                @change="handleDevicePresetChange"
+              >
+                <el-option
+                  v-for="item in WAYLINE_DEVICE_PRESETS"
+                  :key="item.key"
+                  :label="item.label"
+                  :value="item.key"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="负载挂载位">
+              <el-input-number
+                v-model="dispatchForm.payloadPositionIndex"
+                :min="0"
+                :max="2"
+                :step="1"
+                controls-position="right"
+                class="w-full"
+              />
+            </el-form-item>
+          </div>
+
+          <div class="route-dispatch-dialog__status" :class="{ 'is-error': !!dispatchAuthError }">
+            <span>{{ dispatchAuthStatus }}</span>
+            <el-button text :loading="dispatchAuthLoading" @click="handleRefreshDispatchContext">
+              重新获取
+            </el-button>
+          </div>
+
+          <div class="route-dispatch-dialog__grid route-dispatch-dialog__grid--compact">
+            <el-form-item label="droneEnumValue">
+              <el-input-number
+                v-model="dispatchForm.droneEnumValue"
+                :min="0"
+                :step="1"
+                controls-position="right"
+                class="w-full"
+              />
+            </el-form-item>
+            <el-form-item label="droneSubEnumValue">
+              <el-input-number
+                v-model="dispatchForm.droneSubEnumValue"
+                :min="0"
+                :step="1"
+                controls-position="right"
+                class="w-full"
+              />
+            </el-form-item>
+            <el-form-item label="payloadEnumValue">
+              <el-input-number
+                v-model="dispatchForm.payloadEnumValue"
+                :min="0"
+                :step="1"
+                controls-position="right"
+                class="w-full"
+              />
+            </el-form-item>
+            <el-form-item label="payloadSubEnumValue">
+              <el-input-number
+                v-model="dispatchForm.payloadSubEnumValue"
+                :min="0"
+                :step="1"
+                controls-position="right"
+                class="w-full"
+              />
+            </el-form-item>
+          </div>
+        </el-form>
+
+        <div class="route-dispatch-dialog__tip">
+          当前会默认连接 `http://192.168.3.26:6789`，使用 README 提供的 `adminPC`
+          账号自动登录，自动获取当前 `workspace_id` 后再上传到 `waylines/file/upload` 接口。
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="route-create-dialog__footer">
+          <el-button class="route-secondary-btn" @click="dispatchDialogVisible = false">
+            取 消
+          </el-button>
+          <el-button
+            type="primary"
+            class="route-primary-btn"
+            :loading="dispatchLoading || dispatchAuthLoading"
+            @click="handleDispatchRoute"
+          >
+            确认下发
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import axios from "axios";
+import WaylineAPI from "@/api/flight/wayline";
 import { RouteType } from "@/api/flight/types";
 import { ThemeMode } from "@/enums";
 import { useSettingsStore } from "@/store/modules/settings";
+import { Storage } from "@/utils/storage";
 import RoutePlannerMap from "./components/RoutePlannerMap.vue";
 import RoutePlannerSidebar from "./components/RoutePlannerSidebar.vue";
 import { createMockRoutes } from "./mock";
@@ -286,6 +429,12 @@ import type {
   RouteRecordModel,
 } from "./types";
 import {
+  buildWaylineKmzFile,
+  ensureKmzFileName,
+  WAYLINE_DEVICE_PRESETS,
+  type WaylineDevicePreset,
+} from "./wayline-kmz";
+import {
   buildAreaRectangle,
   cloneRouteRecord,
   createEmptyRoute,
@@ -296,6 +445,7 @@ import {
   getRouteInstruction,
   getRouteStatItems,
   getRouteTypeLabel,
+  normalizeRouteRecord,
   normalizeWaypointNames,
 } from "./utils";
 
@@ -305,7 +455,49 @@ interface PlannerMapExpose {
   flyToRoute: () => void;
 }
 
+interface RouteDispatchForm {
+  baseUrl: string;
+  workspaceId: string;
+  devicePresetKey: string;
+  droneEnumValue: number;
+  droneSubEnumValue: number;
+  payloadEnumValue: number;
+  payloadSubEnumValue: number;
+  payloadPositionIndex: number;
+}
+
+interface WaylineLoginResponse {
+  code?: number;
+  msg?: string;
+  message?: string;
+  data?: {
+    access_token?: string;
+    accessToken?: string;
+    token?: string;
+  };
+}
+
+interface CurrentWorkspaceResponse {
+  code?: number;
+  msg?: string;
+  message?: string;
+  data?: {
+    workspace_id?: string;
+    workspace_name?: string;
+    workspaceId?: string;
+    workspaceName?: string;
+  };
+}
+
 const settingsStore = useSettingsStore();
+const ROUTE_STORAGE_KEY = "vea:route:planner_records";
+const ROUTE_DISPATCH_STORAGE_KEY = "vea:route:planner_dispatch_config";
+const DEFAULT_WAYLINE_BASE_URL = "http://192.168.3.26:6789";
+const WAYLINE_LOGIN_PAYLOAD = Object.freeze({
+  username: "adminPC",
+  password: "adminPC",
+  flag: 1,
+});
 const routeTypeEnum = RouteType;
 const routeTypeOptions = [
   {
@@ -326,8 +518,9 @@ const baseMapOptions = [
   { value: "terrain", label: "地形图" },
 ] as const satisfies Array<{ value: BaseMapMode; label: string }>;
 
-const routeRecords = ref<RouteRecordModel[]>(createMockRoutes());
+const routeRecords = ref<RouteRecordModel[]>(loadRouteRecords());
 const createDialogVisible = ref(false);
+const dispatchDialogVisible = ref(false);
 const pageMode = ref<"list" | "planner">("list");
 const activeDraft = ref<RouteRecordModel | null>(null);
 const draftSnapshot = ref<RouteRecordModel | null>(null);
@@ -336,7 +529,12 @@ const baseMapMode = ref<BaseMapMode>("standard");
 const plannerMapRef = ref<PlannerMapExpose | null>(null);
 const listLoading = ref(false);
 const plannerLoading = ref(false);
+const dispatchLoading = ref(false);
+const dispatchAuthLoading = ref(false);
 const saveLoading = ref(false);
+const dispatchToken = ref("");
+const dispatchWorkspaceName = ref("");
+const dispatchAuthError = ref("");
 
 const filterForm = reactive<RouteFilterForm>({
   routeName: "",
@@ -350,6 +548,7 @@ const createForm = reactive<CreateRouteForm>({
   department: "",
   routeType: RouteType.POINT,
 });
+const dispatchForm = reactive<RouteDispatchForm>(createDispatchForm());
 
 const filteredRoutes = computed(() => {
   return routeRecords.value.filter((route) => {
@@ -371,6 +570,23 @@ const filteredRoutes = computed(() => {
 const totalCount = computed(() => filteredRoutes.value.length);
 const hasTerrainToken = computed(() => Boolean(import.meta.env.VITE_CESIUM_ION_TOKEN));
 const isDarkMode = computed(() => settingsStore.theme === ThemeMode.DARK);
+const dispatchFileName = computed(() =>
+  ensureKmzFileName(activeDraft.value?.routeName || "航线规划")
+);
+const dispatchWorkspaceDisplay = computed(() => {
+  if (!dispatchForm.workspaceId) {
+    return dispatchAuthLoading.value ? "正在自动获取..." : "确认下发时自动获取";
+  }
+  return dispatchWorkspaceName.value
+    ? `${dispatchForm.workspaceId} / ${dispatchWorkspaceName.value}`
+    : dispatchForm.workspaceId;
+});
+const dispatchAuthStatus = computed(() => {
+  if (dispatchAuthLoading.value) return "正在自动登录并获取当前工作区";
+  if (dispatchAuthError.value) return dispatchAuthError.value;
+  if (dispatchToken.value) return "已自动获取 x-auth-token";
+  return "确认下发时自动登录获取";
+});
 const mapInstruction = computed(() => {
   if (!activeDraft.value) return "";
   return getRouteInstruction(activeDraft.value.routeType, Boolean(areaSelectionStart.value));
@@ -379,6 +595,72 @@ const mapInstruction = computed(() => {
 function getRouteCardStats(route: RouteRecordModel) {
   return getRouteStatItems(route);
 }
+
+function loadRouteRecords(): RouteRecordModel[] {
+  const savedRoutes = Storage.get<RouteRecordModel[] | null>(ROUTE_STORAGE_KEY, null);
+  if (Array.isArray(savedRoutes)) {
+    const normalizedRoutes = savedRoutes.map((route) => normalizeRouteRecord(route));
+    persistRouteRecords(normalizedRoutes);
+    return normalizedRoutes;
+  }
+
+  const defaultRoutes = createMockRoutes();
+  persistRouteRecords(defaultRoutes);
+  return defaultRoutes;
+}
+
+function createDispatchForm(): RouteDispatchForm {
+  const defaultPreset = WAYLINE_DEVICE_PRESETS[0];
+  const savedConfig = Storage.get<Partial<RouteDispatchForm> | null>(
+    ROUTE_DISPATCH_STORAGE_KEY,
+    null
+  );
+
+  return {
+    baseUrl: savedConfig?.baseUrl || DEFAULT_WAYLINE_BASE_URL,
+    workspaceId: "",
+    devicePresetKey: savedConfig?.devicePresetKey || defaultPreset.key,
+    droneEnumValue: savedConfig?.droneEnumValue ?? defaultPreset.droneEnumValue,
+    droneSubEnumValue: savedConfig?.droneSubEnumValue ?? defaultPreset.droneSubEnumValue,
+    payloadEnumValue: savedConfig?.payloadEnumValue ?? defaultPreset.payloadEnumValue,
+    payloadSubEnumValue: savedConfig?.payloadSubEnumValue ?? defaultPreset.payloadSubEnumValue,
+    payloadPositionIndex: savedConfig?.payloadPositionIndex ?? defaultPreset.payloadPositionIndex,
+  };
+}
+
+function saveDispatchConfig() {
+  Storage.set(ROUTE_DISPATCH_STORAGE_KEY, {
+    baseUrl: dispatchForm.baseUrl,
+    devicePresetKey: dispatchForm.devicePresetKey,
+    droneEnumValue: dispatchForm.droneEnumValue,
+    droneSubEnumValue: dispatchForm.droneSubEnumValue,
+    payloadEnumValue: dispatchForm.payloadEnumValue,
+    payloadSubEnumValue: dispatchForm.payloadSubEnumValue,
+    payloadPositionIndex: dispatchForm.payloadPositionIndex,
+  });
+}
+
+function persistRouteRecords(records: RouteRecordModel[]) {
+  Storage.set(ROUTE_STORAGE_KEY, records);
+}
+
+watch(
+  routeRecords,
+  (records) => {
+    persistRouteRecords(records);
+  },
+  { deep: true }
+);
+
+watch(
+  () => dispatchForm.baseUrl,
+  (value, oldValue) => {
+    if (normalizeDispatchBaseUrl(value) === normalizeDispatchBaseUrl(oldValue || "")) {
+      return;
+    }
+    resetDispatchAuthState();
+  }
+);
 
 function loadRouteList() {
   listLoading.value = false;
@@ -397,6 +679,113 @@ function resetFilterForm() {
   filterForm.department = "";
   filterForm.routeType = undefined;
   filterForm.updatedRange = [];
+}
+
+function handleDevicePresetChange(presetKey: string) {
+  const preset = WAYLINE_DEVICE_PRESETS.find((item) => item.key === presetKey);
+  if (!preset) return;
+
+  dispatchForm.droneEnumValue = preset.droneEnumValue;
+  dispatchForm.droneSubEnumValue = preset.droneSubEnumValue;
+  dispatchForm.payloadEnumValue = preset.payloadEnumValue;
+  dispatchForm.payloadSubEnumValue = preset.payloadSubEnumValue;
+  dispatchForm.payloadPositionIndex = preset.payloadPositionIndex;
+}
+
+function normalizeDispatchBaseUrl(baseUrl: string) {
+  return baseUrl.trim().replace(/\/+$/, "");
+}
+
+function getWaylineResponseMessage(data: any) {
+  return data?.msg || data?.message || data?.error || data?.detail || "";
+}
+
+function resetDispatchAuthState() {
+  dispatchForm.workspaceId = "";
+  dispatchToken.value = "";
+  dispatchWorkspaceName.value = "";
+  dispatchAuthError.value = "";
+}
+
+async function resolveDispatchContext(showSuccess = false) {
+  const baseUrl = normalizeDispatchBaseUrl(dispatchForm.baseUrl);
+  if (!baseUrl) throw new Error("请填写后端地址");
+
+  dispatchAuthLoading.value = true;
+  resetDispatchAuthState();
+
+  try {
+    const loginResponse = await axios.post<WaylineLoginResponse>(
+      `${baseUrl}/manage/api/v1/login`,
+      WAYLINE_LOGIN_PAYLOAD,
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 15000,
+      }
+    );
+    const loginData = loginResponse.data;
+    const loginCode = Number(loginData?.code ?? 0);
+    if (!Number.isNaN(loginCode) && loginCode !== 0) {
+      throw new Error(getWaylineResponseMessage(loginData) || "自动登录失败");
+    }
+
+    const token =
+      loginData?.data?.access_token || loginData?.data?.accessToken || loginData?.data?.token || "";
+    if (!token) {
+      throw new Error("后端未返回 x-auth-token");
+    }
+
+    dispatchToken.value = token;
+
+    const workspaceResponse = await axios.get<CurrentWorkspaceResponse>(
+      `${baseUrl}/manage/api/v1/workspaces/current`,
+      {
+        headers: { "x-auth-token": token },
+        timeout: 15000,
+      }
+    );
+    const workspaceData = workspaceResponse.data;
+    const workspaceCode = Number(workspaceData?.code ?? 0);
+    if (!Number.isNaN(workspaceCode) && workspaceCode !== 0) {
+      throw new Error(getWaylineResponseMessage(workspaceData) || "获取当前工作区失败");
+    }
+
+    const workspaceId = workspaceData?.data?.workspace_id || workspaceData?.data?.workspaceId || "";
+    if (!workspaceId) {
+      throw new Error("后端未返回工作区 ID");
+    }
+
+    dispatchForm.baseUrl = baseUrl;
+    dispatchForm.workspaceId = workspaceId;
+    dispatchWorkspaceName.value =
+      workspaceData?.data?.workspace_name || workspaceData?.data?.workspaceName || "";
+
+    if (showSuccess) {
+      ElMessage.success("已自动获取当前工作区");
+    }
+
+    return {
+      baseUrl,
+      token,
+      workspaceId,
+    };
+  } catch (error: any) {
+    console.log(error);
+    // resetDispatchAuthState();
+    // const message = error?.message || "自动获取下发凭据失败";
+    // dispatchAuthError.value = message;
+    // throw new Error(message);
+  } finally {
+    dispatchAuthLoading.value = false;
+  }
+}
+
+async function handleRefreshDispatchContext() {
+  try {
+    await resolveDispatchContext(true);
+  } catch {
+    // message handled in resolveDispatchContext caller state
+  }
 }
 
 async function startCreate() {
@@ -533,6 +922,14 @@ function previewDraft() {
   plannerMapRef.value?.flyToRoute();
 }
 
+function openDispatchDialog() {
+  if (!activeDraft.value) return;
+  if (!validateCurrentDraft(activeDraft.value)) return;
+
+  dispatchDialogVisible.value = true;
+  void resolveDispatchContext().catch(() => undefined);
+}
+
 function resetDraft() {
   if (!draftSnapshot.value) return;
   activeDraft.value = cloneRouteRecord(draftSnapshot.value);
@@ -557,6 +954,49 @@ async function saveDraft() {
   areaSelectionStart.value = null;
   saveLoading.value = false;
   ElMessage.success("航线保存成功");
+}
+
+function getDispatchDevicePreset(): WaylineDevicePreset {
+  const preset = WAYLINE_DEVICE_PRESETS.find((item) => item.key === dispatchForm.devicePresetKey);
+  return {
+    ...(preset || WAYLINE_DEVICE_PRESETS[0]),
+    droneEnumValue: dispatchForm.droneEnumValue,
+    droneSubEnumValue: dispatchForm.droneSubEnumValue,
+    payloadEnumValue: dispatchForm.payloadEnumValue,
+    payloadSubEnumValue: dispatchForm.payloadSubEnumValue,
+    payloadPositionIndex: dispatchForm.payloadPositionIndex,
+  };
+}
+
+async function handleDispatchRoute() {
+  if (!activeDraft.value) return;
+  if (!validateCurrentDraft(activeDraft.value)) return;
+  if (!dispatchForm.baseUrl.trim()) return void ElMessage.warning("请填写后端地址");
+
+  dispatchLoading.value = true;
+
+  try {
+    const dispatchContext = await resolveDispatchContext();
+    const kmzFile = await buildWaylineKmzFile(activeDraft.value, {
+      fileName: dispatchFileName.value,
+      author: activeDraft.value.creatorName || "系统用户",
+      device: getDispatchDevicePreset(),
+    });
+    const response = await WaylineAPI.uploadKmz({
+      baseUrl: dispatchContext?.baseUrl || "",
+      workspaceId: dispatchContext?.workspaceId || "",
+      token: dispatchContext?.token || "",
+      file: kmzFile,
+    });
+
+    saveDispatchConfig();
+    dispatchDialogVisible.value = false;
+    ElMessage.success(response?.msg || response?.message || "航线下发成功");
+  } catch (error: any) {
+    ElMessage.error(error?.message || "航线下发失败");
+  } finally {
+    dispatchLoading.value = false;
+  }
 }
 
 function validateCurrentDraft(draft: RouteRecordModel): boolean {
@@ -945,6 +1385,63 @@ function upsertRouteRecord(route: RouteRecordModel) {
 .route-create-dialog__types {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+.route-dispatch-dialog__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.route-dispatch-dialog__summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--route-card-bg);
+  border: 1px solid var(--route-border);
+  border-radius: 16px;
+}
+.route-dispatch-dialog__summary-item span {
+  font-size: 13px;
+  color: var(--route-text-secondary);
+}
+.route-dispatch-dialog__summary-item strong {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--route-text-primary);
+  word-break: break-all;
+}
+.route-dispatch-dialog__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+}
+.route-dispatch-dialog__grid--compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.route-dispatch-dialog__status {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  color: var(--route-text-secondary);
+  background: var(--route-subtle-bg);
+  border: 1px solid var(--route-border);
+  border-radius: 14px;
+}
+.route-dispatch-dialog__status.is-error {
+  color: var(--el-color-danger);
+  border-color: color-mix(in srgb, var(--el-color-danger) 30%, var(--route-border));
+}
+.route-dispatch-dialog__tip {
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--route-text-secondary);
+  background: var(--route-subtle-bg);
+  border: 1px solid var(--route-border);
+  border-radius: 14px;
+}
 .dialog-type-card {
   display: flex;
   flex-direction: column;
@@ -1153,6 +1650,9 @@ function upsertRouteRecord(route: RouteRecordModel) {
   .route-filter-form__grid,
   .route-create-dialog__grid,
   .route-create-dialog__types,
+  .route-dispatch-dialog__summary,
+  .route-dispatch-dialog__grid,
+  .route-dispatch-dialog__grid--compact,
   .route-card,
   .route-card__stats,
   .planner-shell__header,

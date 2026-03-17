@@ -44,6 +44,11 @@ export function createPointRouteConfig(): PointRouteConfig {
     photoIntervalDistance: 200,
     gimbalPitch: -45,
     yaw: 0,
+    preflightAction: {
+      hoverSeconds: 3,
+      height: 30,
+      gimbalPitch: -45,
+    },
   };
 }
 
@@ -129,14 +134,47 @@ export function normalizeWaypointNames(points: PlannerPoint[]): PlannerPoint[] {
 }
 
 export function createEmptyRoute(overrides?: Partial<RouteRecordModel>): RouteRecordModel {
-  const pointConfig = createPointRouteConfig();
-  const areaConfig = createAreaRouteConfig();
-  const loopConfig = createLoopRouteConfig();
   const routeType = overrides?.routeType ?? RouteType.POINT;
+  const globalConfig = {
+    ...createGlobalConfig(),
+    ...(overrides?.globalConfig ?? {}),
+  };
+  const pointDefaults = createPointRouteConfig();
+  const pointConfig = {
+    ...pointDefaults,
+    ...(overrides?.pointConfig ?? {}),
+    preflightAction: {
+      ...pointDefaults.preflightAction,
+      height: globalConfig.takeoffHeight,
+      ...(overrides?.pointConfig?.preflightAction ?? {}),
+    },
+  };
+  const areaConfig = {
+    ...createAreaRouteConfig(),
+    ...(overrides?.areaConfig ?? {}),
+  };
+  const loopDefaults = createLoopRouteConfig();
+  const loopConfig = {
+    ...loopDefaults,
+    ...(overrides?.loopConfig ?? {}),
+    targetPoint:
+      routeType !== RouteType.LOOP
+        ? null
+        : overrides?.loopConfig?.targetPoint === null
+          ? null
+          : {
+              ...(loopDefaults.targetPoint ?? createLoopTargetPoint(loopDefaults.flightHeight)),
+              ...(overrides?.loopConfig?.targetPoint ?? {}),
+            },
+  };
 
-  if (routeType !== RouteType.LOOP) {
-    loopConfig.targetPoint = null;
-  }
+  const points = Array.isArray(overrides?.points)
+    ? normalizeWaypointNames(
+        overrides!.points.map((point, index) =>
+          createPlannerPoint(index + 1, point.lng, point.lat, point.alt, point)
+        )
+      )
+    : [];
 
   return {
     id: overrides?.id ?? createRouteDraftId(),
@@ -149,16 +187,20 @@ export function createEmptyRoute(overrides?: Partial<RouteRecordModel>): RouteRe
     updatedAt: overrides?.updatedAt ?? formatDateTime(new Date()),
     droneModel: overrides?.droneModel ?? DEFAULT_DRONE_MODEL,
     description: overrides?.description ?? DEFAULT_ROUTE_DESCRIPTION,
-    points: overrides?.points ?? [],
-    globalConfig: overrides?.globalConfig ?? createGlobalConfig(),
-    pointConfig: overrides?.pointConfig ?? pointConfig,
-    areaConfig: overrides?.areaConfig ?? areaConfig,
-    loopConfig: overrides?.loopConfig ?? loopConfig,
+    points,
+    globalConfig,
+    pointConfig,
+    areaConfig,
+    loopConfig,
   };
 }
 
 export function cloneRouteRecord(route: RouteRecordModel): RouteRecordModel {
   return JSON.parse(JSON.stringify(route)) as RouteRecordModel;
+}
+
+export function normalizeRouteRecord(route: RouteRecordModel): RouteRecordModel {
+  return createEmptyRoute(route);
 }
 
 export function getRouteTypeLabel(type: RouteType): string {

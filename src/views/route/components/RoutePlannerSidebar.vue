@@ -336,6 +336,45 @@
         </div>
 
         <div class="field-group">
+          <span class="field-group__label">起飞前准备动作</span>
+          <p class="field-group__hint">
+            起飞后进入正式航线前，可先执行一次悬停与云台俯仰准备动作。
+          </p>
+          <div class="number-grid">
+            <label>
+              <span>悬停时长 (s)</span>
+              <el-input-number
+                v-model="draft.pointConfig.preflightAction.hoverSeconds"
+                :min="0"
+                :max="120"
+                :step="1"
+                controls-position="right"
+              />
+            </label>
+            <label>
+              <span>高度 (m)</span>
+              <el-input-number
+                v-model="draft.pointConfig.preflightAction.height"
+                :min="0"
+                :max="500"
+                :step="1"
+                controls-position="right"
+              />
+            </label>
+            <label>
+              <span>Pitch</span>
+              <el-input-number
+                v-model="draft.pointConfig.preflightAction.gimbalPitch"
+                :min="-90"
+                :max="90"
+                :step="1"
+                controls-position="right"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div class="field-group">
           <span class="field-group__label">无人机偏航角模式</span>
           <div class="chip-group">
             <button
@@ -558,6 +597,15 @@
     </el-scrollbar>
 
     <div class="planner-sidebar__actions">
+      <el-button
+        type="primary"
+        class="primary-action"
+        :loading="dispatching"
+        :disabled="saving"
+        @click="emit('dispatch')"
+      >
+        下发航线
+      </el-button>
       <el-button type="primary" class="primary-action" @click="emit('preview')">
         航线预览（模拟飞行）
       </el-button>
@@ -590,13 +638,16 @@ const props = withDefaults(
     draft: RouteRecordModel;
     pendingAreaSelection: boolean;
     saving?: boolean;
+    dispatching?: boolean;
   }>(),
   {
+    dispatching: false,
     saving: false,
   }
 );
 
 const emit = defineEmits<{
+  dispatch: [];
   preview: [];
   save: [];
   reset: [];
@@ -922,6 +973,13 @@ function removeWaypoint(index: number) {
   margin-bottom: 10px;
   font-size: 14px;
   color: var(--route-primary);
+}
+
+.field-group__hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--route-text-secondary);
 }
 
 .chip-group {

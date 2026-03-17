@@ -48,6 +48,11 @@ export interface PointRouteConfig {
   photoIntervalDistance: number;
   gimbalPitch: number;
   yaw: number;
+  preflightAction: {
+    hoverSeconds: number;
+    height: number;
+    gimbalPitch: number;
+  };
 }
 
 export interface AreaRouteConfig {
