@@ -13,7 +13,27 @@ export enum PayloadType {
   SPEAKER = "speaker",
 }
 
-export interface DroneQuery extends PageQuery {
+/** 飞手证件类型 */
+export enum PilotCertificateType {
+  AOPA = "AOPA",
+  ALPA = "ALPA",
+  UTC = "UTC",
+}
+
+/** 飞手控制模式 */
+export enum PilotControlMode {
+  AUTO = "AUTO",
+  MANUAL = "MANUAL",
+  HYBRID = "HYBRID",
+}
+
+/** 飞手账号状态 */
+export enum PilotAccountStatus {
+  DISABLED = 0,
+  ENABLED = 1,
+}
+
+export interface DroneQuery extends BaseQueryParams {
   droneName?: string;
   model?: string;
   status?: DroneStatus;
@@ -30,7 +50,7 @@ export interface DroneInfo {
   totalFlightHours: number;
 }
 
-export interface AirportQuery extends PageQuery {
+export interface AirportQuery extends BaseQueryParams {
   airportName?: string;
   status?: number;
 }
@@ -55,14 +75,50 @@ export interface PayloadInfo {
   status: number;
 }
 
+export interface PilotQuery extends BaseQueryParams {
+  username?: string;
+  name?: string;
+  organization?: string;
+  certificateType?: PilotCertificateType;
+  controlMode?: PilotControlMode;
+}
+
 export interface PilotInfo {
   id: number;
+  username: string;
   name: string;
   phone: string;
-  certification: string;
-  certExpireDate: string;
-  totalFlightHours: number;
-  droneId?: number;
-  droneName?: string;
-  status: number;
+  organization: string;
+  department: string;
+  certificateType: PilotCertificateType;
+  certificateNo: string;
+  controlMode: PilotControlMode;
+  assignedDroneName?: string;
+  status: PilotAccountStatus;
+  email?: string;
+  remark?: string;
+  createdAt: string;
+  issuedDate?: string;
+  validityYears?: number;
+  certificateScanUrl?: string;
+}
+
+export interface PilotForm {
+  id?: number;
+  username: string;
+  password?: string;
+  name: string;
+  phone: string;
+  organization?: string;
+  department?: string;
+  email?: string;
+  remark?: string;
+  certificateType?: PilotCertificateType;
+  certificateNo?: string;
+  issuedDate?: string;
+  validityYears?: number;
+  certificateScanUrl?: string;
+  controlMode?: PilotControlMode;
+  assignedDroneName?: string;
+  status?: PilotAccountStatus;
 }

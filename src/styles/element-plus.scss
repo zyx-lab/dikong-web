@@ -47,6 +47,47 @@ $border: 1px solid var(--el-border-color-light);
   justify-content: flex-end;
 }
 
+// 对话框内的通用表单分组样式
+.dialog-form-layout {
+  .dialog-form-section + .dialog-form-section {
+    margin-top: 12px;
+  }
+
+  .dialog-form-section__title {
+    position: relative;
+    padding-left: 12px;
+    margin-bottom: 18px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--el-color-primary);
+
+    &::before {
+      position: absolute;
+      top: 2px;
+      left: 0;
+      width: 3px;
+      height: 16px;
+      content: "";
+      background-color: var(--el-color-primary);
+    }
+  }
+
+  .dialog-inline-field {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+  }
+
+  .dialog-inline-field__input {
+    flex: 1;
+  }
+
+  .dialog-inline-field__suffix {
+    color: var(--el-text-color-regular);
+  }
+}
+
 // ============================================
 // 深色模式 — 弹窗 / 抽屉科技风样式
 // ============================================
