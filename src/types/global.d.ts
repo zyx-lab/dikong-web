@@ -1,7 +1,7 @@
-/**
+﻿/**
  * 全局类型声明
  *
- * @deprecated 请使用 @/types 下的具名导出
+ * @deprecated 请使用 `@/types` 下的具名导出
  */
 declare global {
   type ApiResponse<T = any> = import("@/types/api").ApiResponse<T>;

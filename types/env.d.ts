@@ -11,6 +11,7 @@ interface ImportMetaEnv {
   readonly VITE_APP_TITLE?: string;
   readonly VITE_APP_TENANT_ENABLED?: string;
   readonly VITE_MOCK_DEV_SERVER: boolean;
+  readonly VITE_CESIUM_ION_TOKEN?: string;
 }
 
 interface ImportMeta {
@@ -29,3 +30,5 @@ declare const __APP_INFO__: {
   };
   buildTimestamp: number;
 };
+
+declare const CESIUM_BASE_URL: string;
