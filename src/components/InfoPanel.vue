@@ -39,15 +39,19 @@ withDefaults(
   }
 
   &__title {
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 1rem;
+    font-weight: 650;
+    line-height: 1.35;
     color: var(--el-text-color-primary);
+    letter-spacing: 0.02em;
   }
 
   &__extra {
     display: flex;
     gap: 8px;
     align-items: center;
+    font-size: 0.8125rem;
+    line-height: 1.4;
   }
 
   &__body {

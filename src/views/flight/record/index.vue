@@ -1,5 +1,46 @@
 <template>
-  <div class="app-container">
+  <div class="app-container command-page">
+    <section class="command-page__hero">
+      <div class="command-page__hero-inner">
+        <div class="command-page__hero-main">
+          <div class="command-page__heading">
+            <p class="command-page__eyebrow">Flight Replay Desk</p>
+            <h2 class="command-page__title">飞行记录</h2>
+            <p class="command-page__description">
+              以复盘视角聚合架次、告警、媒体与核实进度，帮助值守人员快速定位需要复查的飞行任务和异常事件。
+            </p>
+          </div>
+          <div class="command-page__signals">
+            <span class="command-page__signal">飞行复盘台</span>
+            <span class="command-page__signal">告警核实链路</span>
+            <span class="command-page__signal">媒体证据关联</span>
+          </div>
+        </div>
+        <div class="command-page__metrics">
+          <div class="command-page__metric command-page__metric--accent">
+            <div class="command-page__metric-label">飞行记录</div>
+            <div class="command-page__metric-value">{{ total }}</div>
+            <div class="command-page__metric-note">当前筛选范围内的架次总数</div>
+          </div>
+          <div class="command-page__metric command-page__metric--warning">
+            <div class="command-page__metric-label">待核实架次</div>
+            <div class="command-page__metric-value">{{ pendingRecordCount }}</div>
+            <div class="command-page__metric-note">仍需人工确认的异常飞行</div>
+          </div>
+          <div class="command-page__metric command-page__metric--danger">
+            <div class="command-page__metric-label">待核实告警</div>
+            <div class="command-page__metric-value">{{ pendingAlarmCount }}</div>
+            <div class="command-page__metric-note">需要尽快闭环的告警事件</div>
+          </div>
+          <div class="command-page__metric">
+            <div class="command-page__metric-label">媒体资产</div>
+            <div class="command-page__metric-value">{{ mediaAssetCount }}</div>
+            <div class="command-page__metric-note">图像与视频证据同步沉淀</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
         <el-form-item label="执行任务" prop="taskName">
@@ -8,7 +49,7 @@
             placeholder="请选择"
             clearable
             filterable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option v-for="item in taskOptions" :key="item" :label="item" :value="item" />
           </el-select>
@@ -20,7 +61,7 @@
             placeholder="请选择"
             clearable
             filterable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option v-for="item in routeOptions" :key="item" :label="item" :value="item" />
           </el-select>
@@ -32,7 +73,7 @@
             placeholder="请选择"
             clearable
             filterable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option v-for="item in airportOptions" :key="item" :label="item" :value="item" />
           </el-select>
@@ -44,7 +85,7 @@
             placeholder="请选择"
             clearable
             filterable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option v-for="item in droneOptions" :key="item" :label="item" :value="item" />
           </el-select>
@@ -56,7 +97,7 @@
             placeholder="请选择"
             clearable
             filterable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option v-for="item in pilotOptions" :key="item" :label="item" :value="item" />
           </el-select>
@@ -67,7 +108,7 @@
             v-model="queryParams.alarmVerifyStatus"
             placeholder="请选择"
             clearable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option
               v-for="item in alarmVerifyOptions"
@@ -86,7 +127,7 @@
             start-placeholder="开始日期"
             end-placeholder="结束日期"
             value-format="YYYY-MM-DD"
-            style="width: 260px"
+            class="filter-field filter-field--lg"
           />
         </el-form-item>
 
@@ -110,7 +151,14 @@
           </el-button>
         </div>
         <div class="table-section__toolbar--right">
-          <el-tag type="info">共 {{ total }} 条飞行记录</el-tag>
+          <div class="table-toolbar-summary">
+            <el-tag type="info">共 {{ total }} 条飞行记录</el-tag>
+            <el-tag type="warning">待核实 {{ pendingRecordCount }} 架次</el-tag>
+            <el-tag type="danger">待核实告警 {{ pendingAlarmCount }} 条</el-tag>
+            <el-tag v-if="selectedIds.length > 0" type="primary">
+              已选 {{ selectedIds.length }} 项
+            </el-tag>
+          </div>
         </div>
       </div>
 
@@ -150,7 +198,13 @@
           </template>
         </el-table-column>
         <el-table-column label="飞行时长" prop="flightDurationText" width="100" align="center" />
-        <el-table-column label="异常告警" prop="alarmCount" width="90" align="center" />
+        <el-table-column label="异常告警" prop="alarmCount" width="90" align="center">
+          <template #default="scope">
+            <el-tag size="small" :type="getAlarmCountTagType(scope.row.alarmCount)">
+              {{ scope.row.alarmCount }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="图片/视频" width="100" align="center">
           <template #default="scope">
             {{ scope.row.imageCount }}/{{ scope.row.videoCount }}
@@ -159,13 +213,7 @@
         <el-table-column label="执行时间" prop="executeTime" width="170" align="center" />
         <el-table-column label="告警核实" width="100" align="center">
           <template #default="scope">
-            <span
-              :class="[
-                'alarm-verify-text',
-                scope.row.alarmVerifyStatus === AlarmVerifyStatus.PENDING &&
-                  'alarm-verify-text--pending',
-              ]"
-            >
+            <span :class="getAlarmVerifyTextClass(scope.row)">
               {{ getAlarmVerifyText(scope.row) }}
             </span>
           </template>
@@ -196,6 +244,16 @@
             </el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <div class="table-empty-state">
+            <el-empty
+              :description="hasActiveFilters ? '当前筛选条件下暂无飞行记录' : '暂无飞行记录数据'"
+            />
+            <div v-if="hasActiveFilters" class="table-empty-state__actions">
+              <el-button link type="primary" @click="handleResetQuery">清空筛选</el-button>
+            </div>
+          </div>
+        </template>
       </el-table>
 
       <pagination
@@ -210,8 +268,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox, type FormInstance } from "element-plus";
 import { UserFilled } from "@element-plus/icons-vue";
 import type { BaseQueryParams } from "@/types/api";
@@ -236,6 +294,7 @@ interface FlightRecordQuery extends BaseQueryParams {
   executeDateRange?: [string, string] | [];
 }
 
+const route = useRoute();
 const router = useRouter();
 const queryFormRef = ref<FormInstance>();
 
@@ -251,11 +310,38 @@ const queryParams = reactive<FlightRecordQuery>({
 });
 
 const tableData = ref<FlightRecordItem[]>([]);
+const filteredRecords = ref<FlightRecordItem[]>([]);
 const total = ref(0);
 const loading = ref(false);
 const selectedIds = ref<number[]>([]);
 
 const mockData = ref<FlightRecordItem[]>(buildFlightRecordData());
+
+const hasActiveFilters = computed(() =>
+  Boolean(
+    queryParams.taskName ||
+    queryParams.routeName ||
+    queryParams.airportName ||
+    queryParams.droneName ||
+    queryParams.pilotName ||
+    queryParams.alarmVerifyStatus ||
+    queryParams.executeDateRange?.length
+  )
+);
+const pendingRecordCount = computed(
+  () =>
+    filteredRecords.value.filter((item) => item.alarmVerifyStatus === AlarmVerifyStatus.PENDING)
+      .length
+);
+const pendingAlarmCount = computed(() =>
+  filteredRecords.value.reduce(
+    (sum, item) => sum + Math.max(item.totalAlarmCount - item.verifiedAlarmCount, 0),
+    0
+  )
+);
+const mediaAssetCount = computed(() =>
+  filteredRecords.value.reduce((sum, item) => sum + item.imageCount + item.videoCount, 0)
+);
 
 const taskOptions = computed(() => buildUniqueOptions(mockData.value, "taskName"));
 const routeOptions = computed(() => buildUniqueOptions(mockData.value, "routeName"));
@@ -309,6 +395,7 @@ function fetchData(): void {
       );
     }
 
+    filteredRecords.value = filteredData;
     total.value = filteredData.length;
 
     const pageNum = queryParams.pageNum ?? 1;
@@ -344,6 +431,23 @@ function getAlarmVerifyText(row: FlightRecordItem): string {
   }
 
   return `${row.verifiedAlarmCount}/${row.totalAlarmCount}`;
+}
+
+function getAlarmVerifyTextClass(row: FlightRecordItem): string {
+  return row.alarmVerifyStatus === AlarmVerifyStatus.PENDING
+    ? "status-text status-text--warning"
+    : "status-text";
+}
+
+function getAlarmCountTagType(count: number): "info" | "warning" | "danger" {
+  if (count >= 10) return "danger";
+  if (count > 0) return "warning";
+  return "info";
+}
+
+function syncQueryFromRoute(): void {
+  const taskName = route.query.taskName;
+  queryParams.taskName = typeof taskName === "string" && taskName ? taskName : undefined;
 }
 
 function handleView(id: number): void {
@@ -389,8 +493,20 @@ function handleDelete(id?: number): void {
 }
 
 onMounted(() => {
+  syncQueryFromRoute();
   fetchData();
 });
+
+watch(
+  () => route.query.taskName,
+  (taskName) => {
+    const nextTaskName = typeof taskName === "string" && taskName ? taskName : undefined;
+    if (nextTaskName === queryParams.taskName) return;
+    queryParams.taskName = nextTaskName;
+    queryParams.pageNum = 1;
+    fetchData();
+  }
+);
 </script>
 
 <style scoped lang="scss">
@@ -410,12 +526,7 @@ onMounted(() => {
   align-items: center;
 }
 
-.alarm-verify-text {
-  font-weight: 600;
-  color: var(--el-color-success);
-}
-
-.alarm-verify-text--pending {
-  color: #2ec27e;
+.table-section__content :deep(.el-tag) {
+  min-width: 42px;
 }
 </style>

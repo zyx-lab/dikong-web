@@ -11,6 +11,13 @@ $border: 1px solid var(--el-border-color-light);
     border-bottom: $border;
   }
 
+  .el-dialog__title {
+    font-size: 1rem;
+    font-weight: 650;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+  }
+
   .el-dialog__body {
     padding: 20px;
   }
@@ -28,6 +35,13 @@ $border: 1px solid var(--el-border-color-light);
     margin: 0;
     color: inherit;
     border-bottom: $border;
+  }
+
+  .el-drawer__title {
+    font-size: 1rem;
+    font-weight: 650;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
   }
 
   .el-drawer__body {
@@ -53,13 +67,23 @@ $border: 1px solid var(--el-border-color-light);
     margin-top: 12px;
   }
 
+  .el-form-item__label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--el-text-color-secondary);
+    letter-spacing: 0.03em;
+  }
+
   .dialog-form-section__title {
     position: relative;
     padding-left: 12px;
     margin-bottom: 18px;
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 0.9375rem;
+    font-weight: 650;
+    line-height: 1.45;
     color: var(--el-color-primary);
+    letter-spacing: 0.05em;
 
     &::before {
       position: absolute;

@@ -1,5 +1,49 @@
 <template>
-  <div class="app-container">
+  <div class="app-container command-page">
+    <section class="command-page__hero">
+      <div class="command-page__hero-inner">
+        <div class="command-page__hero-main">
+          <div class="command-page__heading">
+            <p class="command-page__eyebrow">Aircraft Readiness Matrix</p>
+            <h2 class="command-page__title">无人机管理</h2>
+            <p class="command-page__description">
+              将可用性、维护压力和保险风险收拢到同一张资源态势面里，让机队状态在进入列表前就先有重点与轻重缓急。
+            </p>
+          </div>
+          <div class="command-page__signals">
+            <span class="command-page__signal">机队就绪态势</span>
+            <span class="command-page__signal">维护风险前置</span>
+            <span class="command-page__signal">控制权一眼可见</span>
+          </div>
+        </div>
+        <div class="command-page__metrics">
+          <div class="command-page__metric command-page__metric--accent">
+            <div class="command-page__metric-label">无人机总量</div>
+            <div class="command-page__metric-value">{{ total }}</div>
+            <div class="command-page__metric-note">当前筛选范围内的机队资源</div>
+          </div>
+          <div class="command-page__metric">
+            <div class="command-page__metric-label">在线就绪</div>
+            <div class="command-page__metric-value">
+              {{ onlineDroneCount }}
+              <span class="command-page__metric-sub">/ {{ total || 0 }}</span>
+            </div>
+            <div class="command-page__metric-note">实时可调度的机体数量</div>
+          </div>
+          <div class="command-page__metric command-page__metric--warning">
+            <div class="command-page__metric-label">保养提醒</div>
+            <div class="command-page__metric-value">{{ maintenanceAlertCount }}</div>
+            <div class="command-page__metric-note">需要安排维护窗口的机体</div>
+          </div>
+          <div class="command-page__metric command-page__metric--danger">
+            <div class="command-page__metric-label">保险风险</div>
+            <div class="command-page__metric-value">{{ insuranceRiskCount }}</div>
+            <div class="command-page__metric-note">存在保险到期或过期风险</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
         <el-form-item label="无人机序号" prop="snCode">
@@ -25,7 +69,7 @@
             v-model="queryParams.controlAuthority"
             placeholder="请选择"
             clearable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option
               v-for="item in controlAuthorityOptions"
@@ -41,7 +85,7 @@
             v-model="queryParams.organization"
             placeholder="请选择"
             clearable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option
               v-for="item in organizationOptions"
@@ -57,7 +101,7 @@
             v-model="queryParams.controlMode"
             placeholder="请选择"
             clearable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option
               v-for="item in controlModeOptions"
@@ -73,7 +117,7 @@
             v-model="queryParams.maintenanceStatus"
             placeholder="请选择"
             clearable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option
               v-for="item in maintenanceStatusOptions"
@@ -89,7 +133,7 @@
             v-model="queryParams.insuranceStatus"
             placeholder="请选择"
             clearable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option
               v-for="item in insuranceStatusOptions"
@@ -121,7 +165,14 @@
           </el-button>
         </div>
         <div class="table-section__toolbar--right">
-          <el-tag type="info">总共 {{ total }} 个数据</el-tag>
+          <div class="table-toolbar-summary">
+            <el-tag type="info">共 {{ total }} 架无人机</el-tag>
+            <el-tag type="warning">保养提醒 {{ maintenanceAlertCount }} 架</el-tag>
+            <el-tag type="danger">保险风险 {{ insuranceRiskCount }} 架</el-tag>
+            <el-tag v-if="selectedIds.length > 0" type="primary">
+              已选 {{ selectedIds.length }} 项
+            </el-tag>
+          </div>
         </div>
       </div>
 
@@ -167,8 +218,10 @@
               <el-tag
                 v-for="item in scope.row.controlAuthority"
                 :key="item"
+                :type="getControlAuthorityTagType(item)"
+                class="authority-tag"
                 size="small"
-                effect="dark"
+                effect="plain"
               >
                 {{ getControlAuthorityLabel(item) }}
               </el-tag>
@@ -210,6 +263,16 @@
             </el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <div class="table-empty-state">
+            <el-empty
+              :description="hasActiveFilters ? '当前筛选条件下暂无无人机' : '暂无无人机数据'"
+            />
+            <div v-if="hasActiveFilters" class="table-empty-state__actions">
+              <el-button link type="primary" @click="handleResetQuery">清空筛选</el-button>
+            </div>
+          </div>
+        </template>
       </el-table>
 
       <pagination
@@ -224,7 +287,9 @@
     <el-dialog
       v-model="dialogState.visible"
       :title="dialogState.title"
-      width="860px"
+      :width="dialogWidth"
+      align-center
+      destroy-on-close
       custom-class="dialog-form-decorated dialog-form-layout"
       class="dialog-form-decorated dialog-form-layout"
       @close="closeDialog"
@@ -354,7 +419,12 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="备注" prop="remark">
-                <el-input v-model="formData.remark" placeholder="请输入备注信息" />
+                <el-input
+                  v-model="formData.remark"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="请输入备注信息"
+                />
               </el-form-item>
             </el-col>
           </el-row>
@@ -372,7 +442,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
+import { useWindowSize } from "@vueuse/core";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import {
   DroneControlAuthority,
@@ -390,6 +461,7 @@ defineOptions({
   inheritAttrs: false,
 });
 
+const { width } = useWindowSize();
 const queryFormRef = ref<FormInstance>();
 const dataFormRef = ref<FormInstance>();
 
@@ -409,15 +481,15 @@ const controlModeOptions = [
 ];
 
 const controlAuthorityOptions = [
-  { label: "诸葛亮", value: DroneControlAuthority.EXCLUSIVE },
-  { label: "孙策", value: DroneControlAuthority.SHARED },
-  { label: "赵云", value: DroneControlAuthority.TEAM },
+  { label: "独占控制", value: DroneControlAuthority.EXCLUSIVE },
+  { label: "共享控制", value: DroneControlAuthority.SHARED },
+  { label: "团队控制", value: DroneControlAuthority.TEAM },
 ];
 
 const droneStatusOptions = [
   { label: "在线", value: DroneStatus.ONLINE },
   { label: "未对接", value: DroneStatus.OFFLINE },
-  { label: "离线", value: DroneStatus.MAINTENANCE },
+  { label: "维护中", value: DroneStatus.MAINTENANCE },
 ];
 
 const maintenanceStatusOptions = [
@@ -454,10 +526,38 @@ const queryParams = reactive<DroneQuery>({
 
 const formData = reactive<DroneForm>({ ...initialFormData });
 const tableData = ref<DroneInfo[]>([]);
+const filteredDroneList = ref<DroneInfo[]>([]);
 const total = ref(0);
 const loading = ref(false);
 const submitLoading = ref(false);
 const selectedIds = ref<number[]>([]);
+
+const dialogWidth = computed(() => (width.value < 768 ? "92%" : "860px"));
+const hasActiveFilters = computed(() =>
+  Boolean(
+    queryParams.snCode ||
+    queryParams.droneName ||
+    queryParams.organization ||
+    queryParams.controlMode ||
+    queryParams.controlAuthority ||
+    queryParams.maintenanceStatus ||
+    queryParams.insuranceStatus
+  )
+);
+const maintenanceAlertCount = computed(
+  () =>
+    filteredDroneList.value.filter(
+      (item) => item.maintenanceStatus !== DroneMaintenanceStatus.NORMAL
+    ).length
+);
+const onlineDroneCount = computed(
+  () => filteredDroneList.value.filter((item) => item.status === DroneStatus.ONLINE).length
+);
+const insuranceRiskCount = computed(
+  () =>
+    filteredDroneList.value.filter((item) => item.insuranceStatus !== DroneInsuranceStatus.NORMAL)
+      .length
+);
 
 const dialogState = reactive({
   visible: false,
@@ -483,6 +583,17 @@ function getControlModeLabel(value?: DroneControlMode): string {
 
 function getControlAuthorityLabel(value?: DroneControlAuthority): string {
   return controlAuthorityOptions.find((item) => item.value === value)?.label ?? "-";
+}
+
+function getControlAuthorityTagType(value?: DroneControlAuthority): "info" | "success" | "warning" {
+  switch (value) {
+    case DroneControlAuthority.SHARED:
+      return "success";
+    case DroneControlAuthority.TEAM:
+      return "warning";
+    default:
+      return "info";
+  }
 }
 
 function getDroneStatusLabel(value?: DroneStatus): string {
@@ -703,8 +814,15 @@ function fetchData(): void {
       mockData = mockData.filter((item) => item.insuranceStatus === queryParams.insuranceStatus);
     }
 
-    tableData.value = mockData;
-    total.value = 85;
+    filteredDroneList.value = mockData;
+    total.value = mockData.length;
+
+    const pageNum = queryParams.pageNum ?? 1;
+    const pageSize = queryParams.pageSize ?? 10;
+    const startIndex = (pageNum - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+
+    tableData.value = mockData.slice(startIndex, endIndex);
     loading.value = false;
   }, 300);
 }
@@ -759,7 +877,7 @@ function handleEditClick(row: DroneInfo): void {
 
 function handleDetailClick(row: DroneInfo): void {
   ElMessageBox.alert(
-    `型号：${row.model}<br/>控制模式：${getControlModeLabel(row.controlMode)}<br/>所属机场：${row.airportName ?? "-"}<br/>保养状态：${getMaintenanceStatusLabel(row.maintenanceStatus)}<br/>保险状态：${getInsuranceStatusLabel(row.insuranceStatus)}`,
+    `无人机序号：${row.snCode}<br/>型号：${row.model}<br/>控制模式：${getControlModeLabel(row.controlMode)}<br/>控制权：${row.controlAuthority.map((item) => getControlAuthorityLabel(item)).join("、")}<br/>所属机场：${row.airportName ?? "-"}<br/>保养状态：${getMaintenanceStatusLabel(row.maintenanceStatus)}<br/>保险状态：${getInsuranceStatusLabel(row.insuranceStatus)}`,
     `无人机详情：${row.droneName}`,
     {
       dangerouslyUseHTMLString: true,
@@ -788,13 +906,16 @@ function closeDialog(): void {
 }
 
 function handleDelete(id?: number): void {
-  const ids = id ? String(id) : selectedIds.value.join(",");
-  if (!ids) {
+  const ids = id ? [String(id)] : selectedIds.value.map(String);
+  if (ids.length === 0) {
     ElMessage.warning("请勾选删除项");
     return;
   }
 
-  ElMessageBox.confirm("确认删除选中的无人机数据吗？", "警告", {
+  const message =
+    ids.length === 1 ? "确认删除当前无人机数据吗？" : `确认删除选中的 ${ids.length} 架无人机吗？`;
+
+  ElMessageBox.confirm(message, "警告", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
@@ -830,16 +951,7 @@ onMounted(() => {
   justify-content: center;
 }
 
-.status-text {
-  font-weight: 600;
-  color: var(--el-color-success);
-}
-
-.status-text--warning {
-  color: var(--el-color-warning);
-}
-
-.status-text--danger {
-  color: var(--el-color-danger);
+.authority-tag {
+  margin-right: 0;
 }
 </style>

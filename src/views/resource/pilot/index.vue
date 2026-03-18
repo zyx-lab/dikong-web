@@ -1,11 +1,52 @@
 <template>
-  <div class="app-container">
+  <div class="app-container command-page">
+    <section class="command-page__hero">
+      <div class="command-page__hero-inner">
+        <div class="command-page__hero-main">
+          <div class="command-page__heading">
+            <p class="command-page__eyebrow">Pilot Duty Matrix</p>
+            <h2 class="command-page__title">飞手管理</h2>
+            <p class="command-page__description">
+              把飞手账号、证件合规与机体分配关系放到同一张值守工作面中，便于快速判断谁可立即投入执行、谁需要补齐资料或调配。
+            </p>
+          </div>
+          <div class="command-page__signals">
+            <span class="command-page__signal">值守人员编组</span>
+            <span class="command-page__signal">证件合规检查</span>
+            <span class="command-page__signal">机体分配联动</span>
+          </div>
+        </div>
+        <div class="command-page__metrics">
+          <div class="command-page__metric command-page__metric--accent">
+            <div class="command-page__metric-label">飞手总量</div>
+            <div class="command-page__metric-value">{{ total }}</div>
+            <div class="command-page__metric-note">当前筛选结果中的飞手资源池</div>
+          </div>
+          <div class="command-page__metric">
+            <div class="command-page__metric-label">启用账号</div>
+            <div class="command-page__metric-value">{{ enabledPilotCount }}</div>
+            <div class="command-page__metric-note">可直接投入排班的账号数量</div>
+          </div>
+          <div class="command-page__metric">
+            <div class="command-page__metric-label">已分配机体</div>
+            <div class="command-page__metric-value">{{ assignedPilotCount }}</div>
+            <div class="command-page__metric-note">具备明确机体协同关系的飞手</div>
+          </div>
+          <div class="command-page__metric command-page__metric--warning">
+            <div class="command-page__metric-label">资料完备</div>
+            <div class="command-page__metric-value">{{ certificateReadyCount }}</div>
+            <div class="command-page__metric-note">证件扫描件已齐备的飞手数量</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
         <el-form-item label="用户账号" prop="username">
           <el-input
             v-model="queryParams.username"
-            placeholder="请输入"
+            placeholder="请输入用户账号"
             clearable
             @keyup.enter="handleQuery"
           />
@@ -14,7 +55,7 @@
         <el-form-item label="用户姓名" prop="name">
           <el-input
             v-model="queryParams.name"
-            placeholder="请输入"
+            placeholder="请输入飞手姓名"
             clearable
             @keyup.enter="handleQuery"
           />
@@ -23,9 +64,9 @@
         <el-form-item label="组织部门" prop="organization">
           <el-select
             v-model="queryParams.organization"
-            placeholder="请选择"
+            placeholder="请选择组织部门"
             clearable
-            style="width: 180px"
+            class="filter-field"
           >
             <el-option
               v-for="item in organizationOptions"
@@ -39,9 +80,9 @@
         <el-form-item label="证件类型" prop="certificateType">
           <el-select
             v-model="queryParams.certificateType"
-            placeholder="请选择"
+            placeholder="请选择证件类型"
             clearable
-            style="width: 160px"
+            class="filter-field"
           >
             <el-option
               v-for="item in certificateTypeOptions"
@@ -55,9 +96,9 @@
         <el-form-item label="控制模式" prop="controlMode">
           <el-select
             v-model="queryParams.controlMode"
-            placeholder="请选择"
+            placeholder="请选择控制模式"
             clearable
-            style="width: 160px"
+            class="filter-field"
           >
             <el-option
               v-for="item in controlModeOptions"
@@ -89,7 +130,13 @@
           </el-button>
         </div>
         <div class="table-section__toolbar--right">
-          <el-tag type="info">总共 {{ total }} 个数据</el-tag>
+          <div class="table-toolbar-summary">
+            <el-tag type="info">共 {{ total }} 位飞手</el-tag>
+            <el-tag type="success">启用 {{ enabledPilotCount }} 位</el-tag>
+            <el-tag v-if="selectedIds.length > 0" type="primary">
+              已选 {{ selectedIds.length }} 项
+            </el-tag>
+          </div>
         </div>
       </div>
 
@@ -153,6 +200,14 @@
             </el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <div class="table-empty-state">
+            <el-empty :description="hasActiveFilters ? '当前筛选条件下暂无飞手' : '暂无飞手数据'" />
+            <div v-if="hasActiveFilters" class="table-empty-state__actions">
+              <el-button link type="primary" @click="handleResetQuery">清空筛选</el-button>
+            </div>
+          </div>
+        </template>
       </el-table>
 
       <pagination
@@ -167,7 +222,9 @@
     <el-dialog
       v-model="dialogState.visible"
       :title="dialogState.title"
-      width="860px"
+      :width="dialogWidth"
+      align-center
+      destroy-on-close
       custom-class="dialog-form-decorated dialog-form-layout"
       class="dialog-form-decorated dialog-form-layout"
       @close="closeDialog"
@@ -178,17 +235,21 @@
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="飞手名称" prop="name">
-                <el-input v-model="formData.name" placeholder="请输入" />
+                <el-input v-model="formData.name" placeholder="请输入飞手名称" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="手机号码" prop="phone">
-                <el-input v-model="formData.phone" placeholder="请输入" maxlength="11" />
+                <el-input v-model="formData.phone" placeholder="请输入手机号码" maxlength="11" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="所属组织" prop="organization">
-                <el-select v-model="formData.organization" placeholder="请选择" class="w-full">
+                <el-select
+                  v-model="formData.organization"
+                  placeholder="请选择所属组织"
+                  class="w-full"
+                >
                   <el-option
                     v-for="item in organizationOptions"
                     :key="item"
@@ -200,7 +261,11 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="所属部门" prop="department">
-                <el-select v-model="formData.department" placeholder="请选择" class="w-full">
+                <el-select
+                  v-model="formData.department"
+                  placeholder="请选择所属部门"
+                  class="w-full"
+                >
                   <el-option
                     v-for="item in departmentOptions"
                     :key="item"
@@ -212,7 +277,7 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="用户账号" prop="username">
-                <el-input v-model="formData.username" placeholder="请输入" />
+                <el-input v-model="formData.username" placeholder="请输入登录账号" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -221,18 +286,18 @@
                   v-model="formData.password"
                   type="password"
                   show-password
-                  placeholder="请输入"
+                  :placeholder="passwordPlaceholder"
                 />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="邮箱地址" prop="email">
-                <el-input v-model="formData.email" placeholder="请输入" />
+                <el-input v-model="formData.email" placeholder="请输入邮箱地址" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="备注" prop="remark">
-                <el-input v-model="formData.remark" placeholder="请输入" />
+                <el-input v-model="formData.remark" placeholder="请输入备注信息" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -243,7 +308,11 @@
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="证件类型" prop="certificateType">
-                <el-select v-model="formData.certificateType" placeholder="请选择" class="w-full">
+                <el-select
+                  v-model="formData.certificateType"
+                  placeholder="请选择证件类型"
+                  class="w-full"
+                >
                   <el-option
                     v-for="item in certificateTypeOptions"
                     :key="item.value"
@@ -255,7 +324,7 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="证件编号" prop="certificateNo">
-                <el-input v-model="formData.certificateNo" placeholder="请输入" />
+                <el-input v-model="formData.certificateNo" placeholder="请输入证件编号" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -263,7 +332,7 @@
                 <el-date-picker
                   v-model="formData.issuedDate"
                   type="date"
-                  placeholder="请选择"
+                  placeholder="请选择发证日期"
                   value-format="YYYY-MM-DD"
                   class="w-full"
                 />
@@ -307,7 +376,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
+import { useWindowSize } from "@vueuse/core";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import {
   PilotAccountStatus,
@@ -324,6 +394,7 @@ defineOptions({
   inheritAttrs: false,
 });
 
+const { width } = useWindowSize();
 const queryFormRef = ref<FormInstance>();
 const dataFormRef = ref<FormInstance>();
 
@@ -385,10 +456,37 @@ const queryParams = reactive<PilotQuery>({
 
 const formData = reactive<PilotForm>({ ...initialFormData });
 const tableData = ref<PilotInfo[]>([]);
+const filteredPilotList = ref<PilotInfo[]>([]);
 const total = ref(0);
 const loading = ref(false);
 const submitLoading = ref(false);
 const selectedIds = ref<number[]>([]);
+
+const dialogWidth = computed(() => (width.value < 768 ? "92%" : "860px"));
+const passwordPlaceholder = computed(() =>
+  formData.id ? "如需重置密码，请直接输入新密码" : "请输入登录密码"
+);
+const hasActiveFilters = computed(() =>
+  Boolean(
+    queryParams.username ||
+    queryParams.name ||
+    queryParams.organization ||
+    queryParams.certificateType ||
+    queryParams.controlMode
+  )
+);
+const enabledPilotCount = computed(
+  () => filteredPilotList.value.filter((item) => item.status === PilotAccountStatus.ENABLED).length
+);
+const assignedPilotCount = computed(
+  () =>
+    filteredPilotList.value.filter(
+      (item) => item.assignedDroneName && item.assignedDroneName !== "暂未分配"
+    ).length
+);
+const certificateReadyCount = computed(
+  () => filteredPilotList.value.filter((item) => Boolean(item.certificateScanUrl)).length
+);
 
 const dialogState = reactive({
   visible: false,
@@ -577,8 +675,15 @@ function fetchData(): void {
       mockData = mockData.filter((item) => item.controlMode === queryParams.controlMode);
     }
 
-    tableData.value = mockData;
-    total.value = 85;
+    filteredPilotList.value = mockData;
+    total.value = mockData.length;
+
+    const pageNum = queryParams.pageNum ?? 1;
+    const pageSize = queryParams.pageSize ?? 10;
+    const startIndex = (pageNum - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+
+    tableData.value = mockData.slice(startIndex, endIndex);
     loading.value = false;
   }, 300);
 }
@@ -636,8 +741,13 @@ function handleEditClick(row: PilotInfo): void {
 }
 
 function handleDetailClick(row: PilotInfo): void {
-  ElMessage.info(
-    `飞手详情：${row.name}，${getCertificateTypeLabel(row.certificateType)}，${getControlModeLabel(row.controlMode)}`
+  ElMessageBox.alert(
+    `登录账号：${row.username}<br/>证件类型：${getCertificateTypeLabel(row.certificateType)}<br/>控制模式：${getControlModeLabel(row.controlMode)}<br/>所属部门：${row.department}<br/>所控无人机：${row.assignedDroneName ?? "暂未分配"}`,
+    `飞手详情：${row.name}`,
+    {
+      dangerouslyUseHTMLString: true,
+      confirmButtonText: "确定",
+    }
   );
 }
 
@@ -681,13 +791,16 @@ function closeDialog(): void {
 }
 
 function handleDelete(id?: number): void {
-  const ids = id ? String(id) : selectedIds.value.join(",");
-  if (!ids) {
+  const ids = id ? [String(id)] : selectedIds.value.map(String);
+  if (ids.length === 0) {
     ElMessage.warning("请勾选删除项");
     return;
   }
 
-  ElMessageBox.confirm("确认删除选中的飞手数据吗？", "警告", {
+  const message =
+    ids.length === 1 ? "确认删除当前飞手数据吗？" : `确认删除选中的 ${ids.length} 位飞手吗？`;
+
+  ElMessageBox.confirm(message, "警告", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
@@ -710,3 +823,9 @@ onMounted(() => {
   handleQuery();
 });
 </script>
+
+<style scoped>
+.w-full {
+  width: 100%;
+}
+</style>
