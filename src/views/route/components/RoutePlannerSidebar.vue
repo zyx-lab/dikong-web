@@ -2,7 +2,6 @@
   <div class="planner-sidebar">
     <div class="planner-sidebar__head">
       <div class="planner-sidebar__title">
-        <span class="planner-sidebar__title-bar"></span>
         <div>
           <h3>航线配置</h3>
           <p>{{ draft.routeName }}</p>
@@ -41,7 +40,7 @@
               <template v-else>点击地图或输入经纬度设置兴趣点。</template>
             </p>
           </div>
-          <button type="button" class="text-action" @click="emit('clearGeometry')">清空</button>
+          <el-button link type="primary" @click="emit('clearGeometry')">清空</el-button>
         </div>
 
         <div v-if="draft.routeType === routeTypeEnum.POINT" class="waypoint-list">
@@ -51,9 +50,9 @@
           <div v-for="(point, index) in draft.points" :key="point.id" class="waypoint-card">
             <div class="waypoint-card__head">
               <strong>{{ point.name }}</strong>
-              <button type="button" class="text-action danger" @click="removeWaypoint(index)">
+              <el-button link type="danger" size="small" @click="removeWaypoint(index)">
                 删除
-              </button>
+              </el-button>
             </div>
             <div class="waypoint-card__meta">
               {{ point.lng.toFixed(6) }}, {{ point.lat.toFixed(6) }}
@@ -188,7 +187,7 @@
         <div class="config-card__head">
           <div>
             <h4>全局配置</h4>
-            <p>遵循组件设计规范中的深色科技风表单与按钮风格。</p>
+            <p>保持与现有航线参数一致的配置行为。</p>
           </div>
         </div>
 
@@ -598,22 +597,29 @@
 
     <div class="planner-sidebar__actions">
       <el-button
+        class="planner-sidebar__action-btn"
         type="primary"
-        class="primary-action"
         :loading="dispatching"
         :disabled="saving"
         @click="emit('dispatch')"
       >
         下发航线
       </el-button>
-      <el-button type="primary" class="primary-action" @click="emit('preview')">
-        航线预览（模拟飞行）
-      </el-button>
+      <el-button class="planner-sidebar__action-btn" @click="emit('preview')">预览</el-button>
       <div class="planner-sidebar__actions-row">
-        <el-button type="primary" class="primary-action" :loading="saving" @click="emit('save')">
+        <el-button
+          class="planner-sidebar__actions-row-btn"
+          type="primary"
+          :loading="saving"
+          @click="emit('save')"
+        >
           保存
         </el-button>
-        <el-button class="secondary-action" :disabled="saving" @click="emit('reset')">
+        <el-button
+          class="planner-sidebar__actions-row-btn"
+          :disabled="saving"
+          @click="emit('reset')"
+        >
           重置
         </el-button>
       </div>
@@ -775,13 +781,8 @@ function removeWaypoint(index: number) {
 .planner-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   height: 100%;
-  padding: 18px;
-  background: var(--route-panel-bg);
-  border: 1px solid var(--route-border-strong);
-  border-radius: 20px;
-  box-shadow: var(--route-shadow);
 }
 
 .planner-sidebar__head {
@@ -791,66 +792,49 @@ function removeWaypoint(index: number) {
   justify-content: space-between;
 }
 
-.planner-sidebar__title {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-
-  h3 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--route-text-primary);
-  }
-
-  p {
-    margin: 6px 0 0;
-    font-size: 14px;
-    color: var(--route-text-secondary);
-  }
+.planner-sidebar__title h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
 }
 
-.planner-sidebar__title-bar {
-  width: 4px;
-  height: 42px;
-  margin-top: 2px;
-  background: linear-gradient(180deg, #0abaff 0%, #51f4f3 100%);
-  border-radius: 999px;
+.planner-sidebar__title p {
+  margin: 4px 0 0;
+  color: var(--el-text-color-secondary);
 }
 
 .planner-sidebar__type {
-  padding: 7px 12px;
-  font-size: 14px;
-  color: var(--route-primary);
-  background: var(--route-chip-bg);
-  border: 1px solid var(--route-border-strong);
-  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  border: 1px solid var(--el-color-primary-light-8);
+  border-radius: 4px;
 }
 
 .planner-sidebar__stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .planner-stat {
-  padding: 14px;
-  background: var(--route-card-bg);
-  border: 1px solid var(--route-border);
-  border-radius: 16px;
+  padding: 8px 10px;
+  background: var(--el-fill-color-lighter);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 4px;
+}
 
-  span {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 14px;
-    color: var(--route-text-secondary);
-  }
+.planner-stat span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
 
-  strong {
-    font-size: 24px;
-    font-weight: 600;
-    color: var(--route-text-primary);
-  }
+.planner-stat strong {
+  font-size: 16px;
 }
 
 .planner-sidebar__scroll {
@@ -859,211 +843,160 @@ function removeWaypoint(index: number) {
 }
 
 .config-card {
-  padding: 16px;
-  margin-bottom: 14px;
-  background: var(--route-card-bg);
-  border: 1px solid var(--route-border);
-  border-radius: 18px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: var(--el-bg-color-overlay);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 4px;
 }
 
 .config-card__head {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
-
-  h4 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 500;
-    color: var(--route-text-primary);
-  }
-
-  p {
-    margin: 6px 0 0;
-    font-size: 14px;
-    color: var(--route-text-secondary);
-  }
+  margin-bottom: 10px;
 }
 
-.text-action {
-  padding: 0;
-  font-size: 14px;
-  color: var(--route-primary);
-  cursor: pointer;
-  background: transparent;
-  border: none;
+.config-card__head h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
 }
 
-.danger {
-  color: var(--route-danger);
+.config-card__head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .waypoint-list,
 .corner-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .waypoint-card,
 .corner-item {
-  padding: 14px;
-  background: var(--route-subtle-bg);
-  border: 1px solid var(--route-border);
-  border-radius: 14px;
+  padding: 8px;
+  background: var(--el-fill-color-lighter);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 4px;
 }
 
 .waypoint-card__head {
   display: flex;
+  gap: 8px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-
-  strong {
-    font-size: 16px;
-    font-weight: 500;
-    color: var(--route-text-primary);
-  }
+  margin-bottom: 6px;
 }
 
 .waypoint-card__meta,
 .corner-item span,
 .empty-text {
-  font-size: 14px;
-  color: var(--route-text-secondary);
+  color: var(--el-text-color-secondary);
 }
 
 .corner-item {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   justify-content: space-between;
-
-  strong {
-    color: var(--route-text-primary);
-  }
 }
 
 .number-grid,
 .loop-target-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
+}
 
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.number-grid label,
+.loop-target-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
-    span {
-      font-size: 14px;
-      color: var(--route-primary);
-    }
-  }
+.number-grid label span,
+.loop-target-grid label span {
+  color: var(--el-text-color-regular);
 }
 
 .field-group {
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .field-group__label {
   display: block;
-  margin-bottom: 10px;
-  font-size: 14px;
-  color: var(--route-primary);
+  margin-bottom: 8px;
+  color: var(--el-text-color-regular);
 }
 
 .field-group__hint {
-  margin: 0 0 12px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--route-text-secondary);
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-text-color-secondary);
 }
 
 .chip-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .chip-group--compact {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .option-chip {
-  padding: 8px 14px;
-  font-size: 14px;
-  color: var(--route-chip-text);
+  padding: 5px 10px;
+  color: var(--el-text-color-regular);
   cursor: pointer;
-  background: var(--route-chip-bg);
-  border: 1px solid var(--route-border);
-  border-radius: 999px;
-  transition: all 0.2s ease;
+  background: var(--el-fill-color-lighter);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 4px;
 }
 
 .option-chip:hover,
 .option-chip.is-active {
-  color: #fff;
-  background: var(--route-primary-gradient);
-  border-color: transparent;
-  box-shadow: 0 0 0 1px rgba(81, 244, 243, 0.18);
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary);
 }
 
 .planner-sidebar__actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+}
+
+.planner-sidebar__action-btn {
+  width: 100%;
+  margin: 0;
 }
 
 .planner-sidebar__actions-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  gap: 12px;
 }
 
-.primary-action,
-.secondary-action {
+.planner-sidebar__actions-row-btn {
+  flex: 1;
+  margin: 0;
+}
+
+:deep(.el-input-number) {
   width: 100%;
-  height: 42px;
-  border-radius: 999px;
 }
 
-.primary-action {
-  background: var(--route-primary-gradient);
-  border: none;
-}
-
-.secondary-action {
-  color: var(--route-text-primary);
-  background: var(--route-subtle-bg);
-  border: 1px solid var(--route-border);
-}
-
-:deep(.el-input__wrapper),
-:deep(.el-textarea__inner),
-:deep(.el-select__wrapper),
-:deep(.el-input-number__decrease),
-:deep(.el-input-number__increase),
-:deep(.el-input-number .el-input__wrapper) {
-  background: var(--route-input-bg);
-  border-color: var(--route-border-strong);
-  box-shadow: inset 0 0 0 1px var(--route-border-strong);
-}
-
-:deep(.el-input__inner),
-:deep(.el-textarea__inner),
-:deep(.el-select__selected-item),
-:deep(.el-input-number .el-input__inner) {
-  color: var(--route-text-primary);
-}
-
-@media (max-width: 1600px) {
+@media (max-width: 1400px) {
   .planner-sidebar__stats,
   .number-grid,
-  .loop-target-grid,
-  .planner-sidebar__actions-row {
+  .loop-target-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }

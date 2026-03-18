@@ -569,16 +569,9 @@ defineExpose({
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--route-map-bg);
-  border: 1px solid var(--route-border-strong);
-  border-radius: 20px;
-  box-shadow:
-    inset 0 0 0 1px rgba(81, 244, 243, 0.08),
-    0 18px 36px rgba(7, 18, 33, 0.18);
-  transition:
-    background 0.25s ease,
-    border-color 0.25s ease,
-    box-shadow 0.25s ease;
+  background: var(--el-bg-color-page);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 4px;
 
   :deep(.cesium-viewer),
   :deep(.cesium-viewer-cesiumWidgetContainer),
@@ -594,18 +587,18 @@ defineExpose({
   }
 
   :deep(.cesium-viewer-bottom) {
-    right: 12px;
-    bottom: 12px;
-    padding: 4px 8px;
-    color: var(--route-text-secondary);
-    background: var(--route-overlay-bg);
-    border: 1px solid var(--route-border);
-    border-radius: 999px;
+    right: 8px;
+    bottom: 8px;
+    padding: 2px 6px;
+    color: var(--el-text-color-secondary);
+    background: var(--el-bg-color-overlay);
+    border: 1px solid var(--el-border-color-light);
+    border-radius: 4px;
   }
 
   :deep(.cesium-credit-textContainer),
   :deep(.cesium-credit-logoContainer) {
-    color: var(--route-text-secondary);
+    color: var(--el-text-color-secondary);
   }
 }
 </style>
