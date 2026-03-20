@@ -9,7 +9,7 @@ import { mockDevServerPlugin } from "vite-plugin-mock-dev-server";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 
 import UnoCSS from "unocss/vite";
-import { createReadStream, existsSync, statSync } from "fs";
+import { createReadStream, existsSync, realpathSync, statSync } from "fs";
 import { extname, relative, resolve } from "path";
 import { name, version, engines, dependencies, devDependencies } from "./package.json";
 
@@ -20,7 +20,9 @@ const __APP_INFO__ = {
 };
 
 const pathSrc = resolve(__dirname, "src");
-const cesiumBuildRoot = resolve(__dirname, "node_modules/cesium/Build/Cesium");
+const cesiumBuildRoot = realpathSync(
+  resolve(__dirname, "node_modules/cesium/Build/Cesium")
+).replace(/\\/g, "/");
 
 const cesiumMimeTypes: Record<string, string> = {
   ".css": "text/css",
@@ -77,6 +79,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     resolve: {
       alias: {
         "@": pathSrc,
+        "@sparkjsdev/spark": resolve(__dirname, "vendor/spark/dist/spark.module.js"),
       },
     },
     css: {
@@ -108,19 +111,19 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       viteStaticCopy({
         targets: [
           {
-            src: resolve(__dirname, "node_modules/cesium/Build/Cesium/Workers"),
+            src: `${cesiumBuildRoot}/Workers/**/*`,
             dest: "cesiumStatic/Workers",
           },
           {
-            src: resolve(__dirname, "node_modules/cesium/Build/Cesium/ThirdParty"),
+            src: `${cesiumBuildRoot}/ThirdParty/**/*`,
             dest: "cesiumStatic/ThirdParty",
           },
           {
-            src: resolve(__dirname, "node_modules/cesium/Build/Cesium/Assets"),
+            src: `${cesiumBuildRoot}/Assets/**/*`,
             dest: "cesiumStatic/Assets",
           },
           {
-            src: resolve(__dirname, "node_modules/cesium/Build/Cesium/Widgets"),
+            src: `${cesiumBuildRoot}/Widgets/**/*`,
             dest: "cesiumStatic/Widgets",
           },
         ],
