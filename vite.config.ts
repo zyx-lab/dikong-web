@@ -28,6 +28,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     resolve: {
       alias: {
         "@": pathSrc,
+        "@sparkjsdev/spark": resolve(__dirname, "vendor/spark/dist/spark.module.js"),
       },
     },
     css: {
