@@ -11,13 +11,6 @@ $border: 1px solid var(--el-border-color-light);
     border-bottom: $border;
   }
 
-  .el-dialog__title {
-    font-size: 1rem;
-    font-weight: 650;
-    line-height: 1.4;
-    letter-spacing: 0.02em;
-  }
-
   .el-dialog__body {
     padding: 20px;
   }
@@ -37,13 +30,6 @@ $border: 1px solid var(--el-border-color-light);
     border-bottom: $border;
   }
 
-  .el-drawer__title {
-    font-size: 1rem;
-    font-weight: 650;
-    line-height: 1.4;
-    letter-spacing: 0.02em;
-  }
-
   .el-drawer__body {
     padding: 20px;
   }
@@ -59,57 +45,6 @@ $border: 1px solid var(--el-border-color-light);
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-}
-
-// 对话框内的通用表单分组样式
-.dialog-form-layout {
-  .dialog-form-section + .dialog-form-section {
-    margin-top: 12px;
-  }
-
-  .el-form-item__label {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    line-height: 1.4;
-    color: var(--el-text-color-secondary);
-    letter-spacing: 0.03em;
-  }
-
-  .dialog-form-section__title {
-    position: relative;
-    padding-left: 12px;
-    margin-bottom: 18px;
-    font-size: 0.9375rem;
-    font-weight: 650;
-    line-height: 1.45;
-    color: var(--el-color-primary);
-    letter-spacing: 0.05em;
-
-    &::before {
-      position: absolute;
-      top: 2px;
-      left: 0;
-      width: 3px;
-      height: 16px;
-      content: "";
-      background-color: var(--el-color-primary);
-    }
-  }
-
-  .dialog-inline-field {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    width: 100%;
-  }
-
-  .dialog-inline-field__input {
-    flex: 1;
-  }
-
-  .dialog-inline-field__suffix {
-    color: var(--el-text-color-regular);
-  }
 }
 
 // ============================================

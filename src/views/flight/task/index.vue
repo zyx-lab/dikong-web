@@ -1,46 +1,5 @@
 <template>
-  <div class="app-container command-page">
-    <section class="command-page__hero">
-      <div class="command-page__hero-inner">
-        <div class="command-page__hero-main">
-          <div class="command-page__heading">
-            <p class="command-page__eyebrow">Mission Command</p>
-            <h2 class="command-page__title">任务管理</h2>
-            <p class="command-page__description">
-              统一编排巡检任务、航线资源与执行窗口，让值守人员在进入表格前先看清任务节奏、执行压力和异常风险。
-            </p>
-          </div>
-          <div class="command-page__signals">
-            <span class="command-page__signal">任务编排中枢</span>
-            <span class="command-page__signal">航线与资源联动</span>
-            <span class="command-page__signal">执行态势优先</span>
-          </div>
-        </div>
-        <div class="command-page__metrics">
-          <div class="command-page__metric command-page__metric--accent">
-            <div class="command-page__metric-label">任务总量</div>
-            <div class="command-page__metric-value">{{ total }}</div>
-            <div class="command-page__metric-note">当前筛选条件下的任务池规模</div>
-          </div>
-          <div class="command-page__metric">
-            <div class="command-page__metric-label">执行中</div>
-            <div class="command-page__metric-value">{{ activeTaskCount }}</div>
-            <div class="command-page__metric-note">需持续关注的实时任务</div>
-          </div>
-          <div class="command-page__metric">
-            <div class="command-page__metric-label">已完成</div>
-            <div class="command-page__metric-value">{{ completedTaskCount }}</div>
-            <div class="command-page__metric-note">完成闭环的巡检任务</div>
-          </div>
-          <div class="command-page__metric command-page__metric--warning">
-            <div class="command-page__metric-label">需关注</div>
-            <div class="command-page__metric-value">{{ attentionTaskCount }}</div>
-            <div class="command-page__metric-note">暂停或失败任务需要跟进</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
+  <div class="app-container">
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
         <el-form-item label="任务名称" prop="name">
@@ -52,12 +11,7 @@
           />
         </el-form-item>
         <el-form-item label="执行状态" prop="status">
-          <el-select
-            v-model="queryParams.status"
-            placeholder="全部"
-            clearable
-            class="filter-field filter-field--md"
-          >
+          <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 200px">
             <el-option label="待执行" :value="0" />
             <el-option label="执行中" :value="1" />
             <el-option label="已暂停" :value="2" />
@@ -87,11 +41,7 @@
           </el-button>
         </div>
         <div class="table-section__toolbar--right">
-          <div class="table-toolbar-summary">
-            <el-tag type="info">共 {{ total }} 个任务</el-tag>
-            <el-tag type="success">执行中 {{ activeTaskCount }} 个</el-tag>
-            <el-tag v-if="ids.length > 0" type="warning">已选 {{ ids.length }} 项</el-tag>
-          </div>
+          <el-tag type="info">总共 {{ total }} 个数据</el-tag>
         </div>
       </div>
 
@@ -168,14 +118,6 @@
             </el-button>
           </template>
         </el-table-column>
-        <template #empty>
-          <div class="table-empty-state">
-            <el-empty :description="hasActiveFilters ? '当前筛选条件下暂无任务' : '暂无任务数据'" />
-            <div v-if="hasActiveFilters" class="table-empty-state__actions">
-              <el-button link type="primary" @click="handleResetQuery">清空筛选</el-button>
-            </div>
-          </div>
-        </template>
       </el-table>
 
       <pagination
@@ -191,9 +133,7 @@
     <el-dialog
       v-model="dialogState.visible"
       :title="dialogState.title"
-      :width="dialogWidth"
-      align-center
-      destroy-on-close
+      width="600px"
       custom-class="dialog-form-decorated"
       class="dialog-form-decorated"
       @close="closeDialog"
@@ -267,20 +207,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
-import { useWindowSize } from "@vueuse/core";
+import { ref, reactive, onMounted } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { useRouter } from "vue-router";
 import type { TaskPageQuery, TaskVO, TaskForm } from "@/api/flight/task";
 
 defineOptions({
   name: "FlightTask",
   inheritAttrs: false,
 });
-
-const router = useRouter();
-const { width } = useWindowSize();
 
 // 表单引用
 const queryFormRef = ref<FormInstance>();
@@ -294,25 +229,10 @@ const queryParams = reactive<TaskPageQuery>({
 
 // 列表数据
 const tableData = ref<TaskVO[]>([]);
-const filteredTaskList = ref<TaskVO[]>([]);
 const total = ref(0);
 const loading = ref(false);
 const submitLoading = ref(false);
 const ids = ref<string[]>([]);
-
-const dialogWidth = computed(() => (width.value < 768 ? "92%" : "600px"));
-const hasActiveFilters = computed(() =>
-  Boolean(queryParams.name || queryParams.status !== undefined)
-);
-const activeTaskCount = computed(
-  () => filteredTaskList.value.filter((item) => item.status === 1).length
-);
-const completedTaskCount = computed(
-  () => filteredTaskList.value.filter((item) => item.status === 3).length
-);
-const attentionTaskCount = computed(
-  () => filteredTaskList.value.filter((item) => item.status === 2 || item.status === 5).length
-);
 
 // 弹窗状态
 const dialogState = reactive({
@@ -413,15 +333,8 @@ function fetchData(): void {
       mockData = mockData.filter((m) => m.status === queryParams.status);
     }
 
-    filteredTaskList.value = mockData;
-    total.value = mockData.length;
-
-    const pageNum = queryParams.pageNum ?? 1;
-    const pageSize = queryParams.pageSize ?? 10;
-    const startIndex = (pageNum - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-
-    tableData.value = mockData.slice(startIndex, endIndex);
+    tableData.value = mockData;
+    total.value = 85; // Mock总数
     loading.value = false;
   }, 500);
 }
@@ -484,26 +397,14 @@ function handleEditClick(row: TaskVO): void {
  * 详情按钮点击事件
  */
 function handleDetailClick(row: TaskVO): void {
-  ElMessageBox.alert(
-    `任务航线：${row.routeName}<br/>执行机场：${row.airportName}<br/>执行无人机：${row.droneName}<br/>执行飞手：${row.pilotName}<br/>任务策略：${row.strategy}<br/>应用算法：${row.algorithm}`,
-    `任务详情：${row.name}`,
-    {
-      dangerouslyUseHTMLString: true,
-      confirmButtonText: "确定",
-    }
-  );
+  ElMessage.info("查看任务详情: " + row.name);
 }
 
 /**
  * 飞行记录按钮点击事件
  */
 function handleFlightRecords(row: TaskVO): void {
-  router.push({
-    path: "/flight/record",
-    query: {
-      taskName: row.name,
-    },
-  });
+  ElMessage.info("查看飞行记录: " + row.name);
 }
 
 function resetForm(): void {
@@ -557,16 +458,12 @@ function closeDialog(): void {
  * @param id 任务ID
  */
 function handleDelete(id?: number): void {
-  const taskIds = id ? [String(id)] : [...ids.value];
-  if (taskIds.length === 0) {
+  const taskIds = [id || ids.value].join(",");
+  if (!taskIds) {
     ElMessage.warning("请勾选删除项");
     return;
   }
-
-  const message =
-    taskIds.length === 1 ? "确认删除当前任务吗？" : `确认删除已选中的 ${taskIds.length} 个任务吗？`;
-
-  ElMessageBox.confirm(message, "警告", {
+  ElMessageBox.confirm("确认删除已选中的数据项?", "警告", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
