@@ -26,9 +26,9 @@ const mapRef = ref<HTMLDivElement | null>(null);
 const viewerRef = shallowRef<Cesium.Viewer | null>(null);
 
 const DEFAULT_VIEW = {
-  lng: 118.7969,
-  lat: 32.0603,
-  height: 3200,
+  lng: 113.5338,
+  lat: 22.2599,
+  height: 2000,
 } as const;
 const NATURAL_EARTH_URL = Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII");
 
