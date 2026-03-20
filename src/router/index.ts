@@ -70,6 +70,12 @@ export const constantRoutes: RouteRecordRaw[] = [
         component: () => import("@/views/demo/detail.vue"),
         meta: { title: "详情页缓存", icon: "user", hidden: true, keepAlive: true },
       },
+      {
+        path: "/flight/record/detail/:id(\\d+)",
+        name: "FlightRecordDetail",
+        component: () => import("@/views/flight/record/detail.vue"),
+        meta: { title: "飞行记录详情", icon: "user", hidden: true },
+      },
     ],
   },
 ];
