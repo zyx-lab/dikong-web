@@ -307,6 +307,11 @@ const recentAlerts = ref([
 
 const quickModules = [
   {
+    title: "低空数据大屏",
+    description: "进入全屏 GIS 大屏查看无人机、飞手与航线同屏态势",
+    path: "/screen/low-altitude",
+  },
+  {
     title: "任务管理",
     description: "编排今日巡检窗口与执行资源",
     path: "/flight/task",
