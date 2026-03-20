@@ -6,8 +6,7 @@
     "lib": ["esnext", "dom"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@sparkjsdev/spark": ["vendor/spark/dist/types/index.d.ts"]
+      "@/*": ["src/*"]
     },
 
     // 严格性和类型检查相关配置
