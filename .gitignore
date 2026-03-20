@@ -5,6 +5,8 @@ node_modules/
 dist/
 dist-ssr/
 stats.html
+!vendor/spark/dist/
+!vendor/spark/dist/**
 
 # Local env files
 *.local
@@ -41,3 +43,8 @@ yarn.lock
 
 # Local history
 .history
+
+# large assets
+public/generated/
+public/simulated_data/
+public/video+xyz/
