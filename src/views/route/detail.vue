@@ -28,7 +28,7 @@
           </div>
         </div>
 
-        <el-row :gutter="20" class="planner-page__body" style="align-items: stretch; height: 100%">
+        <el-row :gutter="20" class="planner-page__body">
           <el-col :xl="8" :lg="8" :xs="24" class="planner-page__side-col">
             <el-card shadow="hover" class="planner-card planner-card--sidebar">
               <RoutePlannerSidebar
@@ -745,9 +745,13 @@ watch(
 
 <style scoped lang="scss">
 .route-detail-page {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  height: calc(100vh - 84px);
   min-height: calc(100vh - 84px);
+  overflow: hidden !important;
 }
 
 .planner-page {
@@ -756,6 +760,7 @@ watch(
   flex-direction: column;
   gap: 12px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .planner-page__header {
@@ -794,17 +799,32 @@ watch(
 
 .planner-page__body {
   flex: 1;
+  align-items: stretch;
+  width: 100%;
   height: 100%;
   min-height: 0;
-  margin: 0;
+  margin: 0 !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  overflow: hidden;
 }
 
 .planner-page__side-col,
 .planner-page__map-col {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   height: 100%;
   min-height: 0;
+}
+
+.planner-page__side-col {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.planner-page__map-col {
+  overflow: hidden !important;
 }
 
 .planner-card {
@@ -813,11 +833,16 @@ watch(
 }
 
 .planner-card--sidebar :deep(.el-card__body) {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
   padding: 12px;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
+}
+
+.planner-card--sidebar {
+  overflow: hidden;
 }
 
 .planner-card--map :deep(.el-card__body) {
@@ -828,6 +853,10 @@ watch(
   min-height: 0;
   padding: 12px;
   overflow: hidden;
+}
+
+.planner-card--map {
+  overflow: hidden !important;
 }
 
 .planner-card__map-toolbar {
