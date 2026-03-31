@@ -46,7 +46,7 @@
                     {{
                       trajectoryViewerStatus === "error"
                         ? trajectoryViewerErrorMessage
-                        : "正在加载 JNU.sog 并生成俯视飞行轨迹..."
+                        : "正在加载 LoD 场景并生成俯视飞行轨迹..."
                     }}
                   </div>
                 </div>
@@ -85,6 +85,9 @@
                     <el-tag effect="dark">
                       Frame {{ currentFrameIndex + 1 }} / {{ poseFrameCount }}
                     </el-tag>
+                    <el-tag v-if="radarStatus === 'ready'" effect="dark">
+                      Wind {{ radarFrameIndex + 1 }} / {{ radarFrameCount }}
+                    </el-tag>
                   </div>
                   <el-tag effect="dark">FoV {{ projectorFov.toFixed(1) }}°</el-tag>
                 </div>
@@ -111,6 +114,35 @@
                       }}
                     </div>
                   </div>
+                </div>
+
+                <div
+                  v-if="radarStatus === 'ready' && radarLegendStops.length"
+                  class="video-stage__radar-legend"
+                >
+                  <div class="video-stage__radar-legend-title">风速色标</div>
+                  <div class="video-stage__radar-legend-subtitle">颜色对应水平风速</div>
+                  <div class="video-stage__radar-legend-body">
+                    <div
+                      class="video-stage__radar-legend-bar"
+                      :style="{ background: radarLegendGradient }"
+                    />
+                    <div class="video-stage__radar-legend-scale">
+                      <div
+                        v-for="item in radarLegendStops"
+                        :key="item.label"
+                        class="video-stage__radar-legend-item"
+                      >
+                        <span
+                          class="video-stage__radar-legend-swatch"
+                          :style="{ background: item.color }"
+                        />
+                        <span class="video-stage__radar-legend-label">{{ item.label }}</span>
+                        <span class="video-stage__radar-legend-value">{{ item.valueText }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="video-stage__radar-legend-footnote">单位：m/s</div>
                 </div>
 
                 <div class="video-stage__overlay video-stage__overlay--bottom">
@@ -243,6 +275,50 @@
                       </div>
                     </div>
                   </el-card>
+
+                  <el-card shadow="never" class="metric-card metric-card--control">
+                    <div class="projection-control">
+                      <div class="projection-control__header">
+                        <span>雷达风廓线</span>
+                        <span>{{ currentRadarTimeText }}</span>
+                      </div>
+                      <div class="projection-control__meta">
+                        <span>{{ radarStatusText }}</span>
+                        <span v-if="radarStatus === 'ready'">
+                          {{ Number(radarData?.meta.beamElevationDeg ?? 0).toFixed(0) }}°
+                        </span>
+                      </div>
+                      <div class="projection-control__switch">
+                        <span>显示粒子风场</span>
+                        <el-switch v-model="showRadarWind" :disabled="radarStatus !== 'ready'" />
+                      </div>
+                      <div class="projection-control__display-mode">
+                        <span>风场图元</span>
+                        <el-radio-group
+                          v-model="radarRenderMode"
+                          size="small"
+                          :disabled="radarStatus !== 'ready'"
+                        >
+                          <el-radio-button label="arrow">箭头</el-radio-button>
+                          <el-radio-button label="particle">粒子</el-radio-button>
+                        </el-radio-group>
+                      </div>
+                      <div class="projection-control__switch">
+                        <span>垂直气流</span>
+                        <el-switch
+                          v-model="showVerticalAirflow"
+                          :disabled="radarStatus !== 'ready'"
+                        />
+                      </div>
+                      <div class="projection-control__hint">
+                        {{
+                          radarStatus === "error"
+                            ? radarErrorMessage
+                            : "风场已按 GPS->Unity 变换落到场景坐标，并使用真实层高展示前 3 分钟的分层风场。"
+                        }}
+                      </div>
+                    </div>
+                  </el-card>
                 </div>
               </div>
             </div>
@@ -266,9 +342,12 @@ import { useRoute, useRouter } from "vue-router";
 import { VideoPause, VideoPlay } from "@element-plus/icons-vue";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
-import { SplatMesh } from "@sparkjsdev/spark";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 import InfoPanel from "@/components/InfoPanel.vue";
 import { getFlightRecordById } from "@/views/flight/record/data";
 
@@ -279,11 +358,12 @@ defineOptions({
 
 const route = useRoute();
 const router = useRouter();
-const SCENE_SPLAT_URL = "/video+xyz/JNU.sog";
+const SCENE_SPLAT_URL = "/JNUAerial-with_Park-y_up-lod.rad";
 const SCENE_MESH_URL = "/video+xyz/JNU.obj";
 const DRONE_MODEL_URL = "/video+xyz/dji-mavic-pro-for-element-3d.fbx";
-const VIDEO_URL = "/video+xyz/5_DJI-Air_5~1.mp4";
+const VIDEO_URL = "/simulated_data/5_DJI-Air_5.browser.mp4";
 const POSE_JSON_URL = "/simulated_data/5_DJI-Air_5.json";
+const WIND_DATA_URL = "/generated/secondWindSpeed_GHH234012_20260116.processed.json";
 const DEFAULT_VIDEO_WIDTH = 1920;
 const DEFAULT_VIDEO_HEIGHT = 1080;
 type SceneSplatMesh = SplatMesh & THREE.Object3D;
@@ -312,6 +392,66 @@ interface ProjectionUniforms {
   meshOpacity: THREE.IUniform<number>;
   debugMode: THREE.IUniform<number>;
 }
+interface ProcessedWindMeta {
+  sourceFile: string;
+  startTime: string;
+  durationSeconds: number;
+  displayDurationSeconds: number;
+  sampleIntervalSeconds: number;
+  beamElevationDeg: number;
+  layerCount: number;
+  invalidValue: number;
+  displayScale: number;
+  maxHorizontalSpeed: number;
+  maxAbsVerticalSpeed: number;
+  directionConvention: string;
+}
+interface ProcessedWindLayer {
+  layerIndex: number;
+  slantDistance: number;
+  height: number;
+  radius: number;
+  displayHeight: number;
+  displayRadius: number;
+}
+interface ProcessedWindSample {
+  layerIndex: number;
+  valid: boolean;
+  speed: number | null;
+  directionDeg: number | null;
+  flowDirectionDeg: number | null;
+  vectorX: number | null;
+  vectorZ: number | null;
+  verticalSpeed: number | null;
+  ti: number | null;
+  snr: number | null;
+}
+interface ProcessedWindFrame {
+  index: number;
+  timestamp: string;
+  elapsedSeconds: number;
+  samples: ProcessedWindSample[];
+}
+interface ProcessedWindData {
+  meta: ProcessedWindMeta;
+  layers: ProcessedWindLayer[];
+  frames: ProcessedWindFrame[];
+}
+interface RadarLayerVisual {
+  layerIndex: number;
+  disk: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
+  ring: Line2;
+}
+interface RadarParticleSeed {
+  layerIndex: number;
+  baseRadiusRatio: number;
+  baseAngle: number;
+  phaseOffset: number;
+  lateralJitter: number;
+  verticalJitter: number;
+  speedFactor: number;
+}
+type RadarRenderMode = "arrow" | "particle";
 
 const currentTime = ref(0);
 const isPlaying = ref(false);
@@ -336,12 +476,22 @@ const debugProjectionMode = ref(false);
 const showDroneModel = ref(true);
 const debugDroneModel = ref(true);
 const followViewerMode = ref(true);
+const showRadarWind = ref(true);
+const showVerticalAirflow = ref(false);
+const radarRenderMode = ref<RadarRenderMode>("arrow");
+const radarStatus = ref<"idle" | "loading" | "ready" | "error">("idle");
+const radarErrorMessage = ref("");
+const radarPlaybackTime = ref(0);
+const radarFrameIndex = ref(0);
+const radarData = ref<ProcessedWindData>();
+const radarIsPlaying = ref(true);
 let viewerRenderer: THREE.WebGLRenderer | undefined;
 let viewerScene: THREE.Scene | undefined;
 let viewerCamera: THREE.PerspectiveCamera | undefined;
 let viewerControls: OrbitControls | undefined;
 let viewerSplat: SceneSplatMesh | undefined;
 let viewerProjectionMesh: THREE.Group | undefined;
+let viewerSceneOccluder: THREE.Group | undefined;
 let viewerResizeObserver: ResizeObserver | undefined;
 let viewerClock: THREE.Clock | undefined;
 let viewerInitToken = 0;
@@ -355,9 +505,17 @@ let viewerDroneRoot: THREE.Group | undefined;
 let viewerDroneModel: THREE.Group | undefined;
 let viewerDroneDebugHelper: THREE.BoxHelper | undefined;
 let viewerProjectionUniforms: ProjectionUniforms | undefined;
+let viewerSparkRenderer: SparkRenderer | undefined;
+let viewerRadarRoot: THREE.Group | undefined;
+let viewerRadarLayerVisuals: RadarLayerVisual[] = [];
+let viewerRadarParticles: THREE.Points | undefined;
+let viewerRadarArrowShafts: THREE.InstancedMesh | undefined;
+let viewerRadarArrowHeads: THREE.InstancedMesh | undefined;
+let viewerRadarParticleSeeds: RadarParticleSeed[] = [];
 let viewerSyncHandle: number | undefined;
 let viewerHasAlignedUserCamera = false;
 let trajectoryRenderer: THREE.WebGLRenderer | undefined;
+let trajectorySparkRenderer: SparkRenderer | undefined;
 let trajectorySplat: SceneSplatMesh | undefined;
 let trajectoryInitToken = 0;
 let trajectoryHalfSpanX = 1;
@@ -391,10 +549,121 @@ const MOVEMENT_BOOST_MULTIPLIER = 2.5;
 const DRONE_MODEL_TARGET_SIZE = 0.42;
 const DRONE_MODEL_VERTICAL_OFFSET = 0.68;
 const SPLAT_RENDER_ORDER = 0;
+const SCENE_OCCLUDER_RENDER_ORDER = 90;
 const PROJECTION_RENDER_ORDER = 100;
 const DRONE_RENDER_ORDER = 120;
+const RADAR_RENDER_ORDER = 140;
+const RADAR_GLYPH_MIN_PER_LAYER = 5;
+const RADAR_GLYPH_MAX_PER_LAYER = 44;
+const RADAR_GLYPH_DENSITY = 6.6;
+const RADAR_PARTICLE_SIZE = 0.09;
+const RADAR_FLOW_VISUAL_GAIN = 1.65;
+const RADAR_VERTICAL_VISUAL_GAIN = 2.1;
+const RADAR_VERTICAL_OFFSET_METERS = -20;
+const RADAR_SENSOR_MARKER_RADIUS = 0.08;
+const RADAR_SENSOR_STEM_RADIUS = 0.012;
+const RADAR_SENSOR_STEM_BASE_RADIUS = 0.018;
 const USER_CAMERA_HEIGHT_OFFSET = 0.16;
 const USER_CAMERA_XZ_OFFSET = new THREE.Vector3(0.16, 0, 0.28);
+const DEFAULT_RADAR_GPS_POSITION = Object.freeze({
+  latitude: 22.252818819444443,
+  longitude: 113.52958706944445,
+  altitudeMeters: 86.885,
+});
+const SCENE_GPS_ORIGIN = Object.freeze({
+  latitude: 22.252818819444443,
+  longitude: 113.52958706944445,
+  altitudeMeters: 86.885,
+});
+// The repo currently has no separate lidar GPS source, so the radar origin defaults to the
+// same geodetic anchor used by the scene transform.
+const RADAR_GPS_POSITION = Object.freeze({
+  latitude: readEnvNumber(
+    import.meta.env.VITE_RADAR_START_LATITUDE,
+    DEFAULT_RADAR_GPS_POSITION.latitude
+  ),
+  longitude: readEnvNumber(
+    import.meta.env.VITE_RADAR_START_LONGITUDE,
+    DEFAULT_RADAR_GPS_POSITION.longitude
+  ),
+  altitudeMeters: readEnvNumber(
+    import.meta.env.VITE_RADAR_START_ALTITUDE_METERS,
+    DEFAULT_RADAR_GPS_POSITION.altitudeMeters
+  ),
+});
+const SFM_TO_ENU_MATRIX = new THREE.Matrix4().set(
+  23.32268437,
+  23.71730027,
+  -52.64161238,
+  35.91473514,
+  57.73477094,
+  -10.15823258,
+  21.00247195,
+  52.1704996,
+  -0.58814194,
+  -56.67360295,
+  -25.79445891,
+  24.2211397,
+  0,
+  0,
+  0,
+  1
+);
+const SFM_TO_UNITY_MATRIX = new THREE.Matrix4().set(
+  1,
+  0,
+  0,
+  0,
+  0,
+  -0.9081,
+  -0.4187,
+  0,
+  0,
+  0.4187,
+  -0.9081,
+  0,
+  0,
+  0,
+  0,
+  1
+);
+const RIGHT_TO_LEFT_HAND_MATRIX = new THREE.Matrix4().makeScale(1, 1, -1);
+const RADAR_LOCAL_TO_ENU_MATRIX = new THREE.Matrix4().set(
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1
+);
+const radarLowColor = new THREE.Color("#4ca8ff");
+const radarMidColor = new THREE.Color("#52ffd7");
+const radarHighColor = new THREE.Color("#ffb36b");
+const radarMutedColor = new THREE.Color("#395466");
+const radarWorkingColor = new THREE.Color();
+const radarPosition = new THREE.Vector3();
+const radarFlowVector = new THREE.Vector3();
+const radarArrowVector = new THREE.Vector3();
+const radarArrowDirection = new THREE.Vector3();
+const radarArrowUp = new THREE.Vector3(0, 1, 0);
+const radarArrowCenter = new THREE.Vector3();
+const radarArrowScale = new THREE.Vector3();
+const radarArrowQuaternion = new THREE.Quaternion();
+const radarArrowMatrixHelper = new THREE.Object3D();
+const radarLayerMap = new Map<number, ProcessedWindLayer>();
+const radarLocalToWorldMatrix = createRadarLocalToWorldMatrix();
+const RADAR_LOCAL_UNIT_SCALE = getAverageMatrixScale(radarLocalToWorldMatrix);
+const RADAR_WORLD_TO_LOCAL_SCALE = RADAR_LOCAL_UNIT_SCALE > 0 ? 1 / RADAR_LOCAL_UNIT_SCALE : 1;
 
 const recordId = computed(() => Number(route.params.id));
 const record = computed(() => getFlightRecordById(recordId.value));
@@ -502,6 +771,61 @@ const revealedTrajectoryPolyline = computed(() =>
 const currentTrajectoryPoint = computed(() => trajectoryPoints2D.value[currentFrameIndex.value]);
 const trajectoryStartPoint = computed(() => trajectoryPoints2D.value[0]);
 const trajectoryEndPoint = computed(() => trajectoryPoints2D.value.at(-1));
+const radarFrameCount = computed(() => radarData.value?.frames.length ?? 0);
+const radarDurationSeconds = computed(() => radarData.value?.meta.durationSeconds ?? 0);
+const currentRadarFrame = computed(() => radarData.value?.frames[radarFrameIndex.value]);
+const currentRadarTimeText = computed(() =>
+  radarDurationSeconds.value > 0
+    ? formatDuration(
+        Math.min(
+          radarPlaybackTime.value % Math.max(radarDurationSeconds.value, 1),
+          Math.max(radarDurationSeconds.value - 1, 0)
+        )
+      )
+    : "--:--"
+);
+const radarStatusText = computed(() => {
+  switch (radarStatus.value) {
+    case "loading":
+      return "风廓线数据加载中";
+    case "error":
+      return "风廓线加载失败";
+    case "ready":
+      return `${currentRadarFrame.value?.samples.filter((sample) => sample.valid).length ?? 0} / ${
+        radarData.value?.meta.layerCount ?? 0
+      } layers`;
+    default:
+      return "风廓线未就绪";
+  }
+});
+const radarLegendStops = computed(() => {
+  const maxSpeed = Math.max(radarData.value?.meta.maxHorizontalSpeed ?? 0, 0);
+  if (maxSpeed <= 0) return [];
+
+  return [1, 0.8, 0.6, 0.4, 0.2, 0].map((ratio, index) => {
+    const speed = maxSpeed * ratio;
+    return {
+      label:
+        index === 0
+          ? "强"
+          : index === 1
+            ? "较强"
+            : index === 2
+              ? "中等"
+              : index === 3
+                ? "较弱"
+                : index === 4
+                  ? "微风"
+                  : "静风",
+      valueText: speed >= 10 ? speed.toFixed(0) : speed.toFixed(1),
+      color: getRadarColorStyle(ratio),
+    };
+  });
+});
+const radarLegendGradient = computed(
+  () =>
+    `linear-gradient(to top, ${getRadarColorStyle(0)} 0%, ${getRadarColorStyle(0.5)} 50%, ${getRadarColorStyle(1)} 100%)`
+);
 
 function formatDuration(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
@@ -531,6 +855,545 @@ function buildPolyline(type: "altitude" | "speed"): string {
       return `${x},${y}`;
     })
     .join(" ");
+}
+
+function degreesToRadians(value: number): number {
+  return (value * Math.PI) / 180;
+}
+
+function readEnvNumber(rawValue: string | number | undefined, fallbackValue: number): number {
+  if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+    return rawValue;
+  }
+
+  if (typeof rawValue === "string") {
+    const parsed = Number(rawValue.trim());
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return fallbackValue;
+}
+
+function geodeticToEcef(
+  latitude: number,
+  longitude: number,
+  altitudeMeters: number
+): THREE.Vector3 {
+  const semiMajorAxis = 6378137;
+  const flattening = 1 / 298.257223563;
+  const eccentricitySquared = 2 * flattening - flattening * flattening;
+  const latitudeRad = degreesToRadians(latitude);
+  const longitudeRad = degreesToRadians(longitude);
+  const sinLatitude = Math.sin(latitudeRad);
+  const cosLatitude = Math.cos(latitudeRad);
+  const sinLongitude = Math.sin(longitudeRad);
+  const cosLongitude = Math.cos(longitudeRad);
+  const primeVerticalRadius =
+    semiMajorAxis / Math.sqrt(1 - eccentricitySquared * sinLatitude * sinLatitude);
+
+  return new THREE.Vector3(
+    (primeVerticalRadius + altitudeMeters) * cosLatitude * cosLongitude,
+    (primeVerticalRadius + altitudeMeters) * cosLatitude * sinLongitude,
+    (primeVerticalRadius * (1 - eccentricitySquared) + altitudeMeters) * sinLatitude
+  );
+}
+
+function geodeticToEnu(
+  latitude: number,
+  longitude: number,
+  altitudeMeters: number,
+  originLatitude: number,
+  originLongitude: number,
+  originAltitudeMeters: number
+): THREE.Vector3 {
+  const ecef = geodeticToEcef(latitude, longitude, altitudeMeters);
+  const originEcef = geodeticToEcef(originLatitude, originLongitude, originAltitudeMeters);
+  const delta = ecef.sub(originEcef);
+  const originLatitudeRad = degreesToRadians(originLatitude);
+  const originLongitudeRad = degreesToRadians(originLongitude);
+  const sinLatitude = Math.sin(originLatitudeRad);
+  const cosLatitude = Math.cos(originLatitudeRad);
+  const sinLongitude = Math.sin(originLongitudeRad);
+  const cosLongitude = Math.cos(originLongitudeRad);
+
+  return new THREE.Vector3(
+    -sinLongitude * delta.x + cosLongitude * delta.y,
+    -sinLatitude * cosLongitude * delta.x -
+      sinLatitude * sinLongitude * delta.y +
+      cosLatitude * delta.z,
+    cosLatitude * cosLongitude * delta.x +
+      cosLatitude * sinLongitude * delta.y +
+      sinLatitude * delta.z
+  );
+}
+
+function createRadarLocalToWorldMatrix(): THREE.Matrix4 {
+  const radarEnuOrigin = geodeticToEnu(
+    RADAR_GPS_POSITION.latitude,
+    RADAR_GPS_POSITION.longitude,
+    RADAR_GPS_POSITION.altitudeMeters,
+    SCENE_GPS_ORIGIN.latitude,
+    SCENE_GPS_ORIGIN.longitude,
+    SCENE_GPS_ORIGIN.altitudeMeters
+  );
+  const enuToUnityMatrix = SFM_TO_UNITY_MATRIX.clone().multiply(SFM_TO_ENU_MATRIX.clone().invert());
+  const radarOriginTranslation = new THREE.Matrix4().makeTranslation(
+    radarEnuOrigin.x,
+    radarEnuOrigin.y,
+    radarEnuOrigin.z
+  );
+  const localVerticalOffset = new THREE.Matrix4().makeTranslation(
+    0,
+    RADAR_VERTICAL_OFFSET_METERS,
+    0
+  );
+
+  return RIGHT_TO_LEFT_HAND_MATRIX.clone()
+    .multiply(enuToUnityMatrix)
+    .multiply(radarOriginTranslation)
+    .multiply(localVerticalOffset)
+    .multiply(RADAR_LOCAL_TO_ENU_MATRIX);
+}
+
+function getAverageMatrixScale(matrix: THREE.Matrix4): number {
+  const xAxis = new THREE.Vector3().setFromMatrixColumn(matrix, 0).length();
+  const yAxis = new THREE.Vector3().setFromMatrixColumn(matrix, 1).length();
+  const zAxis = new THREE.Vector3().setFromMatrixColumn(matrix, 2).length();
+  return (xAxis + yAxis + zAxis) / 3;
+}
+
+function getRadarFrameIndexForTime(timeSeconds: number): number {
+  const data = radarData.value;
+  if (!data?.frames.length) return 0;
+  const sampleInterval = Math.max(data.meta.sampleIntervalSeconds, 1);
+  const loopDuration = Math.max(data.frames.length * sampleInterval, sampleInterval);
+  const wrappedTime = ((timeSeconds % loopDuration) + loopDuration) % loopDuration;
+  return Math.min(Math.floor(wrappedTime / sampleInterval), data.frames.length - 1);
+}
+
+function mixRadarColor(normalizedSpeed: number): THREE.Color {
+  if (normalizedSpeed <= 0.5) {
+    return radarWorkingColor.lerpColors(radarLowColor, radarMidColor, normalizedSpeed / 0.5);
+  }
+  return radarWorkingColor.lerpColors(radarMidColor, radarHighColor, (normalizedSpeed - 0.5) / 0.5);
+}
+
+function getRadarColorStyle(normalizedSpeed: number): string {
+  const clamped = Math.min(Math.max(normalizedSpeed, 0), 1);
+  const color =
+    clamped <= 0.5
+      ? radarLowColor.clone().lerp(radarMidColor, clamped / 0.5)
+      : radarMidColor.clone().lerp(radarHighColor, (clamped - 0.5) / 0.5);
+  return color.getStyle();
+}
+
+function setLineMaterialResolution(material: LineMaterial): void {
+  material.resolution.set(
+    Math.max(splatHostRef.value?.clientWidth ?? 1, 1),
+    Math.max(splatHostRef.value?.clientHeight ?? 1, 1)
+  );
+}
+
+function getRadarGlyphCountForLayer(layer: ProcessedWindLayer): number {
+  const area = Math.PI * layer.displayRadius * layer.displayRadius;
+  return Math.max(
+    RADAR_GLYPH_MIN_PER_LAYER,
+    Math.min(RADAR_GLYPH_MAX_PER_LAYER, Math.round(area * RADAR_GLYPH_DENSITY))
+  );
+}
+
+function applyRadarVisibility(): void {
+  const visible = showRadarWind.value;
+  if (viewerRadarRoot) {
+    viewerRadarRoot.visible = visible;
+  }
+  if (viewerRadarParticles) {
+    viewerRadarParticles.visible = visible && radarRenderMode.value === "particle";
+  }
+  if (viewerRadarArrowShafts) {
+    viewerRadarArrowShafts.visible = visible && radarRenderMode.value === "arrow";
+  }
+  if (viewerRadarArrowHeads) {
+    viewerRadarArrowHeads.visible = visible && radarRenderMode.value === "arrow";
+  }
+}
+
+function createRadarRing(radius: number): Line2 {
+  const pointPositions: number[] = [];
+  const segments = 48;
+  for (let index = 0; index <= segments; index += 1) {
+    const angle = (index / segments) * Math.PI * 2;
+    pointPositions.push(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+  }
+
+  const geometry = new LineGeometry();
+  geometry.setPositions(pointPositions);
+  const material = new LineMaterial({
+    color: "#74d6ff",
+    transparent: true,
+    opacity: 0.62,
+    linewidth: 1.5,
+    depthTest: true,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  setLineMaterialResolution(material);
+  const ring = new Line2(geometry, material);
+  ring.computeLineDistances();
+  ring.renderOrder = RADAR_RENDER_ORDER + 1;
+  return ring;
+}
+
+function buildRadarGuideLines(outerLayer: ProcessedWindLayer): THREE.LineSegments | undefined {
+  if (outerLayer.radius <= 0) return undefined;
+
+  const guidePositions = [];
+  const y = outerLayer.height;
+  for (let index = 0; index < 4; index += 1) {
+    const angle = (index / 4) * Math.PI * 2;
+    guidePositions.push(
+      0,
+      0,
+      0,
+      Math.cos(angle) * outerLayer.radius,
+      y,
+      Math.sin(angle) * outerLayer.radius
+    );
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(guidePositions, 3));
+  const material = new THREE.LineBasicMaterial({
+    color: "#4db0ff",
+    transparent: true,
+    opacity: 0.28,
+    depthTest: true,
+    depthWrite: false,
+  });
+  const guides = new THREE.LineSegments(geometry, material);
+  guides.renderOrder = RADAR_RENDER_ORDER;
+  return guides;
+}
+
+function createRadarVisualization(data: ProcessedWindData): THREE.Group {
+  const root = new THREE.Group();
+  root.name = "RadarWindField";
+  root.matrixAutoUpdate = false;
+  root.matrix.copy(radarLocalToWorldMatrix);
+  root.matrixWorldNeedsUpdate = true;
+  viewerRadarLayerVisuals = [];
+  viewerRadarParticleSeeds = [];
+  radarLayerMap.clear();
+
+  data.layers.forEach((layer) => {
+    radarLayerMap.set(layer.layerIndex, layer);
+  });
+
+  const markerGroup = new THREE.Group();
+  const sensorSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(RADAR_SENSOR_MARKER_RADIUS * RADAR_WORLD_TO_LOCAL_SCALE, 24, 24),
+    new THREE.MeshBasicMaterial({
+      color: "#8fdcff",
+      transparent: true,
+      opacity: 0.98,
+      depthTest: true,
+      depthWrite: true,
+    })
+  );
+  sensorSphere.renderOrder = RADAR_RENDER_ORDER + 2;
+  markerGroup.add(sensorSphere);
+
+  const topLayer = data.layers.at(-1);
+  if (topLayer) {
+    const stem = new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        RADAR_SENSOR_STEM_RADIUS * RADAR_WORLD_TO_LOCAL_SCALE,
+        RADAR_SENSOR_STEM_BASE_RADIUS * RADAR_WORLD_TO_LOCAL_SCALE,
+        topLayer.height,
+        16
+      ),
+      new THREE.MeshBasicMaterial({
+        color: "#2d5d79",
+        transparent: true,
+        opacity: 0.55,
+        depthTest: true,
+        depthWrite: true,
+      })
+    );
+    stem.position.y = topLayer.height / 2;
+    stem.renderOrder = RADAR_RENDER_ORDER;
+    markerGroup.add(stem);
+
+    const guides = buildRadarGuideLines(topLayer);
+    if (guides) {
+      markerGroup.add(guides);
+    }
+  }
+  root.add(markerGroup);
+
+  data.layers.forEach((layer, layerOffset) => {
+    const disk = new THREE.Mesh(
+      new THREE.CircleGeometry(layer.radius, 48),
+      new THREE.MeshBasicMaterial({
+        color: "#21465e",
+        transparent: true,
+        opacity: 0.1,
+        side: THREE.DoubleSide,
+        depthTest: true,
+        depthWrite: false,
+      })
+    );
+    disk.rotation.x = -Math.PI / 2;
+    disk.position.y = layer.height;
+    disk.renderOrder = RADAR_RENDER_ORDER;
+    root.add(disk);
+
+    const ring = createRadarRing(layer.radius);
+    ring.position.y = layer.height;
+    root.add(ring);
+
+    viewerRadarLayerVisuals.push({
+      layerIndex: layer.layerIndex,
+      disk,
+      ring,
+    });
+
+    const glyphCount = getRadarGlyphCountForLayer(layer);
+    for (let particleIndex = 0; particleIndex < glyphCount; particleIndex += 1) {
+      const normalizedIndex = particleIndex / Math.max(glyphCount, 1);
+      viewerRadarParticleSeeds.push({
+        layerIndex: layer.layerIndex,
+        baseRadiusRatio: Math.sqrt((particleIndex + 0.5) / glyphCount),
+        baseAngle: normalizedIndex * Math.PI * 2 * 1.61803398875 + layerOffset * 0.21,
+        phaseOffset: Math.random(),
+        lateralJitter: Math.random() * Math.PI * 2,
+        verticalJitter: Math.random() * 0.4 - 0.2,
+        speedFactor: 0.7 + Math.random() * 0.8,
+      });
+    }
+  });
+
+  const particlePositions = new Float32Array(viewerRadarParticleSeeds.length * 3);
+  const particleColors = new Float32Array(viewerRadarParticleSeeds.length * 3);
+  const particleGeometry = new THREE.BufferGeometry();
+  particleGeometry.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
+  particleGeometry.setAttribute("color", new THREE.BufferAttribute(particleColors, 3));
+
+  const particleMaterial = new THREE.PointsMaterial({
+    size: RADAR_PARTICLE_SIZE,
+    transparent: true,
+    opacity: 0.94,
+    vertexColors: true,
+    blending: THREE.AdditiveBlending,
+    depthTest: true,
+    depthWrite: false,
+    sizeAttenuation: true,
+    toneMapped: false,
+  });
+  const particles = new THREE.Points(particleGeometry, particleMaterial);
+  particles.renderOrder = RADAR_RENDER_ORDER + 2;
+  root.add(particles);
+  viewerRadarParticles = particles;
+
+  const shaftGeometry = new THREE.CylinderGeometry(0.78, 1, 1, 12);
+  const shaftMaterial = new THREE.MeshBasicMaterial({
+    color: "#ffffff",
+    transparent: true,
+    opacity: 1,
+    depthTest: true,
+    depthWrite: true,
+    toneMapped: false,
+  });
+  const shaftMesh = new THREE.InstancedMesh(
+    shaftGeometry,
+    shaftMaterial,
+    viewerRadarParticleSeeds.length
+  );
+  shaftMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  shaftMesh.renderOrder = RADAR_RENDER_ORDER + 2;
+  root.add(shaftMesh);
+  viewerRadarArrowShafts = shaftMesh;
+
+  const headGeometry = new THREE.ConeGeometry(1, 1, 16);
+  const headMaterial = new THREE.MeshBasicMaterial({
+    color: "#ffffff",
+    transparent: true,
+    opacity: 1,
+    depthTest: true,
+    depthWrite: true,
+    toneMapped: false,
+  });
+  const headMesh = new THREE.InstancedMesh(
+    headGeometry,
+    headMaterial,
+    viewerRadarParticleSeeds.length
+  );
+  headMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  headMesh.renderOrder = RADAR_RENDER_ORDER + 3;
+  root.add(headMesh);
+  viewerRadarArrowHeads = headMesh;
+
+  root.visible = showRadarWind.value;
+  applyRadarVisibility();
+  return root;
+}
+
+function updateRadarVisualization(animationTimeSeconds: number): void {
+  const data = radarData.value;
+  const particles = viewerRadarParticles;
+  const arrowShafts = viewerRadarArrowShafts;
+  const arrowHeads = viewerRadarArrowHeads;
+  if (!data?.frames.length || !particles || !arrowShafts || !arrowHeads) return;
+
+  const frameIndex = getRadarFrameIndexForTime(radarPlaybackTime.value);
+  radarFrameIndex.value = frameIndex;
+  const frame = data.frames[frameIndex];
+  const layerSamples = new Map(frame.samples.map((sample) => [sample.layerIndex, sample]));
+  const positions = particles.geometry.getAttribute("position") as
+    | THREE.BufferAttribute
+    | undefined;
+  const colors = particles.geometry.getAttribute("color") as THREE.BufferAttribute | undefined;
+  if (!positions || !colors) return;
+
+  viewerRadarLayerVisuals.forEach((visual) => {
+    const sample = layerSamples.get(visual.layerIndex);
+    const diskMaterial = visual.disk.material;
+    const ringMaterial = visual.ring.material as LineMaterial;
+    if (!sample?.valid || sample.speed === null) {
+      diskMaterial.color.copy(radarMutedColor);
+      diskMaterial.opacity = 0.04;
+      ringMaterial.color.copy(radarMutedColor);
+      ringMaterial.opacity = 0.18;
+      return;
+    }
+
+    const normalizedSpeed =
+      data.meta.maxHorizontalSpeed > 0 ? sample.speed / data.meta.maxHorizontalSpeed : 0;
+    const mixedColor = mixRadarColor(Math.min(Math.max(normalizedSpeed, 0), 1));
+    diskMaterial.color.copy(mixedColor);
+    diskMaterial.opacity = 0.07 + normalizedSpeed * 0.16;
+    ringMaterial.color.copy(mixedColor);
+    ringMaterial.opacity = 0.36 + normalizedSpeed * 0.42;
+  });
+
+  let cursor = 0;
+  for (let index = 0; index < viewerRadarParticleSeeds.length; index += 1) {
+    const seed = viewerRadarParticleSeeds[index];
+    const layer = radarLayerMap.get(seed.layerIndex);
+    const sample = layerSamples.get(seed.layerIndex);
+
+    if (
+      !layer ||
+      !sample?.valid ||
+      sample.speed === null ||
+      sample.vectorX === null ||
+      sample.vectorZ === null
+    ) {
+      positions.array[cursor] = 0;
+      positions.array[cursor + 1] = -999;
+      positions.array[cursor + 2] = 0;
+      colors.array[cursor] = radarMutedColor.r;
+      colors.array[cursor + 1] = radarMutedColor.g;
+      colors.array[cursor + 2] = radarMutedColor.b;
+      radarArrowScale.set(0.0001, 0.0001, 0.0001);
+      radarArrowCenter.set(0, -999, 0);
+      radarArrowMatrixHelper.position.copy(radarArrowCenter);
+      radarArrowMatrixHelper.quaternion.identity();
+      radarArrowMatrixHelper.scale.copy(radarArrowScale);
+      radarArrowMatrixHelper.updateMatrix();
+      arrowShafts.setMatrixAt(index, radarArrowMatrixHelper.matrix);
+      arrowHeads.setMatrixAt(index, radarArrowMatrixHelper.matrix);
+      cursor += 3;
+      continue;
+    }
+
+    const normalizedSpeed =
+      data.meta.maxHorizontalSpeed > 0 ? sample.speed / data.meta.maxHorizontalSpeed : 0;
+    const phase = (animationTimeSeconds * seed.speedFactor + seed.phaseOffset) % 1;
+    const localRadius = layer.radius * seed.baseRadiusRatio;
+    const baseX = Math.cos(seed.baseAngle) * localRadius;
+    const baseZ = Math.sin(seed.baseAngle) * localRadius;
+    const drift = (phase - 0.5) * 2;
+    const jitter =
+      Math.sin(animationTimeSeconds * 1.6 + seed.lateralJitter) * 0.03 * RADAR_WORLD_TO_LOCAL_SCALE;
+
+    radarFlowVector.set(
+      sample.vectorX * RADAR_FLOW_VISUAL_GAIN,
+      0,
+      sample.vectorZ * RADAR_FLOW_VISUAL_GAIN
+    );
+    radarPosition.set(baseX, layer.height, baseZ).addScaledVector(radarFlowVector, drift);
+    radarPosition.x += Math.cos(seed.lateralJitter) * jitter;
+    radarPosition.z += Math.sin(seed.lateralJitter) * jitter;
+
+    if (
+      showVerticalAirflow.value &&
+      sample.verticalSpeed !== null &&
+      data.meta.maxAbsVerticalSpeed > 0
+    ) {
+      radarPosition.y +=
+        sample.verticalSpeed *
+        RADAR_VERTICAL_VISUAL_GAIN *
+        drift *
+        (0.7 + Math.abs(seed.verticalJitter));
+    }
+
+    const mixedColor = mixRadarColor(Math.min(Math.max(normalizedSpeed, 0), 1));
+    positions.array[cursor] = radarPosition.x;
+    positions.array[cursor + 1] = radarPosition.y;
+    positions.array[cursor + 2] = radarPosition.z;
+    colors.array[cursor] = mixedColor.r;
+    colors.array[cursor + 1] = mixedColor.g;
+    colors.array[cursor + 2] = mixedColor.b;
+
+    radarArrowVector.copy(radarFlowVector);
+    if (showVerticalAirflow.value && sample.verticalSpeed !== null) {
+      radarArrowVector.y = sample.verticalSpeed * RADAR_VERTICAL_VISUAL_GAIN * 0.85;
+    }
+    if (radarArrowVector.lengthSq() < 0.0001) {
+      radarArrowVector.set(0, 0.001, 0);
+    }
+
+    radarArrowDirection.copy(radarArrowVector).normalize();
+    radarArrowQuaternion.setFromUnitVectors(radarArrowUp, radarArrowDirection);
+
+    const maxArrowLength = Math.max(0.18, Math.min(layer.displayRadius * 0.48, 0.44)) * 0.3;
+    const arrowLength =
+      Math.max(0.14, Math.min(maxArrowLength / 0.3, 0.16 + normalizedSpeed * 0.22)) *
+      0.3 *
+      RADAR_WORLD_TO_LOCAL_SCALE;
+    const shaftLength = arrowLength * 0.56;
+    const headLength = arrowLength * 0.44;
+    const shaftRadius =
+      Math.max(0.016, Math.min(layer.displayRadius * 0.12, 0.04)) *
+      0.3 *
+      RADAR_WORLD_TO_LOCAL_SCALE;
+    const headRadius = Math.max(shaftRadius * 2.25, 0.05 * 0.3 * RADAR_WORLD_TO_LOCAL_SCALE);
+
+    radarArrowCenter.copy(radarPosition).addScaledVector(radarArrowDirection, shaftLength * 0.5);
+    radarArrowMatrixHelper.position.copy(radarArrowCenter);
+    radarArrowMatrixHelper.quaternion.copy(radarArrowQuaternion);
+    radarArrowScale.set(shaftRadius, shaftLength, shaftRadius);
+    radarArrowMatrixHelper.scale.copy(radarArrowScale);
+    radarArrowMatrixHelper.updateMatrix();
+    arrowShafts.setMatrixAt(index, radarArrowMatrixHelper.matrix);
+
+    radarArrowCenter
+      .copy(radarPosition)
+      .addScaledVector(radarArrowDirection, shaftLength + headLength * 0.5);
+    radarArrowMatrixHelper.position.copy(radarArrowCenter);
+    radarArrowMatrixHelper.scale.set(headRadius, headLength, headRadius);
+    radarArrowMatrixHelper.updateMatrix();
+    arrowHeads.setMatrixAt(index, radarArrowMatrixHelper.matrix);
+    cursor += 3;
+  }
+
+  positions.needsUpdate = true;
+  colors.needsUpdate = true;
+  arrowShafts.instanceMatrix.needsUpdate = true;
+  arrowHeads.instanceMatrix.needsUpdate = true;
 }
 
 function stopPlayback(): void {
@@ -697,7 +1560,7 @@ function alignViewerCameraToDrone(cameraToWorldMatrix: THREE.Matrix4): void {
 function disposeObject3D(object: THREE.Object3D): void {
   object.traverse((child) => {
     const mesh = child as THREE.Mesh;
-    if (mesh.geometry) {
+    if (mesh.geometry && !mesh.userData.skipGeometryDispose) {
       mesh.geometry.dispose?.();
     }
     if (Array.isArray(mesh.material)) {
@@ -717,6 +1580,11 @@ function cleanupTrajectoryViewer(): void {
   if (trajectorySplat) {
     trajectorySplat.dispose();
     trajectorySplat = undefined;
+  }
+
+  if (trajectorySparkRenderer) {
+    trajectorySparkRenderer.dispose();
+    trajectorySparkRenderer = undefined;
   }
 
   trajectoryRenderer?.dispose();
@@ -756,10 +1624,22 @@ function cleanupViewer(): void {
     viewerSplat = undefined;
   }
 
+  if (viewerSparkRenderer) {
+    viewerScene?.remove(viewerSparkRenderer);
+    viewerSparkRenderer.dispose();
+    viewerSparkRenderer = undefined;
+  }
+
   if (viewerProjectionMesh) {
     viewerScene?.remove(viewerProjectionMesh);
     disposeObject3D(viewerProjectionMesh);
     viewerProjectionMesh = undefined;
+  }
+
+  if (viewerSceneOccluder) {
+    viewerScene?.remove(viewerSceneOccluder);
+    disposeObject3D(viewerSceneOccluder);
+    viewerSceneOccluder = undefined;
   }
 
   if (viewerProjectorHelper) {
@@ -793,6 +1673,17 @@ function cleanupViewer(): void {
     viewerDroneDebugHelper = undefined;
   }
 
+  if (viewerRadarRoot) {
+    viewerScene?.remove(viewerRadarRoot);
+    disposeObject3D(viewerRadarRoot);
+    viewerRadarRoot = undefined;
+    viewerRadarLayerVisuals = [];
+    viewerRadarParticles = undefined;
+    viewerRadarArrowShafts = undefined;
+    viewerRadarArrowHeads = undefined;
+    viewerRadarParticleSeeds = [];
+  }
+
   viewerRenderer?.dispose();
   if (splatHostRef.value && viewerRenderer?.domElement.parentElement === splatHostRef.value) {
     splatHostRef.value.removeChild(viewerRenderer.domElement);
@@ -805,6 +1696,12 @@ function cleanupViewer(): void {
   viewerProjectorCamera = undefined;
   viewerProjectionUniforms = undefined;
   viewerPoseData = undefined;
+  radarData.value = undefined;
+  radarStatus.value = "idle";
+  radarErrorMessage.value = "";
+  radarPlaybackTime.value = 0;
+  radarFrameIndex.value = 0;
+  radarIsPlaying.value = true;
   poseFrames.value = [];
   viewerHasAlignedUserCamera = false;
 
@@ -840,6 +1737,10 @@ function resizeViewer(): void {
   viewerCamera.updateProjectionMatrix();
   viewerRenderer.setSize(width, height, false);
   viewerRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  viewerRadarLayerVisuals.forEach((visual) => {
+    const material = visual.ring.material as LineMaterial;
+    setLineMaterialResolution(material);
+  });
 }
 
 function getTrajectoryViewportSize(): { width: number; height: number } {
@@ -1006,6 +1907,34 @@ function createProjectedMeshMaterial(uniforms: ProjectionUniforms): THREE.Shader
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -1,
   });
+}
+
+function createSceneOccluderMaterial(): THREE.MeshBasicMaterial {
+  const material = new THREE.MeshBasicMaterial({
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 1,
+    toneMapped: false,
+  });
+  material.colorWrite = false;
+  material.depthTest = true;
+  material.depthWrite = true;
+  return material;
+}
+
+function createSceneOccluderMesh(source: THREE.Group): THREE.Group {
+  const occluder = source.clone(true);
+  occluder.name = "JNUSceneOccluder";
+  occluder.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.material = createSceneOccluderMaterial();
+    mesh.renderOrder = SCENE_OCCLUDER_RENDER_ORDER;
+    mesh.frustumCulled = false;
+    mesh.userData.skipGeometryDispose = true;
+  });
+  occluder.renderOrder = SCENE_OCCLUDER_RENDER_ORDER;
+  return occluder;
 }
 
 async function loadProjectionMesh(
@@ -1247,7 +2176,11 @@ async function setupTrajectoryViewer(): Promise<void> {
     camera.lookAt(trajectoryCenter);
     camera.updateProjectionMatrix();
 
-    const splat = new SplatMesh({ url: SCENE_SPLAT_URL }) as SceneSplatMesh;
+    const sparkRenderer = new SparkRenderer({ renderer, enableLod: true });
+    scene.add(sparkRenderer);
+    trajectorySparkRenderer = sparkRenderer;
+
+    const splat = new SplatMesh({ url: SCENE_SPLAT_URL, paged: true }) as SceneSplatMesh;
     splat.updateGenerator();
     splat.renderOrder = SPLAT_RENDER_ORDER;
     scene.add(splat);
@@ -1313,6 +2246,11 @@ async function setupViewer(): Promise<void> {
   }
 
   viewerStatus.value = "loading";
+  radarStatus.value = "loading";
+  radarErrorMessage.value = "";
+  radarPlaybackTime.value = 0;
+  radarFrameIndex.value = 0;
+  radarIsPlaying.value = true;
 
   const host = splatHostRef.value;
   const scene = new THREE.Scene();
@@ -1334,6 +2272,9 @@ async function setupViewer(): Promise<void> {
   renderer.sortObjects = true;
   host.appendChild(renderer.domElement);
 
+  const sparkRenderer = new SparkRenderer({ renderer, enableLod: true });
+  scene.add(sparkRenderer);
+
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.enablePan = false;
@@ -1345,6 +2286,7 @@ async function setupViewer(): Promise<void> {
   viewerScene = scene;
   viewerCamera = camera;
   viewerRenderer = renderer;
+  viewerSparkRenderer = sparkRenderer;
   viewerControls = controls;
   viewerClock = new THREE.Clock();
   resizeViewer();
@@ -1367,7 +2309,7 @@ async function setupViewer(): Promise<void> {
     viewerProjectionUniforms = createProjectionUniforms(videoTexture);
     attachViewerVideoEvents(videoElement);
 
-    const [poseData, droneModel, projectionMesh] = await Promise.all([
+    const [poseData, droneModel, projectionMesh, windData] = await Promise.all([
       fetch(POSE_JSON_URL).then(async (response) => {
         if (!response.ok) {
           throw new Error(`无法加载轨迹文件: ${response.status}`);
@@ -1376,6 +2318,19 @@ async function setupViewer(): Promise<void> {
       }),
       loadDroneModel(new FBXLoader()),
       loadProjectionMesh(new OBJLoader(), viewerProjectionUniforms),
+      fetch(WIND_DATA_URL)
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`无法加载风廓线文件: ${response.status}`);
+          }
+          return (await response.json()) as ProcessedWindData;
+        })
+        .catch((error) => {
+          radarStatus.value = "error";
+          radarErrorMessage.value =
+            error instanceof Error ? error.message : "无法加载风廓线预处理数据";
+          return undefined;
+        }),
     ]);
     if (token !== viewerInitToken) return;
 
@@ -1417,7 +2372,22 @@ async function setupViewer(): Promise<void> {
     viewerProjectionMesh = projectionMesh;
     viewerProjectionMesh.visible = true;
 
-    const splat = new SplatMesh({ url: SCENE_SPLAT_URL }) as SceneSplatMesh;
+    const sceneOccluder = createSceneOccluderMesh(projectionMesh);
+    scene.add(sceneOccluder);
+    viewerSceneOccluder = sceneOccluder;
+
+    if (windData) {
+      radarData.value = windData;
+      const radarRoot = createRadarVisualization(windData);
+      scene.add(radarRoot);
+      viewerRadarRoot = radarRoot;
+      radarStatus.value = "ready";
+      radarPlaybackTime.value = 0;
+      radarFrameIndex.value = 0;
+      radarIsPlaying.value = true;
+    }
+
+    const splat = new SplatMesh({ url: SCENE_SPLAT_URL, paged: true }) as SceneSplatMesh;
     splat.updateGenerator();
     splat.quaternion.set(0, 0, 0, 1);
     splat.renderOrder = SPLAT_RENDER_ORDER;
@@ -1441,6 +2411,13 @@ async function setupViewer(): Promise<void> {
       viewerControls.update();
       if (viewerVideoElement && !viewerVideoElement.paused) {
         currentTime.value = viewerVideoElement.currentTime;
+      }
+      if (radarStatus.value === "ready" && radarDurationSeconds.value > 0 && radarIsPlaying.value) {
+        radarPlaybackTime.value =
+          (radarPlaybackTime.value + deltaTime) % Math.max(radarDurationSeconds.value, 1);
+      }
+      if (radarStatus.value === "ready") {
+        updateRadarVisualization(radarPlaybackTime.value);
       }
       if (viewerProjectorHelper) {
         viewerProjectorHelper.visible = showProjectorHelper.value;
@@ -1509,6 +2486,14 @@ watch(showDroneModel, (value) => {
 
 watch(debugDroneModel, (value) => {
   setDroneDebugAppearance(value);
+});
+
+watch(showRadarWind, () => {
+  applyRadarVisibility();
+});
+
+watch(radarRenderMode, () => {
+  applyRadarVisibility();
 });
 
 onMounted(() => {
@@ -1793,6 +2778,85 @@ onBeforeUnmount(() => {
   color: rgba(231, 238, 250, 0.78);
 }
 
+.video-stage__radar-legend {
+  position: absolute;
+  top: 58px;
+  left: 18px;
+  z-index: 2;
+  width: 168px;
+  padding: 14px 14px 12px;
+  background: rgba(7, 16, 25, 0.78);
+  border: 1px solid rgba(116, 196, 255, 0.26);
+  border-radius: 14px;
+  box-shadow: 0 14px 28px rgba(3, 8, 14, 0.24);
+  backdrop-filter: blur(14px);
+}
+
+.video-stage__radar-legend-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #eef7ff;
+}
+
+.video-stage__radar-legend-subtitle {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(224, 237, 248, 0.74);
+}
+
+.video-stage__radar-legend-body {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  margin-top: 12px;
+}
+
+.video-stage__radar-legend-bar {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.video-stage__radar-legend-scale {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 188px;
+}
+
+.video-stage__radar-legend-item {
+  display: grid;
+  grid-template-columns: 8px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.video-stage__radar-legend-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.video-stage__radar-legend-label {
+  font-size: 11px;
+  color: rgba(224, 237, 248, 0.78);
+}
+
+.video-stage__radar-legend-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f6fbff;
+}
+
+.video-stage__radar-legend-footnote {
+  margin-top: 10px;
+  font-size: 11px;
+  color: rgba(224, 237, 248, 0.62);
+}
+
 .video-stage__overlay {
   position: absolute;
   right: 16px;
@@ -1805,6 +2869,12 @@ onBeforeUnmount(() => {
 
 .video-stage__overlay--top {
   top: 14px;
+}
+
+.video-stage__tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .video-stage__overlay--bottom {
@@ -1849,7 +2919,7 @@ onBeforeUnmount(() => {
 
 .telemetry-section {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 180px;
+  grid-template-columns: minmax(0, 1fr) 220px;
   gap: 12px;
 }
 
@@ -1945,6 +3015,55 @@ onBeforeUnmount(() => {
   color: var(--el-text-color-secondary);
 }
 
+.projection-control {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.projection-control__header,
+.projection-control__meta,
+.projection-control__switch,
+.projection-control__display-mode {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.projection-control__header {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--el-text-color-primary);
+}
+
+.projection-control__meta {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.projection-control__switch {
+  font-size: 13px;
+  color: var(--el-text-color-primary);
+}
+
+.projection-control__display-mode {
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--el-text-color-primary);
+}
+
+.projection-control__display-mode :deep(.el-radio-group) {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.projection-control__hint {
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(82, 158, 213, 0.84);
+}
+
 .detail-empty-card__footer {
   display: flex;
   justify-content: center;
@@ -1961,6 +3080,14 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
+  .video-stage__radar-legend {
+    top: auto;
+    right: 18px;
+    bottom: 68px;
+    left: auto;
+    width: min(200px, calc(100% - 36px));
+  }
+
   .video-stage__overlay--bottom {
     flex-wrap: wrap;
     gap: 10px;
