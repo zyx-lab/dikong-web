@@ -41,6 +41,7 @@ export const STORAGE_KEYS = {
 
   // ===== 租户相关 =====
   TENANT_ID: `${APP_PREFIX}:tenant:id`,
+  TENANT_CODE: `${APP_PREFIX}:tenant:code`,
   TENANT_INFO: `${APP_PREFIX}:tenant:info`,
 
   // ===== 系统相关 =====

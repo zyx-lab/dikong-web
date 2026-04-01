@@ -212,6 +212,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
 import { ArrowRight, PieChart, TrendCharts } from "@element-plus/icons-vue";
 import InfoPanel from "@/components/InfoPanel.vue";
 
@@ -385,6 +386,12 @@ const overviewBlocks = computed(() => [
 const focusItems = computed(() => recentAlerts.value.slice(0, 4));
 
 function goTo(path: string): void {
+  const resolved = router.resolve(path);
+  if (resolved.matched.length === 0) {
+    ElMessage.info("首批联调阶段仅开放首页，其他业务页将在下一步逐个接入。");
+    return;
+  }
+
   router.push(path);
 }
 

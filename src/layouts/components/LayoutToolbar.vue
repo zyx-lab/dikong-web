@@ -23,7 +23,7 @@
       </div>
 
       <!-- 通知 -->
-      <div class="navbar-actions__item">
+      <div v-if="showNoticeDropdown" class="navbar-actions__item">
         <NoticeDropdown />
       </div>
 
@@ -95,6 +95,7 @@ const router = useRouter();
 const isDesktop = computed(() => appStore.device === DeviceEnum.DESKTOP);
 
 const canSwitchTenant = computed(() => userStore.userInfo?.canSwitchTenant === true);
+const showNoticeDropdown = computed(() => (userStore.userInfo?.perms?.length ?? 0) > 0);
 
 // 是否显示租户选择
 const showTenantSwitcher = computed(() => {

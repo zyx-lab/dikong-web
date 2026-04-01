@@ -1,197 +1,227 @@
 import { store } from "@/store";
 import TenantAPI from "@/api/system/tenant";
-import type { TenantInfo } from "@/types/api";
 import { STORAGE_KEYS } from "@/constants";
-import AuthAPI from "@/api/auth";
-import { AuthStorage } from "@/utils/auth";
+import type { TenantContext, TenantInfo } from "@/types/api";
 
-/**
- * 租户 Store
- */
+type TenantRecoveryStatus = "recovered" | "login-required";
+
+interface TenantRecoveryResult {
+  status: TenantRecoveryStatus;
+  context: TenantContext | null;
+}
+
+function buildTenantInfoFromContext(
+  context: TenantContext,
+  fallback?: TenantInfo | null
+): TenantInfo {
+  return {
+    id: context.tenant.tenantId,
+    tenantId: context.tenant.tenantId,
+    tenantCode: context.tenant.tenantCode,
+    name: context.tenant.name || fallback?.name || "",
+    memberId: context.member.memberId,
+    roleCodes: context.member.roleCodes ?? fallback?.roleCodes ?? [],
+    status: context.tenant.status ?? fallback?.status,
+    domain: fallback?.domain,
+  };
+}
+
 export const useTenantStore = defineStore("tenant", () => {
-  // 当前租户ID
   const currentTenantId = ref<number | null>(null);
-  // 当前租户信息
+  const currentTenantCode = ref("");
   const currentTenant = ref<TenantInfo | null>(null);
-  // 用户可访问的租户列表
   const tenantList = ref<TenantInfo[]>([]);
 
-  /**
-   * 恢复租户信息
-   * 从 localStorage 恢复上次使用的租户
-   */
-  function restoreTenant() {
+  function restoreTenant(): void {
     const savedTenantId = localStorage.getItem(STORAGE_KEYS.TENANT_ID);
+    const savedTenantCode = localStorage.getItem(STORAGE_KEYS.TENANT_CODE);
     const savedTenantInfo = localStorage.getItem(STORAGE_KEYS.TENANT_INFO);
 
     if (savedTenantId) {
       currentTenantId.value = Number(savedTenantId);
     }
 
-    if (savedTenantInfo) {
-      try {
-        currentTenant.value = JSON.parse(savedTenantInfo);
-      } catch (e) {
-        console.error("解析租户信息失败", e);
-      }
+    if (savedTenantCode) {
+      currentTenantCode.value = savedTenantCode;
+    }
+
+    if (!savedTenantInfo) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(savedTenantInfo) as TenantInfo;
+      currentTenant.value = parsed;
+      currentTenantId.value = parsed.tenantId ?? parsed.id ?? currentTenantId.value;
+      currentTenantCode.value = parsed.tenantCode ?? currentTenantCode.value;
+    } catch (error) {
+      console.error("Failed to restore tenant info.", error);
     }
   }
 
-  /**
-   * 获取用户租户列表
-   */
   async function fetchTenantList(): Promise<TenantInfo[]> {
-    const data = await TenantAPI.getTenantList();
-    tenantList.value = data || [];
-    return data || [];
+    const list = await TenantAPI.getTenantList();
+    tenantList.value = list || [];
+    return tenantList.value;
   }
 
-  /**
-   * 加载租户
-   *
-   * 执行流程：
-   * 1. 获取用户可访问的租户列表
-   * 2. 尝试获取后端当前租户
-   * 3. 如果只有一个租户，自动选中
-   * 4. 否则等待用户手动选择
-   *
-   * @remarks
-   * 此方法由路由守卫调用，仅在启用多租户时执行
-   */
-  async function loadTenant() {
+  function findMatchedTenant(list: TenantInfo[]): TenantInfo | null {
+    if (currentTenantCode.value) {
+      return list.find((item) => item.tenantCode === currentTenantCode.value) ?? null;
+    }
+
+    if (currentTenantId.value != null) {
+      return list.find((item) => (item.tenantId ?? item.id) === currentTenantId.value) ?? null;
+    }
+
+    return null;
+  }
+
+  function resolveTenantSelection(list: TenantInfo[]): TenantInfo | null {
+    const matchedTenant = findMatchedTenant(list);
+    if (matchedTenant) {
+      return matchedTenant;
+    }
+
+    // When the stored selection is stale or missing, fall back to the first
+    // accessible tenant so the UI can continue working without a full reload.
+    return list[0] ?? null;
+  }
+
+  async function loadTenant(): Promise<TenantContext | null> {
     restoreTenant();
 
-    // 1. 获取租户列表
-    await fetchTenantList();
-
-    // 2. 校验本地恢复的租户是否仍然可用（避免 tenantId 不在列表导致无默认选中）
-    if (
-      currentTenantId.value != null &&
-      tenantList.value.length > 0 &&
-      !tenantList.value.some((t) => t.id === currentTenantId.value)
-    ) {
-      console.debug("[Tenant] 本地租户已不可用，清除并重新选择:", currentTenantId.value);
-      clearLocalTenant();
+    const list = await fetchTenantList();
+    if (list.length === 0) {
+      clearTenant();
+      return null;
     }
 
-    // 3. 如果已有租户列表，则保证一定有一个默认租户被选中
-    if (tenantList.value.length > 0) {
-      // 3.1 优先后端当前租户
-      if (currentTenantId.value == null) {
-        const currentTenantInfo = await safeGetCurrentTenant();
-        if (currentTenantInfo) {
-          setCurrentTenant(currentTenantInfo);
-          return;
-        }
-      }
+    const hasStoredSelection =
+      !!currentTenantCode.value || currentTenantId.value !== null || currentTenant.value !== null;
+    const matchedTenant = findMatchedTenant(list);
 
-      // 3.2 本地已有 tenantId，但 currentTenant 为空时，从列表补全 tenantInfo（保持展示名称一致）
-      if (currentTenantId.value != null && !currentTenant.value) {
-        const matched = tenantList.value.find((t) => t.id === currentTenantId.value);
-        if (matched) {
-          setCurrentTenant(matched);
-          return;
-        }
-      }
-
-      // 3.3 兜底：默认选中第一个（即使有多个租户，也保证 TenantSwitcher 有默认选中）
-      if (currentTenantId.value == null) {
-        setCurrentTenant(tenantList.value[0]);
-        console.debug("[Tenant] 默认选中第一个租户:", tenantList.value[0].name);
-      }
+    // The persisted selection is no longer valid. Clear only the selection state
+    // and keep the freshly fetched tenant list available to the UI.
+    if (hasStoredSelection && !matchedTenant) {
+      clearTenant();
     }
+
+    const nextTenant = matchedTenant ?? resolveTenantSelection(list);
+    if (!nextTenant) {
+      clearTenant();
+      return null;
+    }
+
+    const context = await safeGetTenantContext(nextTenant.tenantCode);
+    if (context) {
+      setCurrentTenant(buildTenantInfoFromContext(context, nextTenant));
+      return context;
+    }
+
+    clearTenant();
+    return null;
   }
 
-  /**
-   * 设置当前租户
-   *
-   * @param tenant 租户信息
-   */
-  function setCurrentTenant(tenant: TenantInfo) {
-    currentTenantId.value = tenant.id;
+  function setCurrentTenant(tenant: TenantInfo): void {
+    currentTenantId.value = tenant.tenantId ?? tenant.id;
+    currentTenantCode.value = tenant.tenantCode;
     currentTenant.value = tenant;
 
-    // 保存到 localStorage
-    localStorage.setItem(STORAGE_KEYS.TENANT_ID, String(tenant.id));
+    localStorage.setItem(STORAGE_KEYS.TENANT_ID, String(currentTenantId.value));
+    localStorage.setItem(STORAGE_KEYS.TENANT_CODE, tenant.tenantCode);
     localStorage.setItem(STORAGE_KEYS.TENANT_INFO, JSON.stringify(tenant));
   }
 
-  /**
-   * 切换租户
-   *
-   * @param tenantId 目标租户ID
-   */
-  async function switchTenant(tenantId: number): Promise<void> {
-    await refreshTokenIfSupported(tenantId);
+  async function switchTenant(tenantId: number): Promise<TenantContext | null> {
+    const matchedTenant = tenantList.value.find(
+      (item) => item.id === tenantId || item.tenantId === tenantId
+    );
 
-    const tenantInfo = await TenantAPI.switchTenant(tenantId);
-    if (tenantInfo) {
-      setCurrentTenant(tenantInfo);
-      return;
+    if (!matchedTenant) {
+      throw new Error("Target tenant was not found in the accessible tenant list.");
     }
 
-    const matched = tenantList.value.find((t) => t.id === tenantId);
-    if (matched) {
-      setCurrentTenant(matched);
-      return;
-    }
-
-    const fallback = await safeGetCurrentTenant();
-    if (fallback) {
-      setCurrentTenant(fallback);
-      return;
-    }
-
-    throw new Error("切换租户后无法获取租户信息");
+    const context = await TenantAPI.getTenantContext(matchedTenant.tenantCode);
+    setCurrentTenant(buildTenantInfoFromContext(context, matchedTenant));
+    return context;
   }
 
-  /**
-   * 清除租户信息
-   */
-  function clearTenant() {
+  async function recoverTenantContext(): Promise<TenantRecoveryResult> {
+    resetTenantState();
+
+    try {
+      const list = await fetchTenantList();
+      if (list.length !== 1) {
+        return {
+          status: "login-required",
+          context: null,
+        };
+      }
+
+      const nextTenant = list[0];
+      const context = await safeGetTenantContext(nextTenant.tenantCode);
+      if (!context) {
+        resetTenantState();
+        return {
+          status: "login-required",
+          context: null,
+        };
+      }
+
+      setCurrentTenant(buildTenantInfoFromContext(context, nextTenant));
+      return {
+        status: "recovered",
+        context,
+      };
+    } catch (error) {
+      console.debug("[Tenant] Failed to recover tenant context.", error);
+      resetTenantState();
+      return {
+        status: "login-required",
+        context: null,
+      };
+    }
+  }
+
+  // Clear only the current selection. Keep tenantList intact because it is the
+  // source-of-truth data returned by the backend and may still be needed by the UI.
+  function clearTenant(): void {
     currentTenantId.value = null;
+    currentTenantCode.value = "";
     currentTenant.value = null;
-    tenantList.value = [];
     clearLocalTenant();
   }
 
-  function clearLocalTenant() {
+  function resetTenantState(): void {
+    clearTenant();
+    tenantList.value = [];
+  }
+
+  function clearLocalTenant(): void {
     localStorage.removeItem(STORAGE_KEYS.TENANT_ID);
+    localStorage.removeItem(STORAGE_KEYS.TENANT_CODE);
     localStorage.removeItem(STORAGE_KEYS.TENANT_INFO);
   }
 
-  async function safeGetCurrentTenant(): Promise<TenantInfo | null> {
+  async function safeGetTenantContext(tenantCode: string): Promise<TenantContext | null> {
     try {
-      return await TenantAPI.getCurrentTenant();
+      return await TenantAPI.getTenantContext(tenantCode);
     } catch (error) {
-      console.debug("[Tenant] 获取当前租户失败，尝试本地/默认选择:", error);
+      console.debug("[Tenant] Failed to load tenant context.", error);
       return null;
     }
   }
 
-  async function refreshTokenIfSupported(tenantId: number): Promise<void> {
-    try {
-      const token = await AuthAPI.switchTenant(tenantId);
-      if (token?.accessToken && token?.refreshToken) {
-        AuthStorage.setTokens(token.accessToken, token.refreshToken, AuthStorage.getRememberMe());
-      }
-    } catch {
-      // 忽略：非平台用户或后端未启用该接口时，回退到旧接口
-    }
-  }
-
-  /**
-   * 设置租户列表
-   */
-  function setTenantList(list: TenantInfo[]) {
+  function setTenantList(list: TenantInfo[]): void {
     tenantList.value = list || [];
   }
 
-  // 恢复本地租户信息
   restoreTenant();
 
   return {
     currentTenantId,
+    currentTenantCode,
     currentTenant,
     tenantList,
     loadTenant,
@@ -199,13 +229,12 @@ export const useTenantStore = defineStore("tenant", () => {
     setTenantList,
     setCurrentTenant,
     switchTenant,
+    recoverTenantContext,
     clearTenant,
+    resetTenantState,
   };
 });
 
-/**
- * 在组件外部使用 TenantStore 的钩子函数
- */
 export function useTenantStoreHook() {
   return useTenantStore(store);
 }

@@ -1,6 +1,6 @@
 import request from "@/utils/request";
 import type {
-  UserInfo,
+  IamProfileResponse,
   UserForm,
   UserQueryParams,
   UserItem,
@@ -22,8 +22,8 @@ const UserAPI = {
    * @returns 登录用户昵称、头像信息，包括角色和权限
    */
   getInfo() {
-    return request<any, UserInfo>({
-      url: `${USER_BASE_URL}/me`,
+    return request<any, IamProfileResponse>({
+      url: "/api/v1/iam/me/profile",
       method: "get",
     });
   },
