@@ -1,53 +1,79 @@
 import request from "@/utils/request";
 import type {
+  PageResult,
+  TenantContext,
   TenantCreateForm,
+  TenantCreateResult,
   TenantForm,
   TenantInfo,
-  TenantCreateResult,
-  TenantQueryParams,
   TenantItem,
+  TenantQueryParams,
 } from "@/types/api";
 
 const TENANT_BASE_URL = "/api/v1/tenants";
+const IAM_TENANT_BASE_URL = "/api/v1/iam";
 
-/**
- * 租户信息
- */
+interface TenantDirectoryItem {
+  id?: number;
+  tenantId?: number;
+  tenantCode?: string;
+  name?: string;
+  memberId?: number;
+  roleCodes?: string[];
+  status?: string;
+  domain?: string;
+}
+
+function normalizeTenantInfo(item?: TenantDirectoryItem | TenantInfo | null): TenantInfo {
+  const tenantId = Number(item?.tenantId ?? item?.id ?? 0);
+
+  return {
+    id: tenantId,
+    tenantId,
+    tenantCode: item?.tenantCode ?? "",
+    name: item?.name ?? "",
+    memberId: item?.memberId,
+    roleCodes: item?.roleCodes ?? [],
+    status: item?.status,
+    domain: item?.domain,
+  };
+}
 
 const TenantAPI = {
-  /**
-   * 获取当前用户可访问的租户列表
-   */
   getTenantList() {
-    return request<any, TenantInfo[]>({
-      url: `${TENANT_BASE_URL}/options`,
+    return request<any, PageResult<TenantDirectoryItem>>({
+      url: `${IAM_TENANT_BASE_URL}/me/tenants`,
       method: "get",
-    });
+      params: {
+        pageNum: 1,
+        pageSize: 100,
+      },
+    }).then((data) => (data?.list || []).map((item) => normalizeTenantInfo(item)));
   },
 
-  /**
-   * 获取当前租户信息
-   */
-  getCurrentTenant() {
-    return request<any, TenantInfo>({
-      url: `${TENANT_BASE_URL}/current`,
+  getTenantContext(tenantCode: string) {
+    return request<any, TenantContext>({
+      url: `${IAM_TENANT_BASE_URL}/tenant/me`,
       method: "get",
+      headers: {
+        "X-TENANT-CODE": tenantCode,
+      },
     });
   },
 
-  /**
-   * 切换租户
-   *
-   * @param tenantId 目标租户ID
-   */
-  switchTenant(tenantId: number) {
-    return request<any, TenantInfo>({
-      url: `${TENANT_BASE_URL}/${tenantId}/switch`,
-      method: "post",
+  async getCurrentTenant(tenantCode: string) {
+    const context = await this.getTenantContext(tenantCode);
+
+    return normalizeTenantInfo({
+      tenantId: context.tenant.tenantId,
+      tenantCode: context.tenant.tenantCode,
+      name: context.tenant.name,
+      status: context.tenant.status,
+      memberId: context.member.memberId,
+      roleCodes: context.member.roleCodes,
     });
   },
 
-  /** 获取租户分页数据（平台租户管理） */
   getPage(queryParams?: TenantQueryParams) {
     return request<any, PageResult<TenantItem>>({
       url: `${TENANT_BASE_URL}`,
@@ -56,7 +82,6 @@ const TenantAPI = {
     });
   },
 
-  /** 获取租户表单数据 */
   getFormData(tenantId: string) {
     return request<any, TenantForm>({
       url: `${TENANT_BASE_URL}/${tenantId}/form`,
@@ -64,7 +89,6 @@ const TenantAPI = {
     });
   },
 
-  /** 新增租户并初始化默认数据 */
   create(data: TenantCreateForm) {
     return request<any, TenantCreateResult>({
       url: `${TENANT_BASE_URL}`,
@@ -73,7 +97,6 @@ const TenantAPI = {
     });
   },
 
-  /** 修改租户 */
   update(tenantId: string, data: TenantForm) {
     return request({
       url: `${TENANT_BASE_URL}/${tenantId}`,
@@ -82,7 +105,6 @@ const TenantAPI = {
     });
   },
 
-  /** 删除租户（批量） */
   deleteByIds(ids: string) {
     return request({
       url: `${TENANT_BASE_URL}/${ids}`,
@@ -90,7 +112,6 @@ const TenantAPI = {
     });
   },
 
-  /** 修改租户状态 */
   updateStatus(tenantId: string, status: number) {
     return request({
       url: `${TENANT_BASE_URL}/${tenantId}/status`,
@@ -99,7 +120,6 @@ const TenantAPI = {
     });
   },
 
-  /** 获取租户菜单ID集合 */
   getTenantMenuIds(tenantId: number) {
     return request<any, number[]>({
       url: `${TENANT_BASE_URL}/${tenantId}/menuIds`,
@@ -107,7 +127,6 @@ const TenantAPI = {
     });
   },
 
-  /** 更新租户菜单 */
   updateTenantMenus(tenantId: number, menuIds: number[]) {
     return request({
       url: `${TENANT_BASE_URL}/${tenantId}/menus`,

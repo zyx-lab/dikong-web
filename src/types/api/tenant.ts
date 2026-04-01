@@ -1,28 +1,49 @@
 /**
- * Tenant 租户类型定义
+ * Tenant related API models.
  */
 
 import type { BaseQueryParams } from "./common";
 
-/** 租户信息 */
 export interface TenantInfo {
-  /** 租户ID */
   id: number;
-  /** 租户名称 */
+  tenantId: number;
+  tenantCode: string;
   name: string;
-  /** 租户域名 */
+  memberId?: number;
+  roleCodes?: string[];
+  status?: string;
   domain?: string;
 }
 
-/** 租户分页查询参数 */
+export interface TenantContextTenant {
+  tenantId: number;
+  tenantCode: string;
+  name: string;
+  status?: string;
+  plan?: unknown;
+  remark?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TenantContextMember {
+  memberId: number;
+  userId: number;
+  displayName?: string;
+  status?: string;
+  roleCodes: string[];
+}
+
+export interface TenantContext {
+  tenant: TenantContextTenant;
+  member: TenantContextMember;
+}
+
 export interface TenantQueryParams extends BaseQueryParams {
-  /** 关键字(租户名称/租户编码/域名) */
   keywords?: string;
-  /** 租户状态(1-正常 0-禁用) */
   status?: number;
 }
 
-/** 租户分页对象 */
 export interface TenantItem {
   id?: string;
   name?: string;
@@ -40,7 +61,6 @@ export interface TenantItem {
   updateTime?: string;
 }
 
-/** 租户表单对象（编辑） */
 export interface TenantForm {
   id?: string;
   name?: string;
@@ -56,7 +76,6 @@ export interface TenantForm {
   expireTime?: string;
 }
 
-/** 新增租户表单对象 */
 export interface TenantCreateForm {
   name?: string;
   code?: string;
@@ -71,7 +90,6 @@ export interface TenantCreateForm {
   adminUsername?: string;
 }
 
-/** 新增租户结果 */
 export interface TenantCreateResult {
   tenantId?: string;
   tenantCode?: string;
