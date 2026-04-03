@@ -1,0 +1,210 @@
+.low-altitude-screen-page {
+  position: relative;
+  min-height: calc(100vh - 30px);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(169, 187, 128, 0.24), transparent 18%),
+    radial-gradient(circle at 74% 24%, rgba(114, 145, 101, 0.18), transparent 22%),
+    linear-gradient(
+      145deg,
+      #0b131b 0%,
+      #18242d 18%,
+      #253b30 42%,
+      #564331 64%,
+      #23372f 82%,
+      #0c151d 100%
+    );
+  border-radius: 24px;
+}
+
+.low-altitude-screen-page__left {
+  position: absolute;
+  top: 22px;
+  bottom: 22px;
+  left: 22px;
+  z-index: 4;
+  width: 304px;
+}
+
+.low-altitude-screen-page__right {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  bottom: 22px;
+  z-index: 4;
+  display: grid;
+  grid-template-rows: 240px 1fr;
+  gap: 14px;
+  width: 290px;
+}
+
+.low-altitude-scene-host {
+  position: relative;
+  width: 100%;
+  min-height: calc(100vh - 30px);
+}
+
+.low-altitude-scene-host__canvas,
+.low-altitude-scene-host__overlay,
+.low-altitude-scene-host__slot {
+  position: absolute;
+  inset: 0;
+}
+
+.low-altitude-scene-host__canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.low-altitude-scene-host__overlay {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.low-altitude-scene-host__route {
+  fill: none;
+  stroke: #61c4ff;
+  stroke-width: 0.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.low-altitude-scene-host__marker {
+  position: absolute;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  cursor: pointer;
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08);
+  transform: translate3d(0, 0, 0);
+
+  &.is-success {
+    background: #7deab8;
+  }
+
+  &.is-primary {
+    background: #f4f6f8;
+  }
+
+  &.is-danger {
+    background: #ff8e8e;
+  }
+}
+
+.low-altitude-scene-host__label {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  display: inline-flex;
+  padding: 8px 10px;
+  color: #eaf6ff;
+  white-space: nowrap;
+  background: rgba(9, 18, 22, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  transform: translateX(-50%);
+}
+
+.low-altitude-scene-host__slot {
+  z-index: 3;
+}
+
+.task-situation-panel,
+.drone-online-panel,
+.alert-broadcast-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  padding: 18px;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(10, 18, 24, 0.8), rgba(10, 18, 24, 0.62));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  box-shadow: 0 20px 28px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px);
+}
+
+.task-situation-panel__header,
+.drone-online-panel__header,
+.alert-broadcast-panel__header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.task-situation-panel__title,
+.drone-online-panel__title,
+.alert-broadcast-panel__title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.task-situation-panel__summary,
+.drone-online-panel__summary,
+.alert-broadcast-panel__summary {
+  display: grid;
+  gap: 10px;
+}
+
+.task-situation-panel__summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.drone-online-panel__summary,
+.alert-broadcast-panel__summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.task-situation-panel__summary-item,
+.drone-online-panel__summary-item,
+.alert-broadcast-panel__summary-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px 10px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+}
+
+.task-situation-panel__summary-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.task-situation-panel__summary-value,
+.drone-online-panel__summary-item strong,
+.alert-broadcast-panel__summary-item strong {
+  font-size: 1.625rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.task-situation-panel__rows,
+.drone-online-panel__rows,
+.alert-broadcast-panel__rows {
+  display: grid;
+  gap: 10px;
+}
+
+.task-situation-panel__row,
+.drone-online-panel__row,
+.alert-broadcast-panel__row {
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+}
+
+.task-situation-panel__row-head {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}

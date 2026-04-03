@@ -41,6 +41,16 @@ export const constantRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: "low-altitude-screen",
+        component: () => import("@/views/low-altitude-screen/index.vue"),
+        name: "LowAltitudeScreen",
+        meta: {
+          title: "低空管理大屏",
+          icon: "homepage",
+          keepAlive: true,
+        },
+      },
+      {
         path: "401",
         component: () => import("@/views/error/401.vue"),
         meta: { hidden: true },
