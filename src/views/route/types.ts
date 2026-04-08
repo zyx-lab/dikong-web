@@ -95,6 +95,7 @@ export interface RouteRecordModel {
   id: string;
   code?: string;
   persisted: boolean;
+  isPublished: boolean;
   routeName: string;
   department: string;
   routeType: RouteType;

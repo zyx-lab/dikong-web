@@ -261,8 +261,10 @@ import { useWindowSize } from "@vueuse/core";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useRouter } from "vue-router";
+import RouteAPI, { type RouteRead } from "@/api/flight/route";
 import { RouteType } from "@/api/flight/types";
-import { deletePersistedRouteRecord, loadPersistedRouteRecords, saveRouteDraft } from "./storage";
+import { saveRouteDraft } from "./storage";
+import { hydrateRouteRecord } from "./route-xml";
 import type { CreateRouteForm, RouteFilterForm, RouteRecordModel } from "./types";
 import {
   createEmptyRoute,
@@ -382,18 +384,71 @@ function getRouteCardStats(route: RouteRecordModel) {
   return getRouteStatItems(route);
 }
 
-function refreshRouteRecords() {
-  routeRecords.value = loadPersistedRouteRecords();
+function ensureCurrentPage() {
+  const maxPage = Math.max(1, Math.ceil(filteredRoutes.value.length / queryParams.pageSize));
+  if (queryParams.pageNum > maxPage) {
+    queryParams.pageNum = maxPage;
+  }
 }
 
-function loadRouteList() {
-  refreshRouteRecords();
-  listLoading.value = false;
+async function fetchAllRouteSummaries(name?: string) {
+  const pageSize = 100;
+  const allRoutes: RouteRead[] = [];
+  let pageNum = 1;
+  let total = Number.POSITIVE_INFINITY;
+
+  while (allRoutes.length < total) {
+    const pageResult = await RouteAPI.getPage({
+      pageNum,
+      pageSize,
+      name,
+    });
+
+    const currentRoutes = pageResult?.list || [];
+    total = pageResult?.total ?? currentRoutes.length;
+
+    if (currentRoutes.length === 0) {
+      break;
+    }
+
+    allRoutes.push(...currentRoutes);
+    pageNum += 1;
+  }
+
+  return allRoutes;
+}
+
+async function hydrateRouteRecords(routes: RouteRead[]) {
+  return Promise.all(
+    routes.map(async (route) => {
+      try {
+        const kmzResponse = await RouteAPI.getKmz(route.id);
+        return await hydrateRouteRecord(route, kmzResponse.data);
+      } catch {
+        return hydrateRouteRecord(route);
+      }
+    })
+  );
+}
+
+async function loadRouteList() {
+  listLoading.value = true;
+
+  try {
+    const routeName = filterForm.routeName.trim();
+    const summaries = await fetchAllRouteSummaries(routeName || undefined);
+    routeRecords.value = await hydrateRouteRecords(summaries);
+    ensureCurrentPage();
+  } catch {
+    routeRecords.value = [];
+  } finally {
+    listLoading.value = false;
+  }
 }
 
 function handleQuery() {
   queryParams.pageNum = 1;
-  loadRouteList();
+  void loadRouteList();
 }
 
 function resetCreateForm() {
@@ -420,7 +475,7 @@ function handleResetQuery() {
   queryFormRef.value?.resetFields();
   resetFilterForm();
   queryParams.pageNum = 1;
-  loadRouteList();
+  void loadRouteList();
 }
 
 function closeCreateDialog() {
@@ -479,23 +534,19 @@ async function handleDeleteRoute(route: RouteRecordModel) {
       type: "warning",
     });
 
-    routeRecords.value = deletePersistedRouteRecord(route.id);
+    await RouteAPI.delete(route.id);
+    await loadRouteList();
     ElMessage.success("删除成功");
-
-    const maxPage = Math.max(1, Math.ceil(routeRecords.value.length / queryParams.pageSize));
-    if (queryParams.pageNum > maxPage) {
-      queryParams.pageNum = maxPage;
-    }
   } catch {
     // 用户取消
   }
 }
 
 onMounted(() => {
-  refreshRouteRecords();
+  void loadRouteList();
 });
 
 onActivated(() => {
-  refreshRouteRecords();
+  void loadRouteList();
 });
 </script>

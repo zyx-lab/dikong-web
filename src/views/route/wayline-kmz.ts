@@ -1,4 +1,5 @@
 import { RouteType } from "@/api/flight/types";
+import { buildRoutePayloadExtendedDataXml } from "./route-payload";
 import type { CameraMode, LoopRouteConfig, RouteRecordModel } from "./types";
 
 const XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>';
@@ -148,9 +149,18 @@ export async function buildWaylineKmzFile(
   });
 }
 
+export function buildRouteTemplateXml(route: RouteRecordModel, options: WaylineBuildOptions) {
+  return buildTemplateKml(route, buildDispatchMission(route), options);
+}
+
 export function ensureKmzFileName(fileName: string) {
   const safeName = (fileName || "航线").trim().replace(/[\\/:*?"<>|]/g, "-") || "航线";
   return safeName.toLowerCase().endsWith(".kmz") ? safeName : `${safeName}.kmz`;
+}
+
+export function ensureRouteXmlFileName(fileName: string) {
+  const safeName = (fileName || "航线").trim().replace(/[\\/:*?"<>|]/g, "-") || "航线";
+  return safeName.toLowerCase().endsWith(".xml") ? safeName : `${safeName}.xml`;
 }
 
 function buildDispatchMission(route: RouteRecordModel): DispatchMission {
@@ -273,6 +283,7 @@ function buildTemplateKml(
     `  <wpml:author>${escapeXml(options.author || route.creatorName || "系统用户")}</wpml:author>`,
     `  <wpml:createTime>${Date.now()}</wpml:createTime>`,
     `  <wpml:updateTime>${Date.now()}</wpml:updateTime>`,
+    ...buildRoutePayloadExtendedDataXml(route).map((line) => `  ${line}`),
     buildMissionConfig(route, options.device)
       .map((line) => `  ${line}`)
       .join("\n"),

@@ -180,6 +180,7 @@ export function createEmptyRoute(overrides?: Partial<RouteRecordModel>): RouteRe
     id: overrides?.id ?? createRouteDraftId(),
     code: overrides?.code,
     persisted: overrides?.persisted ?? false,
+    isPublished: overrides?.isPublished ?? false,
     routeName: overrides?.routeName ?? "",
     department: overrides?.department ?? "",
     routeType,
