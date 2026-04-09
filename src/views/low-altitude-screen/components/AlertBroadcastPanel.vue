@@ -1,34 +1,55 @@
 <template>
-  <section class="alert-broadcast-panel">
-    <header class="alert-broadcast-panel__header">
-      <span class="alert-broadcast-panel__title">重点告警</span>
-      <div class="alert-broadcast-panel__summary">
-        <div class="alert-broadcast-panel__summary-item">
-          <span>总数</span>
-          <strong>{{ model.summary.totalCount }}</strong>
-        </div>
-        <div class="alert-broadcast-panel__summary-item">
-          <span>高等级</span>
-          <strong>{{ model.summary.highLevelCount }}</strong>
-        </div>
-        <div class="alert-broadcast-panel__summary-item">
-          <span>跟踪中</span>
-          <strong>{{ model.summary.trackingCount }}</strong>
-        </div>
-      </div>
-    </header>
+  <section class="screen-panel panel-block alert-warning-panel">
+    <div class="panel-heading">
+      <span class="panel-heading__dot"></span>
+      <h3>异常告警</h3>
+    </div>
 
-    <div class="alert-broadcast-panel__rows">
-      <article
-        v-for="row in model.rows"
-        :key="row.id"
-        class="alert-broadcast-panel__row"
-        data-testid="alert-row"
-      >
-        <strong>{{ row.title }}</strong>
-        <span>{{ row.levelLabel }}</span>
-        <div>{{ row.happenedAt }}</div>
-      </article>
+    <div class="screen-panel__body">
+      <section class="headline-metric" data-testid="alert-headline-metric">
+        <span class="headline-metric__label">待核实告警</span>
+        <strong class="headline-metric__value">{{ model.pendingCount }}</strong>
+      </section>
+
+      <section class="screen-section">
+        <div class="screen-section__title">闭环进度</div>
+        <div class="progress-card">
+          <div class="progress-card__row">
+            <span class="progress-card__label">已闭环</span>
+            <strong class="progress-card__value">
+              {{ model.closureDone }} / {{ model.closureTotal }}
+            </strong>
+          </div>
+          <div class="progress-card__bar">
+            <span
+              class="progress-card__fill"
+              :style="{ width: `${Math.max(model.closureRate * 100, 8)}%` }"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class="screen-section screen-section--fill">
+        <div class="screen-section__title">最近异常事件</div>
+        <div class="feed-list feed-list--auto">
+          <article
+            v-for="event in model.events"
+            :key="event.id"
+            class="feed-item feed-item--two-line"
+            data-testid="alert-event-item"
+          >
+            <div class="feed-item__row">
+              <strong class="feed-item__title">{{ event.title }}</strong>
+              <span :class="['status-pill', `is-${event.statusTone ?? 'cyan'}`]">
+                {{ event.statusText }}
+              </span>
+            </div>
+            <div class="feed-item__row feed-item__row--subtle">
+              <span class="feed-item__meta">{{ event.happenedAt }}</span>
+            </div>
+          </article>
+        </div>
+      </section>
     </div>
   </section>
 </template>

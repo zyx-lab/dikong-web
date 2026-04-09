@@ -1,8 +1,28 @@
 <template>
-  <div class="low-altitude-scene-host">
+  <div ref="hostRef" class="low-altitude-scene-host">
     <canvas ref="canvasRef" class="low-altitude-scene-host__canvas" />
 
-    <svg class="low-altitude-scene-host__overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <div v-if="sceneStatus !== 'ready'" class="low-altitude-scene-host__status">
+      <div class="low-altitude-scene-host__status-card">
+        <div class="low-altitude-scene-host__status-title">
+          {{
+            sceneStatus === "loading"
+              ? "3DGS 场景加载中"
+              : sceneStatus === "unsupported"
+                ? "当前环境不支持 3DGS 场景"
+                : "3DGS 场景加载失败"
+          }}
+        </div>
+        <div class="low-altitude-scene-host__status-text">{{ sceneErrorMessage }}</div>
+      </div>
+    </div>
+
+    <svg
+      v-if="model.routes.length"
+      class="low-altitude-scene-host__overlay"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+    >
       <polyline
         v-for="route in model.routes"
         :key="route.id"
@@ -33,7 +53,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { mountDashboardScene, type DashboardSceneRuntime } from "../scene/runtime";
 import { buildSceneModel } from "../scene-model";
-import type { SceneMarker, SceneRouteLine } from "../types";
+import type { LowAltitudeSceneConfig, SceneMarker, SceneRouteLine } from "../types";
 
 interface SceneDisplayModel {
   routes: SceneRouteLine[];
@@ -43,12 +63,17 @@ interface SceneDisplayModel {
 
 const props = defineProps<{
   model: SceneDisplayModel;
+  sceneConfig: LowAltitudeSceneConfig;
 }>();
 
+const hostRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const runtimeRef = shallowRef<DashboardSceneRuntime | null>(null);
 const selectedMarkerId = ref<string | null>(props.model.selectedMarkerId);
+const sceneStatus = ref<"loading" | DashboardSceneRuntime["status"]>("loading");
+const sceneErrorMessage = ref("正在初始化 Spark 渲染器并加载 3DGS 资源...");
 const handleResize = () => runtimeRef.value?.resize();
+let resizeObserver: ResizeObserver | undefined;
 
 const model = ref(buildSceneModel(props.model));
 
@@ -77,12 +102,20 @@ watch(
 onMounted(async () => {
   await nextTick();
   if (canvasRef.value) {
-    runtimeRef.value = mountDashboardScene(canvasRef.value);
+    runtimeRef.value = await mountDashboardScene(canvasRef.value, props.sceneConfig);
+    sceneStatus.value = runtimeRef.value.status;
+    sceneErrorMessage.value = runtimeRef.value.errorMessage;
+  }
+  if (hostRef.value) {
+    resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(hostRef.value);
   }
   window.addEventListener("resize", handleResize);
 });
 
 onBeforeUnmount(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = undefined;
   window.removeEventListener("resize", handleResize);
   runtimeRef.value?.destroy();
 });

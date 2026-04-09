@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
+      "@sparkjsdev/spark": resolve(__dirname, "vendor/spark/dist/spark.module.js"),
     },
   },
   test: {

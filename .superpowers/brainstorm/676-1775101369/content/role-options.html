@@ -1,0 +1,165 @@
+<h2>低空管理大屏，先定主角色</h2>
+<p class="subtitle">
+  先不要急着堆功能。先决定这块屏幕最主要服务谁、第一眼要回答什么问题。你可以点击其中一个方向。
+</p>
+
+<div class="section">
+  <div class="cards">
+    <div class="card" data-choice="situation" onclick="toggleSelect(this)">
+      <div class="card-image">
+        <div class="mockup">
+          <div class="mockup-header">A. 态势总览型</div>
+          <div class="mockup-body">
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 24% 1fr 24%;
+                gap: 10px;
+                min-height: 240px;
+              "
+            >
+              <div style="display: grid; gap: 10px">
+                <div class="placeholder" style="min-height: 56px">运行指标</div>
+                <div class="placeholder" style="min-height: 74px">任务窗口</div>
+                <div class="placeholder" style="min-height: 74px">资源状态</div>
+              </div>
+              <div
+                class="placeholder"
+                style="
+                  min-height: 240px;
+                  color: #d9f3ff;
+                  background: linear-gradient(135deg, #153956, #234f78);
+                "
+              >
+                主地图 / 空域态势
+              </div>
+              <div style="display: grid; gap: 10px">
+                <div class="placeholder" style="min-height: 56px">告警统计</div>
+                <div class="placeholder" style="min-height: 74px">重点事件</div>
+                <div class="placeholder" style="min-height: 74px">值守播报</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>态势总览型</h3>
+        <p>
+          中心是一张大地图，左右是指标、任务、告警和重点事件。适合领导驾驶舱、总值守、汇报展示。
+        </p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="dispatch" onclick="toggleSelect(this)">
+      <div class="card-image">
+        <div class="mockup">
+          <div class="mockup-header">B. 指挥处置型</div>
+          <div class="mockup-body">
+            <div
+              style="display: grid; grid-template-columns: 1fr 32%; gap: 10px; min-height: 240px"
+            >
+              <div style="display: grid; grid-template-rows: 1fr 78px; gap: 10px">
+                <div
+                  class="placeholder"
+                  style="
+                    min-height: 152px;
+                    color: #d9f3ff;
+                    background: linear-gradient(135deg, #163a50, #1f6c83);
+                  "
+                >
+                  主地图 / 航迹 / 视频点位
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px">
+                  <div class="placeholder">无人机状态</div>
+                  <div class="placeholder">飞手席位</div>
+                  <div class="placeholder">联动部门</div>
+                </div>
+              </div>
+              <div style="display: grid; gap: 10px">
+                <div class="placeholder" style="min-height: 64px">当前警情</div>
+                <div class="placeholder" style="min-height: 64px">处置流程</div>
+                <div class="placeholder" style="min-height: 64px">待办指令</div>
+                <div class="placeholder" style="min-height: 64px">回传结果</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>指挥处置型</h3>
+        <p>
+          地图仍然是核心，但右侧更强调当前告警、联动流程、处置动作和反馈闭环。适合真正的值守调度席。
+        </p>
+      </div>
+    </div>
+
+    <div class="card" data-choice="governance" onclick="toggleSelect(this)">
+      <div class="card-image">
+        <div class="mockup">
+          <div class="mockup-header">C. 运营监管型</div>
+          <div class="mockup-body">
+            <div
+              style="display: grid; grid-template-rows: 64px 1fr 84px; gap: 10px; min-height: 240px"
+            >
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px">
+                <div class="placeholder">飞行架次</div>
+                <div class="placeholder">合规率</div>
+                <div class="placeholder">设备完好率</div>
+                <div class="placeholder">工单闭环率</div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 10px">
+                <div
+                  class="placeholder"
+                  style=" color: #d9f3ff;background: linear-gradient(135deg, #153956, #234f78)"
+                >
+                  区域地图 / 热区分布
+                </div>
+                <div class="placeholder">单位排行 / 风险榜</div>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px">
+                <div class="placeholder">趋势分析</div>
+                <div class="placeholder">问题归因</div>
+                <div class="placeholder">整改追踪</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3>运营监管型</h3>
+        <p>
+          更像监管平台和经营驾驶舱，强调考核、覆盖率、趋势和闭环。适合管理层、月度运行分析和平台运营中心。
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>我建议先从 B 开始</h4>
+      <ul>
+        <li>和你给的值守大厅参考图最接近，视觉中心是地图。</li>
+        <li>更容易和当前仓库已有的任务、告警、工单、资源模块串起来。</li>
+        <li>后续既能往领导总览扩，也能往实际联动处置扩。</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>如果选错方向，常见问题</h4>
+      <ul>
+        <li>A 容易好看但不够能用，变成“展示屏”。</li>
+        <li>B 如果做得太满，会显得压迫，需要严格控制信息层级。</li>
+        <li>C 更适合周报月报，不一定适合实时值守大厅。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="label">这一步只回答一个问题</div>
+  <p>
+    这块低空管理大屏，你更希望它首先承担哪种角色？点击一个选项，然后在终端直接告诉我你的选择，或者说“B
+    为主，但吸收 A 的领导视角”。
+  </p>
+</div>

@@ -1,34 +1,40 @@
 <template>
-  <section class="drone-online-panel">
-    <header class="drone-online-panel__header">
-      <span class="drone-online-panel__title">无人机在线态势</span>
-      <div class="drone-online-panel__summary">
-        <div class="drone-online-panel__summary-item">
-          <span>在线</span>
-          <strong>{{ model.summary.onlineCount }}</strong>
-        </div>
-        <div class="drone-online-panel__summary-item">
-          <span>可调度</span>
-          <strong>{{ model.summary.dispatchableCount }}</strong>
-        </div>
-        <div class="drone-online-panel__summary-item">
-          <span>待命</span>
-          <strong>{{ model.summary.standbyCount }}</strong>
-        </div>
-      </div>
-    </header>
+  <section class="screen-panel panel-block resource-panel">
+    <div class="panel-heading">
+      <span class="panel-heading__dot"></span>
+      <h3>资源保障</h3>
+    </div>
 
-    <div class="drone-online-panel__rows">
-      <article
-        v-for="row in model.rows"
-        :key="row.id"
-        class="drone-online-panel__row"
-        data-testid="drone-row"
-      >
-        <strong>{{ row.droneName }}</strong>
-        <div>{{ row.currentLabel }}</div>
-        <span>{{ row.statusLabel }}</span>
-      </article>
+    <div class="screen-panel__body">
+      <div class="metric-grid metric-grid--double">
+        <article
+          v-for="metric in model.metrics"
+          :key="metric.id"
+          :class="['metric-card', `is-${metric.accent ?? 'cyan'}`]"
+          data-testid="resource-metric-card"
+        >
+          <span class="metric-card__label">{{ metric.label }}</span>
+          <strong class="metric-card__value">{{ metric.value }}</strong>
+          <span v-if="metric.note" class="metric-card__note">{{ metric.note }}</span>
+        </article>
+      </div>
+
+      <section class="screen-section screen-section--fill">
+        <div class="screen-section__title">当前值守无人机</div>
+        <div class="feed-list feed-list--fixed">
+          <article
+            v-for="drone in model.dutyDrones"
+            :key="drone.id"
+            class="feed-item feed-item--single-line"
+            data-testid="resource-drone-item"
+          >
+            <strong class="feed-item__title">{{ drone.droneName }}</strong>
+            <span :class="['status-pill', `is-${drone.statusTone ?? 'cyan'}`]">
+              {{ drone.statusText }}
+            </span>
+          </article>
+        </div>
+      </section>
     </div>
   </section>
 </template>
