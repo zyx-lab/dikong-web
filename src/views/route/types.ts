@@ -100,6 +100,7 @@ export interface RouteRecordModel {
   department: string;
   routeType: RouteType;
   creatorName: string;
+  createdAt: string;
   updatedAt: string;
   droneModel: string;
   description: string;
@@ -112,14 +113,13 @@ export interface RouteRecordModel {
 
 export interface CreateRouteForm {
   routeName: string;
-  department: string;
   routeType: RouteType;
 }
 
 export interface RouteFilterForm {
   routeName: string;
   creatorName: string;
-  department: string;
   routeType?: RouteType;
+  createdRange: string[];
   updatedRange: string[];
 }

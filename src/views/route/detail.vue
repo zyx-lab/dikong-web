@@ -10,7 +10,6 @@
             <div>
               <h2>{{ activeDraft.routeName }}</h2>
               <p>
-                {{ activeDraft.department || "未配置部门" }} ·
                 {{ getRouteTypeLabel(activeDraft.routeType) }}
               </p>
             </div>
@@ -398,6 +397,7 @@ async function saveDraft() {
       savedDraft.persisted = true;
       savedDraft.isPublished = Boolean(response.is_published);
       savedDraft.routeName = response.name || savedDraft.routeName;
+      savedDraft.createdAt = formatApiDateTime(response.created_at);
       savedDraft.updatedAt = formatApiDateTime(response.updated_at);
       activeDraft.value = cloneRouteRecord(savedDraft);
       draftSnapshot.value = cloneRouteRecord(savedDraft);
@@ -434,7 +434,6 @@ async function handleDispatchRoute() {
 
 function validateCurrentDraft(draft: RouteRecordModel): boolean {
   if (!draft.routeName.trim()) return (ElMessage.warning("航线名称不能为空"), false);
-  if (!draft.department.trim()) return (ElMessage.warning("所属部门不能为空"), false);
   if (draft.routeType === RouteType.POINT && draft.points.length < 2) {
     return (ElMessage.warning("点状航线至少需要 2 个航点"), false);
   }

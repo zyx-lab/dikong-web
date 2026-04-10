@@ -185,6 +185,7 @@ export function createEmptyRoute(overrides?: Partial<RouteRecordModel>): RouteRe
     department: overrides?.department ?? "",
     routeType,
     creatorName: overrides?.creatorName ?? DEFAULT_CREATOR_NAME,
+    createdAt: overrides?.createdAt ?? formatDateTime(new Date()),
     updatedAt: overrides?.updatedAt ?? formatDateTime(new Date()),
     droneModel: overrides?.droneModel ?? DEFAULT_DRONE_MODEL,
     description: overrides?.description ?? DEFAULT_ROUTE_DESCRIPTION,

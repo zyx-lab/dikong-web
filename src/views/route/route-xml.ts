@@ -32,6 +32,7 @@ export async function hydrateRouteRecord(
     persisted: true,
     isPublished: Boolean(route.is_published),
     routeName: payload?.routeName?.trim() || route.name || "",
+    createdAt: formatApiDateTime(route.created_at),
     updatedAt: formatApiDateTime(route.updated_at),
   });
 }
