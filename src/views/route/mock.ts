@@ -16,6 +16,7 @@ export function createMockRoutes(): RouteRecordModel[] {
     department: "市交通局",
     routeType: RouteType.POINT,
     creatorName: "系统管理员",
+    createdAt: "2026-03-09 14:12:08",
     updatedAt: "2026-03-11 09:30:55",
   });
   pointRoute.globalConfig.routeSpeed = 4.6;
@@ -36,6 +37,7 @@ export function createMockRoutes(): RouteRecordModel[] {
     department: "市林业局",
     routeType: RouteType.AREA,
     creatorName: "系统管理员",
+    createdAt: "2026-03-08 16:42:31",
     updatedAt: "2026-03-11 09:30:55",
   });
   areaRoute.globalConfig.routeSpeed = 5.5;
@@ -55,6 +57,7 @@ export function createMockRoutes(): RouteRecordModel[] {
     department: "市文旅局",
     routeType: RouteType.LOOP,
     creatorName: "系统管理员",
+    createdAt: "2026-03-10 10:18:46",
     updatedAt: "2026-03-11 09:30:55",
   });
   loopRoute.globalConfig.routeSpeed = 4.2;
