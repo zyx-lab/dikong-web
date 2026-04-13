@@ -31,6 +31,9 @@ const DEFAULT_VIEW = {
   height: 2000,
 } as const;
 const NATURAL_EARTH_URL = Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII");
+const TDT_TOKEN = "ee242ce841590ad7342ea4be574716ce";
+const TDT_SUBDOMAINS = ["0", "1", "2", "3", "4", "5", "6", "7"];
+const TDT_MAXIMUM_LEVEL = 18;
 
 interface MapPalette {
   background: string;
@@ -44,6 +47,8 @@ interface MapPalette {
 let dataSource: Cesium.CustomDataSource | null = null;
 let handler: Cesium.ScreenSpaceEventHandler | null = null;
 let initVersion = 0;
+
+type TdtLayer = "vec" | "cva" | "img" | "cia" | "ter" | "cta";
 
 function getMapPalette(mode: BaseMapMode): MapPalette {
   if (props.darkMode) {
@@ -111,14 +116,32 @@ function getMapPalette(mode: BaseMapMode): MapPalette {
   };
 }
 
-function getIonImageryStyle(mode: BaseMapMode) {
-  if (mode === "standard") {
-    return Cesium.IonWorldImageryStyle.ROAD;
-  }
+function createTdtImageryProvider(layer: TdtLayer) {
+  return new Cesium.WebMapTileServiceImageryProvider({
+    url:
+      `https://t{s}.tianditu.gov.cn/${layer}_w/wmts` +
+      `?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0` +
+      `&LAYER=${layer}&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles` +
+      `&TILEMATRIX={TileMatrix}&TILEROW={TileRow}&TILECOL={TileCol}` +
+      `&tk=${TDT_TOKEN}`,
+    layer,
+    style: "default",
+    format: "tiles",
+    tileMatrixSetID: "w",
+    tilingScheme: new Cesium.WebMercatorTilingScheme(),
+    maximumLevel: TDT_MAXIMUM_LEVEL,
+    subdomains: TDT_SUBDOMAINS,
+  });
+}
 
-  return mode === "terrain"
-    ? Cesium.IonWorldImageryStyle.AERIAL_WITH_LABELS
-    : Cesium.IonWorldImageryStyle.AERIAL;
+function createTdtBaseLayer(mode: BaseMapMode) {
+  const layer: TdtLayer = mode === "satellite" ? "img" : mode === "terrain" ? "ter" : "vec";
+  return new Cesium.ImageryLayer(createTdtImageryProvider(layer));
+}
+
+function createTdtLabelProvider(mode: BaseMapMode) {
+  const layer: TdtLayer = mode === "satellite" ? "cia" : mode === "terrain" ? "cta" : "cva";
+  return createTdtImageryProvider(layer);
 }
 
 async function createNaturalEarthLayer() {
@@ -127,26 +150,11 @@ async function createNaturalEarthLayer() {
 }
 
 async function createOnlineLayer(mode: BaseMapMode) {
-  if (mode === "satellite") {
-    const imageryProvider = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
-      "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"
-    );
-    return new Cesium.ImageryLayer(imageryProvider);
-  }
-
-  return new Cesium.ImageryLayer(
-    new Cesium.OpenStreetMapImageryProvider({
-      url: "https://tile.openstreetmap.org/",
-    })
-  );
+  return createTdtBaseLayer(mode);
 }
 
 async function createIonLayer(mode: BaseMapMode) {
-  const imageryProvider = await Cesium.createWorldImageryAsync({
-    style: getIonImageryStyle(mode),
-  });
-
-  return new Cesium.ImageryLayer(imageryProvider);
+  return createTdtBaseLayer(mode);
 }
 
 async function createBaseLayer(mode: BaseMapMode, hasIonToken: boolean) {
@@ -162,7 +170,7 @@ async function createBaseLayer(mode: BaseMapMode, hasIonToken: boolean) {
   }
 
   try {
-    return await createOnlineLayer(mode === "terrain" ? "standard" : mode);
+    return await createOnlineLayer(mode);
   } catch (error) {
     console.warn(
       "[route-planner] Failed to load online imagery, fallback to NaturalEarthII.",
@@ -265,6 +273,11 @@ async function initViewer() {
   if (viewer.scene.moon) {
     viewer.scene.moon.show = false;
   }
+  viewer.imageryLayers.addImageryProvider(createTdtLabelProvider(props.baseMapMode));
+  const creditContainer = viewer.cesiumWidget.creditContainer as HTMLElement | null;
+  if (creditContainer) {
+    creditContainer.style.display = "none";
+  }
 
   applySceneTheme(viewer);
 
@@ -277,6 +290,18 @@ async function initViewer() {
     if (!cartesian) {
       return;
     }
+
+    // handler.setInputAction((movement: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
+    //     // 1. 获取屏幕点击产生的射线
+    //     const ray = viewer.camera.getPickRay(movement.position);
+    //     if (!ray) return;
+
+    //     // 2. 拾取射线与当前地球表面（包含地形）的真实交点
+    //     const cartesian = viewer.scene.globe.pick(ray, viewer.scene);
+
+    //     if (!cartesian) {
+    //       return;
+    //     }
 
     const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
     emit("mapClick", {

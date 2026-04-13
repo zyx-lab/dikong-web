@@ -71,7 +71,7 @@
                   v-if="baseMapMode === 'terrain' && !hasTerrainToken"
                   class="planner-overlay planner-overlay--warn"
                 >
-                  未配置 `VITE_CESIUM_ION_TOKEN`，当前以标准底图展示地形模式。
+                  未配置 `VITE_CESIUM_ION_TOKEN`，当前显示地形底图，但未启用真实地形高程。
                 </div>
               </div>
             </el-card>
@@ -260,7 +260,7 @@ function returnToList() {
 function handleBaseMapChange(mode: BaseMapMode) {
   baseMapMode.value = mode;
   if (mode === "terrain" && !hasTerrainToken.value) {
-    ElMessage.info("未配置 VITE_CESIUM_ION_TOKEN，将以标准底图展示地形模式。");
+    ElMessage.info("未配置 VITE_CESIUM_ION_TOKEN，当前显示地形底图，但未启用真实地形高程。");
   }
 }
 
