@@ -150,7 +150,7 @@ export const LOW_ALTITUDE_SCENE_MARKERS: SceneMarker[] = [
 ];
 
 export const LOW_ALTITUDE_SCENE_CONFIG: LowAltitudeSceneConfig = {
-  splatUrl: "/model/JNUAerial-with_Park-y_up-lod.rad",
+  splatUrl: "/JNUAerial-with_Park-y_up-lod.rad",
   backgroundColor: "#09131d",
   cameraPosition: [1.8, 1.3, 2.2],
   cameraTarget: [0, 0, 0],

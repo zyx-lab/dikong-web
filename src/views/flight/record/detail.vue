@@ -116,35 +116,6 @@
                   </div>
                 </div>
 
-                <div
-                  v-if="radarStatus === 'ready' && radarLegendStops.length"
-                  class="video-stage__radar-legend"
-                >
-                  <div class="video-stage__radar-legend-title">风速色标</div>
-                  <div class="video-stage__radar-legend-subtitle">颜色对应水平风速</div>
-                  <div class="video-stage__radar-legend-body">
-                    <div
-                      class="video-stage__radar-legend-bar"
-                      :style="{ background: radarLegendGradient }"
-                    />
-                    <div class="video-stage__radar-legend-scale">
-                      <div
-                        v-for="item in radarLegendStops"
-                        :key="item.label"
-                        class="video-stage__radar-legend-item"
-                      >
-                        <span
-                          class="video-stage__radar-legend-swatch"
-                          :style="{ background: item.color }"
-                        />
-                        <span class="video-stage__radar-legend-label">{{ item.label }}</span>
-                        <span class="video-stage__radar-legend-value">{{ item.valueText }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="video-stage__radar-legend-footnote">单位：m/s</div>
-                </div>
-
                 <div class="video-stage__overlay video-stage__overlay--bottom">
                   <button class="play-toggle" type="button" @click="togglePlayback">
                     <el-icon v-if="isPlaying"><VideoPause /></el-icon>
@@ -272,50 +243,6 @@
                       <div class="projection-control__switch">
                         <span>无人机调试</span>
                         <el-switch v-model="debugDroneModel" />
-                      </div>
-                    </div>
-                  </el-card>
-
-                  <el-card shadow="never" class="metric-card metric-card--control">
-                    <div class="projection-control">
-                      <div class="projection-control__header">
-                        <span>雷达风廓线</span>
-                        <span>{{ currentRadarTimeText }}</span>
-                      </div>
-                      <div class="projection-control__meta">
-                        <span>{{ radarStatusText }}</span>
-                        <span v-if="radarStatus === 'ready'">
-                          {{ Number(radarData?.meta.beamElevationDeg ?? 0).toFixed(0) }}°
-                        </span>
-                      </div>
-                      <div class="projection-control__switch">
-                        <span>显示粒子风场</span>
-                        <el-switch v-model="showRadarWind" :disabled="radarStatus !== 'ready'" />
-                      </div>
-                      <div class="projection-control__display-mode">
-                        <span>风场图元</span>
-                        <el-radio-group
-                          v-model="radarRenderMode"
-                          size="small"
-                          :disabled="radarStatus !== 'ready'"
-                        >
-                          <el-radio-button label="arrow">箭头</el-radio-button>
-                          <el-radio-button label="particle">粒子</el-radio-button>
-                        </el-radio-group>
-                      </div>
-                      <div class="projection-control__switch">
-                        <span>垂直气流</span>
-                        <el-switch
-                          v-model="showVerticalAirflow"
-                          :disabled="radarStatus !== 'ready'"
-                        />
-                      </div>
-                      <div class="projection-control__hint">
-                        {{
-                          radarStatus === "error"
-                            ? radarErrorMessage
-                            : "风场已按 GPS->Unity 变换落到场景坐标，并使用真实层高展示前 3 分钟的分层风场。"
-                        }}
                       </div>
                     </div>
                   </el-card>
@@ -2246,11 +2173,11 @@ async function setupViewer(): Promise<void> {
   }
 
   viewerStatus.value = "loading";
-  radarStatus.value = "loading";
+  radarStatus.value = "idle";
   radarErrorMessage.value = "";
   radarPlaybackTime.value = 0;
   radarFrameIndex.value = 0;
-  radarIsPlaying.value = true;
+  radarIsPlaying.value = false;
 
   const host = splatHostRef.value;
   const scene = new THREE.Scene();
@@ -2309,7 +2236,7 @@ async function setupViewer(): Promise<void> {
     viewerProjectionUniforms = createProjectionUniforms(videoTexture);
     attachViewerVideoEvents(videoElement);
 
-    const [poseData, droneModel, projectionMesh, windData] = await Promise.all([
+    const [poseData, droneModel, projectionMesh] = await Promise.all([
       fetch(POSE_JSON_URL).then(async (response) => {
         if (!response.ok) {
           throw new Error(`无法加载轨迹文件: ${response.status}`);
@@ -2318,19 +2245,6 @@ async function setupViewer(): Promise<void> {
       }),
       loadDroneModel(new FBXLoader()),
       loadProjectionMesh(new OBJLoader(), viewerProjectionUniforms),
-      fetch(WIND_DATA_URL)
-        .then(async (response) => {
-          if (!response.ok) {
-            throw new Error(`无法加载风廓线文件: ${response.status}`);
-          }
-          return (await response.json()) as ProcessedWindData;
-        })
-        .catch((error) => {
-          radarStatus.value = "error";
-          radarErrorMessage.value =
-            error instanceof Error ? error.message : "无法加载风廓线预处理数据";
-          return undefined;
-        }),
     ]);
     if (token !== viewerInitToken) return;
 
@@ -2376,17 +2290,6 @@ async function setupViewer(): Promise<void> {
     scene.add(sceneOccluder);
     viewerSceneOccluder = sceneOccluder;
 
-    if (windData) {
-      radarData.value = windData;
-      const radarRoot = createRadarVisualization(windData);
-      scene.add(radarRoot);
-      viewerRadarRoot = radarRoot;
-      radarStatus.value = "ready";
-      radarPlaybackTime.value = 0;
-      radarFrameIndex.value = 0;
-      radarIsPlaying.value = true;
-    }
-
     const splat = new SplatMesh({ url: SCENE_SPLAT_URL, paged: true }) as SceneSplatMesh;
     splat.updateGenerator();
     splat.quaternion.set(0, 0, 0, 1);
@@ -2411,13 +2314,6 @@ async function setupViewer(): Promise<void> {
       viewerControls.update();
       if (viewerVideoElement && !viewerVideoElement.paused) {
         currentTime.value = viewerVideoElement.currentTime;
-      }
-      if (radarStatus.value === "ready" && radarDurationSeconds.value > 0 && radarIsPlaying.value) {
-        radarPlaybackTime.value =
-          (radarPlaybackTime.value + deltaTime) % Math.max(radarDurationSeconds.value, 1);
-      }
-      if (radarStatus.value === "ready") {
-        updateRadarVisualization(radarPlaybackTime.value);
       }
       if (viewerProjectorHelper) {
         viewerProjectorHelper.visible = showProjectorHelper.value;

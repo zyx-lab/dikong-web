@@ -51,7 +51,11 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
-import { mountDashboardScene, type DashboardSceneRuntime } from "../scene/runtime";
+import {
+  mountDashboardScene,
+  type DashboardSceneMountOptions,
+  type DashboardSceneRuntime,
+} from "../scene/runtime";
 import { buildSceneModel } from "../scene-model";
 import type { LowAltitudeSceneConfig, SceneMarker, SceneRouteLine } from "../types";
 
@@ -64,6 +68,7 @@ interface SceneDisplayModel {
 const props = defineProps<{
   model: SceneDisplayModel;
   sceneConfig: LowAltitudeSceneConfig;
+  sceneOptions?: DashboardSceneMountOptions;
 }>();
 
 const hostRef = ref<HTMLDivElement | null>(null);
@@ -102,7 +107,11 @@ watch(
 onMounted(async () => {
   await nextTick();
   if (canvasRef.value) {
-    runtimeRef.value = await mountDashboardScene(canvasRef.value, props.sceneConfig);
+    runtimeRef.value = await mountDashboardScene(
+      canvasRef.value,
+      props.sceneConfig,
+      props.sceneOptions
+    );
     sceneStatus.value = runtimeRef.value.status;
     sceneErrorMessage.value = runtimeRef.value.errorMessage;
   }

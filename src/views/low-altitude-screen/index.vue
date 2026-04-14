@@ -1,6 +1,10 @@
 <template>
   <section ref="screenRef" class="low-altitude-screen-page">
-    <LowAltitudeSceneHost :model="sceneModel" :scene-config="sceneConfig">
+    <LowAltitudeSceneHost
+      :model="sceneModel"
+      :scene-config="sceneConfig"
+      :scene-options="sceneOptions"
+    >
       <div class="dashboard-stage">
         <header class="screen-header">
           <div class="screen-header__meta screen-header__meta--left">
@@ -38,6 +42,33 @@
             <div class="screen-center__viewer-shell">
               <div class="center-stage">
                 <div class="center-stage__halo" />
+                <button
+                  type="button"
+                  class="center-stage__wind-toggle"
+                  :class="{ 'is-expanded': windPanelExpanded }"
+                  @click="windPanelExpanded = !windPanelExpanded"
+                >
+                  <span>风场监测</span>
+                  <span class="center-stage__wind-toggle-icon">
+                    {{ windPanelExpanded ? "▾" : "▸" }}
+                  </span>
+                </button>
+                <WindFieldPanel
+                  v-if="windPanelExpanded"
+                  class="center-stage__wind-panel"
+                  :beam-elevation-deg="windBeamElevationDeg"
+                  :current-time-text="windCurrentTimeText"
+                  :error-message="windErrorMessage"
+                  :layer-count="windLayerCount"
+                  :legend-stops="windLegendStops"
+                  :render-mode="windRenderMode"
+                  :show-vertical-airflow="showWindVerticalAirflow"
+                  :status="windStatus"
+                  :visible="showWindField"
+                  @set-render-mode="windRenderMode = $event"
+                  @toggle-visible="showWindField = !showWindField"
+                  @toggle-vertical-airflow="showWindVerticalAirflow = !showWindVerticalAirflow"
+                />
               </div>
             </div>
           </section>
@@ -63,6 +94,7 @@ import TaskSituationPanel from "./components/TaskSituationPanel.vue";
 import DroneOnlinePanel from "./components/DroneOnlinePanel.vue";
 import AlertBroadcastPanel from "./components/AlertBroadcastPanel.vue";
 import FlightClosurePanel from "./components/FlightClosurePanel.vue";
+import WindFieldPanel from "./components/WindFieldPanel.vue";
 import {
   LOW_ALTITUDE_ALERT_PANEL,
   LOW_ALTITUDE_DRONE_PANEL,
@@ -71,6 +103,13 @@ import {
   LOW_ALTITUDE_TASK_PANEL,
 } from "./static-data";
 import { buildSceneModel } from "./scene-model";
+import {
+  buildWindLegendStops,
+  createWindFieldSceneExtension,
+  type WindFieldStatus,
+  type WindLegendStop,
+  type WindRenderMode,
+} from "./scene/wind-field";
 import router from "@/router";
 
 defineOptions({ name: "LowAltitudeScreenPage" });
@@ -85,11 +124,42 @@ const dronePanel = LOW_ALTITUDE_DRONE_PANEL;
 const alertPanel = LOW_ALTITUDE_ALERT_PANEL;
 const flightPanel = LOW_ALTITUDE_FLIGHT_PANEL;
 const sceneConfig = LOW_ALTITUDE_SCENE_CONFIG;
+const showWindField = ref(true);
+const showWindVerticalAirflow = ref(false);
+const windPanelExpanded = ref(false);
+const windRenderMode = ref<WindRenderMode>("arrow");
+const windStatus = ref<WindFieldStatus>("idle");
+const windErrorMessage = ref("");
+const windCurrentTimeText = ref("--:--");
+const windLayerCount = ref(0);
+const windBeamElevationDeg = ref<number>();
+const windLegendStops = ref<WindLegendStop[]>([]);
 const sceneModel = buildSceneModel({
   routes: [],
   markers: [],
   selectedMarkerId: null,
 });
+const sceneOptions = {
+  createExtension: createWindFieldSceneExtension({
+    onFrameChange(event) {
+      windCurrentTimeText.value = event.timeText;
+      windLayerCount.value = event.layerCount;
+    },
+    onStatusChange(event) {
+      windStatus.value = event.status;
+      windErrorMessage.value = event.errorMessage;
+      windBeamElevationDeg.value = event.data?.meta.beamElevationDeg;
+      windLegendStops.value = event.data ? buildWindLegendStops(event.data.meta.maxHorizontalSpeed) : [];
+      if (event.status !== "ready") {
+        windCurrentTimeText.value = "--:--";
+        windLayerCount.value = event.data?.meta.layerCount ?? 0;
+      }
+    },
+    renderMode: windRenderMode,
+    showVerticalAirflow: showWindVerticalAirflow,
+    visible: showWindField,
+  }),
+};
 
 function returnToSystem() {
   if (window.opener && !window.opener.closed) {
