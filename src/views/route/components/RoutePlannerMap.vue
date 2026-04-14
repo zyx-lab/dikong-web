@@ -33,7 +33,8 @@ const DEFAULT_VIEW = {
 const NATURAL_EARTH_URL = Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII");
 const TDT_TOKEN = "ee242ce841590ad7342ea4be574716ce";
 const TDT_SUBDOMAINS = ["0", "1", "2", "3", "4", "5", "6", "7"];
-const TDT_MAXIMUM_LEVEL = 18;
+const TDT_DEFAULT_MAXIMUM_LEVEL = 18;
+const TDT_TERRAIN_MAXIMUM_LEVEL = 14;
 
 interface MapPalette {
   background: string;
@@ -49,6 +50,10 @@ let handler: Cesium.ScreenSpaceEventHandler | null = null;
 let initVersion = 0;
 
 type TdtLayer = "vec" | "cva" | "img" | "cia" | "ter" | "cta";
+
+function getTdtMaximumLevel(layer: TdtLayer) {
+  return layer === "ter" || layer === "cta" ? TDT_TERRAIN_MAXIMUM_LEVEL : TDT_DEFAULT_MAXIMUM_LEVEL;
+}
 
 function getMapPalette(mode: BaseMapMode): MapPalette {
   if (props.darkMode) {
@@ -129,7 +134,7 @@ function createTdtImageryProvider(layer: TdtLayer) {
     format: "tiles",
     tileMatrixSetID: "w",
     tilingScheme: new Cesium.WebMercatorTilingScheme(),
-    maximumLevel: TDT_MAXIMUM_LEVEL,
+    maximumLevel: getTdtMaximumLevel(layer),
     subdomains: TDT_SUBDOMAINS,
   });
 }
