@@ -15,6 +15,33 @@ export interface DashboardSceneRuntime {
   errorMessage: string;
 }
 
+export interface DashboardSceneExtensionContext {
+  camera: THREE.PerspectiveCamera;
+  canvas: HTMLCanvasElement;
+  config: LowAltitudeSceneConfig;
+  renderer: THREE.WebGLRenderer;
+  scene: THREE.Scene;
+  sparkRenderer: SparkRenderer;
+  splat: SceneSplatMesh;
+}
+
+export interface DashboardSceneFrameContext extends DashboardSceneExtensionContext {
+  deltaTime: number;
+  elapsedTime: number;
+}
+
+export interface DashboardSceneExtension {
+  dispose?(): void;
+  onFrame?(context: DashboardSceneFrameContext): void;
+  onResize?(context: DashboardSceneExtensionContext): void;
+}
+
+export interface DashboardSceneMountOptions {
+  createExtension?(
+    context: DashboardSceneExtensionContext
+  ): DashboardSceneExtension | void | Promise<DashboardSceneExtension | void>;
+}
+
 function createRuntime(
   status: DashboardSceneStatus,
   errorMessage = "",
@@ -66,7 +93,8 @@ function configureSkybox(scene: THREE.Scene, fallbackColor: string) {
 
 export async function mountDashboardScene(
   canvas: HTMLCanvasElement,
-  config: LowAltitudeSceneConfig
+  config: LowAltitudeSceneConfig,
+  options: DashboardSceneMountOptions = {}
 ): Promise<DashboardSceneRuntime> {
   // Spark handles camera gestures from the canvas element's native pointer events.
   // The page-level layout decides whether those gestures should reach the canvas.
@@ -86,6 +114,8 @@ export async function mountDashboardScene(
   let sparkRenderer: SparkRenderer | null = null;
   let sparkControls: SparkControls | null = null;
   let splat: SceneSplatMesh | null = null;
+  let extension: DashboardSceneExtension | void = undefined;
+  const clock = new THREE.Clock();
 
   try {
     const scene = new THREE.Scene();
@@ -134,6 +164,17 @@ export async function mountDashboardScene(
 
     await splat.initialized;
 
+    const extensionContext: DashboardSceneExtensionContext = {
+      camera,
+      canvas,
+      config,
+      renderer,
+      scene,
+      sparkRenderer,
+      splat,
+    };
+    extension = await options.createExtension?.(extensionContext);
+
     const resize = () => {
       const width = canvas.clientWidth || 1;
       const height = canvas.clientHeight || 1;
@@ -141,11 +182,18 @@ export async function mountDashboardScene(
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer?.setSize(width, height, false);
+      extension?.onResize?.(extensionContext);
       renderer?.render(scene, camera);
     };
 
     renderer.setAnimationLoop(() => {
+      const deltaTime = clock.getDelta();
       sparkControls?.update(camera, camera);
+      extension?.onFrame?.({
+        ...extensionContext,
+        deltaTime,
+        elapsedTime: clock.elapsedTime,
+      });
       renderer?.render(scene, camera);
     });
 
@@ -156,6 +204,7 @@ export async function mountDashboardScene(
       "",
       () => {
         renderer?.setAnimationLoop(null);
+        extension?.dispose?.();
         splat?.dispose?.();
         sparkControls = null;
         sparkRenderer?.dispose?.();
@@ -163,10 +212,12 @@ export async function mountDashboardScene(
         splat = null;
         renderer = null;
         sparkRenderer = null;
+        extension = undefined;
       },
       resize
     );
   } catch (error) {
+    extension?.dispose?.();
     splat?.dispose?.();
     sparkControls = null;
     sparkRenderer?.dispose?.();

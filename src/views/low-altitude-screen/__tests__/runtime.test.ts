@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const TEST_SPLAT_URL = "/model/JNUAerial-with_Park-y_up-lod.rad";
+const TEST_SPLAT_URL = "/JNUAerial-with_Park-y_up-lod.rad";
 
 const rendererSetPixelRatio = vi.fn();
 const rendererSetSize = vi.fn();
@@ -94,6 +94,13 @@ vi.mock("three", () => ({
   DirectionalLight: class {
     position = { set: vi.fn() };
     constructor() {}
+  },
+  Clock: class {
+    elapsedTime = 0;
+    getDelta() {
+      this.elapsedTime += 1 / 60;
+      return 1 / 60;
+    }
   },
   SRGBColorSpace: "srgb",
 }));
