@@ -1,16 +1,16 @@
 <template>
   <div ref="hostRef" class="low-altitude-scene-host">
-    <canvas ref="canvasRef" class="low-altitude-scene-host__canvas" />
+    <div ref="mapRef" class="low-altitude-scene-host__map" />
 
     <div v-if="sceneStatus !== 'ready'" class="low-altitude-scene-host__status">
       <div class="low-altitude-scene-host__status-card">
         <div class="low-altitude-scene-host__status-title">
           {{
             sceneStatus === "loading"
-              ? "3DGS 场景加载中"
+              ? "Cesium + 3DGS 场景加载中"
               : sceneStatus === "unsupported"
-                ? "当前环境不支持 3DGS 场景"
-                : "3DGS 场景加载失败"
+                ? "当前环境不支持 Cesium + 3DGS 场景"
+                : "Cesium + 3DGS 场景加载失败"
           }}
         </div>
         <div class="low-altitude-scene-host__status-text">{{ sceneErrorMessage }}</div>
@@ -72,11 +72,11 @@ const props = defineProps<{
 }>();
 
 const hostRef = ref<HTMLDivElement | null>(null);
-const canvasRef = ref<HTMLCanvasElement | null>(null);
+const mapRef = ref<HTMLDivElement | null>(null);
 const runtimeRef = shallowRef<DashboardSceneRuntime | null>(null);
 const selectedMarkerId = ref<string | null>(props.model.selectedMarkerId);
 const sceneStatus = ref<"loading" | DashboardSceneRuntime["status"]>("loading");
-const sceneErrorMessage = ref("正在初始化 Spark 渲染器并加载 3DGS 资源...");
+const sceneErrorMessage = ref("正在初始化 Cesium 主场景并挂载 3DGS 覆盖层...");
 const handleResize = () => runtimeRef.value?.resize();
 let resizeObserver: ResizeObserver | undefined;
 
@@ -104,11 +104,19 @@ watch(
   { deep: true }
 );
 
+watch(
+  () => props.sceneConfig,
+  (nextConfig) => {
+    runtimeRef.value?.updateConfig(nextConfig);
+  },
+  { deep: true }
+);
+
 onMounted(async () => {
   await nextTick();
-  if (canvasRef.value) {
+  if (mapRef.value) {
     runtimeRef.value = await mountDashboardScene(
-      canvasRef.value,
+      mapRef.value,
       props.sceneConfig,
       props.sceneOptions
     );

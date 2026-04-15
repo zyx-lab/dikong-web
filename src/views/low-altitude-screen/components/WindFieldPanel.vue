@@ -61,7 +61,7 @@
         {{
           status === "error"
             ? errorMessage
-            : "风场已按真实高度缩放后落到 3DGS 坐标系，并通过 JNU.obj 深度代理参与遮挡。"
+            : "风场会按真实高度比例叠加到 3DGS 覆盖层，并通过 JNU.obj 的深度代理参与遮挡。"
         }}
       </p>
 
@@ -88,7 +88,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { WindLegendStop, WindRenderMode, WindFieldStatus } from "../scene/wind-field";
+import type { WindFieldStatus, WindLegendStop, WindRenderMode } from "../scene/wind-field";
 
 const props = defineProps<{
   beamElevationDeg?: number;

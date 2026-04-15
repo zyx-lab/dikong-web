@@ -21,18 +21,15 @@
   isolation: isolate;
 }
 
-.low-altitude-scene-host__canvas,
+.low-altitude-scene-host__map,
 .low-altitude-scene-host__overlay,
 .low-altitude-scene-host__status {
   position: absolute;
   inset: 0;
 }
 
-.low-altitude-scene-host__canvas {
+.low-altitude-scene-host__map {
   z-index: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 
 .low-altitude-scene-host__slot {
@@ -43,7 +40,7 @@
 }
 
 .low-altitude-scene-host__status {
-  z-index: 3;
+  z-index: 2;
   display: grid;
   place-items: center;
   padding: 6rem 1.5rem 2rem;
@@ -95,7 +92,7 @@
 
 .low-altitude-scene-host__marker {
   position: absolute;
-  z-index: 4;
+  z-index: 3;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -110,6 +107,22 @@
     0 0 0 0.16rem rgba(80, 180, 255, 0.12),
     0 0 1.1rem rgba(55, 181, 255, 0.3);
   transform: translate(-50%, -50%);
+}
+
+.low-altitude-scene-host__map {
+  :deep(.cesium-viewer),
+  :deep(.cesium-viewer-cesiumWidgetContainer),
+  :deep(.cesium-widget),
+  :deep(.cesium-widget canvas) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  :deep(.cesium-viewer-toolbar),
+  :deep(.cesium-viewer-bottom) {
+    display: none;
+  }
 }
 
 .low-altitude-scene-host__label {
@@ -446,6 +459,7 @@
   font-size: 0.68vw;
   font-weight: 700;
   color: #eef8ff;
+  pointer-events: auto;
   cursor: pointer;
   background: linear-gradient(180deg, rgba(10, 38, 61, 0.88), rgba(6, 22, 37, 0.9));
   border: 1px solid rgba(116, 208, 255, 0.24);
@@ -453,7 +467,6 @@
   box-shadow:
     inset 0 1px 0 rgba(198, 232, 255, 0.08),
     0 0.8vw 1.4vw rgba(0, 0, 0, 0.16);
-  pointer-events: auto;
   transition:
     border-color 0.2s ease,
     background-color 0.2s ease,
@@ -486,8 +499,180 @@
   pointer-events: auto;
 }
 
+.center-stage__calibration-panel {
+  position: absolute;
+  top: clamp(1rem, 5.4vw, 6rem);
+  left: clamp(0.35rem, 0.8vw, 0.9rem);
+  z-index: 4;
+  width: min(22rem, calc(100% - 1.5rem));
+  max-width: 24vw;
+  pointer-events: auto;
+}
+
 .wind-field-panel {
   padding-bottom: 0.8vw;
+}
+
+.scene-calibration-panel {
+  padding-bottom: 0.85vw;
+}
+
+.scene-calibration-panel__body {
+  display: grid;
+  gap: 0.75vw;
+}
+
+.scene-calibration-panel__intro {
+  margin: 0;
+  font-size: 0.58vw;
+  line-height: 1.55;
+  color: rgba(193, 227, 243, 0.76);
+}
+
+.scene-calibration-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55vw;
+}
+
+.scene-calibration-panel__field {
+  display: grid;
+  gap: 0.24vw;
+}
+
+.scene-calibration-panel__field span {
+  font-size: 0.6vw;
+  color: rgba(194, 229, 246, 0.82);
+}
+
+.scene-calibration-panel__field input {
+  width: 100%;
+  min-height: 2vw;
+  padding: 0.24vw 0.45vw;
+  font-size: 0.62vw;
+  color: #eef8ff;
+  outline: none;
+  background: rgba(7, 23, 38, 0.42);
+  border: 1px solid rgba(119, 206, 255, 0.14);
+  border-radius: 0.42vw;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.scene-calibration-panel__field input:focus {
+  border-color: rgba(119, 206, 255, 0.34);
+  box-shadow: 0 0 0 0.08vw rgba(81, 196, 255, 0.18);
+}
+
+.scene-calibration-panel__actions {
+  display: flex;
+  gap: 0.5vw;
+}
+
+.scene-calibration-panel__quick-ops {
+  display: grid;
+  gap: 0.55vw;
+}
+
+.scene-calibration-panel__axis-group {
+  display: grid;
+  gap: 0.35vw;
+  padding: 0.55vw 0.6vw;
+  background: rgba(7, 23, 38, 0.28);
+  border: 1px solid rgba(119, 206, 255, 0.12);
+  border-radius: 0.55vw;
+}
+
+.scene-calibration-panel__axis-title {
+  font-size: 0.58vw;
+  font-weight: 600;
+  color: rgba(216, 237, 247, 0.84);
+  letter-spacing: 0.02vw;
+}
+
+.scene-calibration-panel__axis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4vw;
+}
+
+.scene-calibration-panel__chip {
+  min-height: 1.8vw;
+  padding: 0.18vw 0.55vw;
+  font-size: 0.58vw;
+  font-weight: 600;
+  color: #eef8ff;
+  cursor: pointer;
+  background: rgba(11, 34, 55, 0.52);
+  border: 1px solid rgba(119, 206, 255, 0.16);
+  border-radius: 999px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.scene-calibration-panel__chip:hover {
+  background: rgba(14, 43, 69, 0.72);
+  border-color: rgba(119, 206, 255, 0.34);
+  transform: translateY(-1px);
+}
+
+.scene-calibration-panel__action {
+  min-height: 2.05vw;
+  padding: 0.24vw 0.7vw;
+  font-size: 0.62vw;
+  font-weight: 600;
+  color: #eef8ff;
+  cursor: pointer;
+  background: rgba(7, 23, 38, 0.42);
+  border: 1px solid rgba(119, 206, 255, 0.14);
+  border-radius: 999px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.scene-calibration-panel__action:hover {
+  background: rgba(11, 34, 55, 0.62);
+  border-color: rgba(119, 206, 255, 0.34);
+  transform: translateY(-1px);
+}
+
+.scene-calibration-panel__hint {
+  margin: 0;
+  font-size: 0.58vw;
+  line-height: 1.55;
+  color: rgba(184, 220, 239, 0.74);
+}
+
+.scene-calibration-panel__preview {
+  display: grid;
+  gap: 0.35vw;
+}
+
+.scene-calibration-panel__preview-title {
+  font-size: 0.58vw;
+  font-weight: 600;
+  color: rgba(216, 237, 247, 0.84);
+}
+
+.scene-calibration-panel__preview pre {
+  max-height: 10.5vw;
+  padding: 0.6vw;
+  margin: 0;
+  overflow: auto;
+  font-size: 0.54vw;
+  line-height: 1.45;
+  color: #dff6ff;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  background: rgba(5, 17, 28, 0.62);
+  border: 1px solid rgba(119, 206, 255, 0.12);
+  border-radius: 0.55vw;
 }
 
 .wind-field-panel__body {
@@ -513,9 +698,9 @@
   margin-top: 0.16vw;
   font-size: 1.44vw;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   color: #eef8ff;
-  font-variant-numeric: tabular-nums;
 }
 
 .wind-field-panel__meta {
@@ -1098,6 +1283,14 @@
     max-height: none;
   }
 
+  .center-stage__calibration-panel {
+    top: auto;
+    bottom: 1rem;
+    left: 1rem;
+    width: min(22rem, calc(100% - 2rem));
+    max-width: none;
+  }
+
   .center-stage__wind-toggle {
     top: 1rem;
     right: 1rem;
@@ -1113,6 +1306,78 @@
 
   .panel-block {
     padding: 0.9rem;
+  }
+
+  .scene-calibration-panel__body {
+    gap: 0.75rem;
+  }
+
+  .scene-calibration-panel__intro,
+  .scene-calibration-panel__hint,
+  .scene-calibration-panel__axis-title,
+  .scene-calibration-panel__preview-title {
+    font-size: 0.75rem;
+  }
+
+  .scene-calibration-panel__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .scene-calibration-panel__field {
+    gap: 0.25rem;
+  }
+
+  .scene-calibration-panel__field span {
+    font-size: 0.78rem;
+  }
+
+  .scene-calibration-panel__field input {
+    min-height: 2.4rem;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.8rem;
+    border-radius: 0.75rem;
+  }
+
+  .scene-calibration-panel__actions {
+    gap: 0.6rem;
+  }
+
+  .scene-calibration-panel__quick-ops {
+    gap: 0.65rem;
+  }
+
+  .scene-calibration-panel__axis-group {
+    gap: 0.45rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+  }
+
+  .scene-calibration-panel__axis-actions {
+    gap: 0.45rem;
+  }
+
+  .scene-calibration-panel__chip {
+    min-height: 2.1rem;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+  }
+
+  .scene-calibration-panel__action {
+    min-height: 2.45rem;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .scene-calibration-panel__preview {
+    gap: 0.45rem;
+  }
+
+  .scene-calibration-panel__preview pre {
+    max-height: 12rem;
+    padding: 0.75rem;
+    font-size: 0.72rem;
+    border-radius: 0.75rem;
   }
 
   .panel-heading {

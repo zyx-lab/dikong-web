@@ -1,28 +1,66 @@
 import * as THREE from "three";
-import { SparkControls, SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
-import type { LowAltitudeSceneConfig } from "../types";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
+import * as Cesium from "cesium";
+import type { LowAltitudeSceneConfig, SceneHomeViewConfig, SceneSplatPlacement } from "../types";
+import {
+  RADAR_LOCAL_TO_ENU_MATRIX,
+  applyCameraStateToThreeCamera,
+  applyStaticMatrix,
+  cloneSceneSplatPlacement,
+  createRadarTransformMatrix,
+  createSplatTransformMatrix,
+  enuToRenderVector,
+  geodeticToEnu,
+  readEnvNumber,
+  type ThreeCameraState,
+} from "./geospatial";
+import {
+  createLowAltitudeCesiumViewer,
+  getSceneHomeViewSnapshot,
+  syncThreeCameraFromCesiumViewer,
+} from "./cesium-base-layer";
 
 type SceneSplatMesh = SplatMesh & THREE.Object3D & { initialized: Promise<void> };
 type DashboardSceneStatus = "ready" | "error" | "unsupported";
 
-const SKYBOX_BASE_PATH = "/skybox/clouds1/";
-const SKYBOX_EXT = "bmp";
-
 export interface DashboardSceneRuntime {
   destroy(): void;
   resize(): void;
+  updateConfig(config: LowAltitudeSceneConfig): void;
   status: DashboardSceneStatus;
   errorMessage: string;
+}
+
+export interface DashboardSceneGeospatialContext {
+  sceneOrigin: LowAltitudeSceneConfig["sceneOrigin"];
+  geodeticToEnu: typeof geodeticToEnu;
+  enuToRenderVector: typeof enuToRenderVector;
+  createSplatTransformMatrix(
+    splatPlacement: SceneSplatPlacement,
+    anchorHeightMeters?: number
+  ): THREE.Matrix4;
+  createRadarTransformMatrix(
+    sensorOrigin: LowAltitudeSceneConfig["sceneOrigin"],
+    localVerticalOffsetMeters?: number
+  ): THREE.Matrix4;
+  readEnvNumber: typeof readEnvNumber;
+  sceneLocalToEnuMatrix: THREE.Matrix4;
+  radarLocalToEnuMatrix: THREE.Matrix4;
 }
 
 export interface DashboardSceneExtensionContext {
   camera: THREE.PerspectiveCamera;
   canvas: HTMLCanvasElement;
   config: LowAltitudeSceneConfig;
+  mapContainer: HTMLElement;
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
+  sceneRoot: THREE.Group;
+  modelRoot: THREE.Group;
   sparkRenderer: SparkRenderer;
   splat: SceneSplatMesh;
+  viewer: Cesium.Viewer;
+  geospatial: DashboardSceneGeospatialContext;
 }
 
 export interface DashboardSceneFrameContext extends DashboardSceneExtensionContext {
@@ -40,19 +78,22 @@ export interface DashboardSceneMountOptions {
   createExtension?(
     context: DashboardSceneExtensionContext
   ): DashboardSceneExtension | void | Promise<DashboardSceneExtension | void>;
+  onCameraViewChange?(snapshot: SceneHomeViewConfig): void;
 }
 
 function createRuntime(
   status: DashboardSceneStatus,
   errorMessage = "",
   destroy: () => void = () => {},
-  resize: () => void = () => {}
+  resize: () => void = () => {},
+  updateConfig: (config: LowAltitudeSceneConfig) => void = () => {}
 ): DashboardSceneRuntime {
   return {
-    status,
-    errorMessage,
     destroy,
+    errorMessage,
     resize,
+    status,
+    updateConfig,
   };
 }
 
@@ -68,165 +109,329 @@ async function validateSplatAsset(url: string): Promise<void> {
 
   const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
   if (contentType.includes("text/html")) {
-    throw new Error("3DGS 资源地址返回了 HTML 页面，请确认 .rad 文件已放入 public 或静态资源目录");
+    throw new Error("3DGS 资源地址返回了 HTML 页面，请确认 .rad 文件已经放到 public 静态目录");
   }
 }
 
-function configureSkybox(scene: THREE.Scene, fallbackColor: string) {
-  const urls = ["px", "nx", "py", "ny", "pz", "nz"].map(
-    (name) => `${SKYBOX_BASE_PATH}${name}.${SKYBOX_EXT}`
-  );
-
-  const texture = new THREE.CubeTextureLoader().load(
-    urls,
-    (loadedTexture) => {
-      scene.background = loadedTexture;
+function createGeospatialContext(config: LowAltitudeSceneConfig): DashboardSceneGeospatialContext {
+  const geospatial: DashboardSceneGeospatialContext = {
+    createRadarTransformMatrix(sensorOrigin, localVerticalOffsetMeters = 0) {
+      return createRadarTransformMatrix({
+        localVerticalOffsetMeters,
+        radarLocalToEnuMatrix: RADAR_LOCAL_TO_ENU_MATRIX,
+        sceneOrigin: geospatial.sceneOrigin,
+        sensorOrigin,
+      });
     },
-    undefined,
-    () => {
-      scene.background = new THREE.Color(fallbackColor);
-    }
-  );
-  texture.colorSpace = THREE.SRGBColorSpace;
-  scene.background = texture;
+    createSplatTransformMatrix(splatPlacement, anchorHeightMeters) {
+      return createSplatTransformMatrix({
+        anchorHeightMeters,
+        sceneOrigin: geospatial.sceneOrigin,
+        splatPlacement,
+      });
+    },
+    enuToRenderVector,
+    geodeticToEnu,
+    radarLocalToEnuMatrix: RADAR_LOCAL_TO_ENU_MATRIX.clone(),
+    readEnvNumber,
+    sceneLocalToEnuMatrix: new THREE.Matrix4().identity(),
+    sceneOrigin: config.sceneOrigin,
+  };
+  return geospatial;
 }
 
+function applySplatPlacement(
+  modelRoot: THREE.Group,
+  geospatial: DashboardSceneGeospatialContext,
+  splatPlacement: SceneSplatPlacement,
+  anchorHeightMeters?: number
+) {
+  applyStaticMatrix(
+    modelRoot,
+    geospatial.createSplatTransformMatrix(splatPlacement, anchorHeightMeters)
+  );
+  modelRoot.updateMatrixWorld(true);
+}
+
+function resetRendererState(renderer: THREE.WebGLRenderer) {
+  if (typeof renderer.resetState === "function") {
+    renderer.resetState();
+    return;
+  }
+
+  const rendererWithState = renderer as THREE.WebGLRenderer & {
+    state?: { reset?: () => void };
+  };
+  rendererWithState.state?.reset?.();
+}
+
+function syncSharedRendererSize(renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) {
+  const width = canvas.width || canvas.clientWidth || 1;
+  const height = canvas.height || canvas.clientHeight || 1;
+  renderer.setSize(width, height, false);
+  renderer.setViewport(0, 0, width, height);
+}
+
+function resolveSplatAnchorHeight(
+  viewer: Cesium.Viewer,
+  config: LowAltitudeSceneConfig,
+  lastKnownHeightMeters: number
+): number {
+  const globe = viewer.scene.globe;
+  if (typeof globe?.getHeight !== "function") {
+    return lastKnownHeightMeters;
+  }
+
+  const cartographic = new Cesium.Cartographic(
+    Cesium.Math.toRadians(config.splatPlacement.anchorLng),
+    Cesium.Math.toRadians(config.splatPlacement.anchorLat),
+    0
+  );
+  const terrainHeight = globe.getHeight(cartographic);
+  if (typeof terrainHeight === "number" && Number.isFinite(terrainHeight)) {
+    return terrainHeight + config.splatPlacement.heightOffsetMeters;
+  }
+
+  return lastKnownHeightMeters;
+}
+
+export { applyCameraStateToThreeCamera };
+export type { ThreeCameraState };
+
 export async function mountDashboardScene(
-  canvas: HTMLCanvasElement,
+  mapContainer: HTMLElement,
   config: LowAltitudeSceneConfig,
   options: DashboardSceneMountOptions = {}
 ): Promise<DashboardSceneRuntime> {
-  // Spark handles camera gestures from the canvas element's native pointer events.
-  // The page-level layout decides whether those gestures should reach the canvas.
-  canvas.style.pointerEvents = config.interactive ? "auto" : "none";
-  canvas.style.touchAction = config.interactive ? "none" : "auto";
-
-  if (typeof canvas.getContext !== "function") {
-    return createRuntime("unsupported", "当前环境不支持 WebGL，无法渲染 3DGS 场景");
-  }
-
-  const hasWebglContext = Boolean(canvas.getContext("webgl2") || canvas.getContext("webgl"));
-  if (!hasWebglContext) {
-    return createRuntime("unsupported", "当前环境不支持 WebGL，无法渲染 3DGS 场景");
-  }
-
+  let currentConfig = {
+    ...config,
+    splatPlacement: cloneSceneSplatPlacement(config.splatPlacement),
+  };
+  const geospatial = createGeospatialContext(currentConfig);
+  let viewer: Cesium.Viewer | null = null;
   let renderer: THREE.WebGLRenderer | null = null;
   let sparkRenderer: SparkRenderer | null = null;
-  let sparkControls: SparkControls | null = null;
-  let splat: SceneSplatMesh | null = null;
   let extension: DashboardSceneExtension | void = undefined;
+  let splat: SceneSplatMesh | null = null;
+  let extensionContext: DashboardSceneExtensionContext | null = null;
+  let preRenderHandler: (() => void) | null = null;
+  let postRenderHandler: (() => void) | null = null;
+  let lastCameraViewSnapshotJson = "";
+  let currentAnchorHeightMeters =
+    currentConfig.sceneOrigin.altitudeMeters + currentConfig.splatPlacement.heightOffsetMeters;
+
   const clock = new THREE.Clock();
+  const scene = new THREE.Scene();
+  scene.add(new THREE.AmbientLight("#ffffff", 1.25));
+
+  const directionalLight = new THREE.DirectionalLight("#dfe8ff", 1.8);
+  directionalLight.position.set(2, 4, 2);
+  scene.add(directionalLight);
+
+  const sceneRoot = new THREE.Group();
+  sceneRoot.name = "LowAltitudeSceneRoot";
+  scene.add(sceneRoot);
+
+  const modelRoot = new THREE.Group();
+  modelRoot.name = "LowAltitudeModelRoot";
+  sceneRoot.add(modelRoot);
+
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100000);
+
+  const cleanupRenderHooks = () => {
+    if (!viewer) return;
+    if (preRenderHandler) {
+      viewer.scene.preRender.removeEventListener(preRenderHandler);
+      preRenderHandler = null;
+    }
+    if (postRenderHandler) {
+      viewer.scene.postRender.removeEventListener(postRenderHandler);
+      postRenderHandler = null;
+    }
+  };
 
   try {
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(config.backgroundColor);
-    configureSkybox(scene, config.backgroundColor);
-    scene.add(new THREE.AmbientLight("#ffffff", 1.4));
+    viewer = await createLowAltitudeCesiumViewer(mapContainer, currentConfig);
 
-    const directionalLight = new THREE.DirectionalLight("#dfe8ff", 1.8);
-    directionalLight.position.set(2, 4, 2);
-    scene.add(directionalLight);
+    const canvas = viewer.scene.canvas as HTMLCanvasElement | undefined;
+    const sharedGl = (
+      viewer.scene as Cesium.Scene & {
+        context?: { _gl?: WebGLRenderingContext | WebGL2RenderingContext };
+      }
+    ).context?._gl;
 
-    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
-    camera.position.set(...config.cameraPosition);
-    camera.lookAt(...config.cameraTarget);
-    camera.updateProjectionMatrix();
+    if (!canvas || !sharedGl) {
+      if (!viewer.isDestroyed()) {
+        viewer.destroy();
+      }
+      return createRuntime(
+        "unsupported",
+        "当前环境不支持共享 WebGL 上下文，无法渲染 Cesium + 3DGS 场景"
+      );
+    }
 
     renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: false,
       alpha: true,
+      antialias: false,
+      canvas,
+      context: sharedGl,
       powerPreference: "high-performance",
     });
+    renderer.autoClear = false;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.setClearColor(0x000000, 0);
     renderer.sortObjects = true;
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(1);
 
     sparkRenderer = new SparkRenderer({
-      renderer,
       enableLod: true,
+      originDistance: 0,
+      preUpdate: true,
+      renderer,
+      syncAutoViewpoints: true,
     });
     scene.add(sparkRenderer as unknown as THREE.Object3D);
 
-    if (config.interactive) {
-      sparkControls = new SparkControls({ canvas });
-    }
-
-    await validateSplatAsset(config.splatUrl);
+    await validateSplatAsset(currentConfig.splatUrl);
 
     splat = new SplatMesh({
-      url: config.splatUrl,
       paged: true,
+      url: currentConfig.splatUrl,
     }) as SceneSplatMesh;
     splat.updateGenerator();
-    splat.quaternion?.set?.(0, 0, 0, 1);
-    scene.add(splat);
-
+    modelRoot.add(splat);
     await splat.initialized;
 
-    const extensionContext: DashboardSceneExtensionContext = {
+    currentAnchorHeightMeters = resolveSplatAnchorHeight(
+      viewer,
+      currentConfig,
+      currentAnchorHeightMeters
+    );
+    applySplatPlacement(
+      modelRoot,
+      geospatial,
+      currentConfig.splatPlacement,
+      currentAnchorHeightMeters
+    );
+
+    extensionContext = {
       camera,
       canvas,
-      config,
+      config: currentConfig,
+      geospatial,
+      mapContainer,
+      modelRoot,
       renderer,
       scene,
+      sceneRoot,
       sparkRenderer,
       splat,
+      viewer,
     };
     extension = await options.createExtension?.(extensionContext);
 
     const resize = () => {
-      const width = canvas.clientWidth || 1;
-      const height = canvas.clientHeight || 1;
-
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      renderer?.setSize(width, height, false);
+      if (!viewer || !renderer || !extensionContext) return;
+      viewer.resize();
+      syncThreeCameraFromCesiumViewer(viewer, camera, currentConfig.sceneOrigin);
+      syncSharedRendererSize(renderer, canvas);
       extension?.onResize?.(extensionContext);
-      renderer?.render(scene, camera);
+      viewer.scene.requestRender();
     };
 
-    renderer.setAnimationLoop(() => {
+    preRenderHandler = () => {
+      if (!viewer || !renderer || !extensionContext) return;
       const deltaTime = clock.getDelta();
-      sparkControls?.update(camera, camera);
+      currentAnchorHeightMeters = resolveSplatAnchorHeight(
+        viewer,
+        currentConfig,
+        currentAnchorHeightMeters
+      );
+      applySplatPlacement(
+        modelRoot,
+        geospatial,
+        currentConfig.splatPlacement,
+        currentAnchorHeightMeters
+      );
+      syncThreeCameraFromCesiumViewer(viewer, camera, currentConfig.sceneOrigin);
+      const cameraViewSnapshot = getSceneHomeViewSnapshot(viewer);
+      const nextSnapshotJson = JSON.stringify(cameraViewSnapshot);
+      if (nextSnapshotJson !== lastCameraViewSnapshotJson) {
+        lastCameraViewSnapshotJson = nextSnapshotJson;
+        options.onCameraViewChange?.(cameraViewSnapshot);
+      }
       extension?.onFrame?.({
         ...extensionContext,
         deltaTime,
         elapsedTime: clock.elapsedTime,
       });
-      renderer?.render(scene, camera);
-    });
+    };
+
+    postRenderHandler = () => {
+      if (!renderer) return;
+      syncSharedRendererSize(renderer, canvas);
+      resetRendererState(renderer);
+      renderer.render(scene, camera);
+      resetRendererState(renderer);
+    };
+
+    viewer.scene.preRender.addEventListener(preRenderHandler);
+    viewer.scene.postRender.addEventListener(postRenderHandler);
 
     resize();
 
-    return createRuntime(
-      "ready",
-      "",
-      () => {
-        renderer?.setAnimationLoop(null);
-        extension?.dispose?.();
-        splat?.dispose?.();
-        sparkControls = null;
-        sparkRenderer?.dispose?.();
-        renderer?.dispose();
-        splat = null;
-        renderer = null;
-        sparkRenderer = null;
-        extension = undefined;
-      },
-      resize
-    );
+    const destroy = () => {
+      cleanupRenderHooks();
+      extension?.dispose?.();
+      splat?.removeFromParent();
+      splat?.dispose?.();
+      sparkRenderer?.dispose?.();
+      renderer?.dispose();
+      if (viewer && !viewer.isDestroyed()) {
+        viewer.destroy();
+      }
+      extension = undefined;
+      extensionContext = null;
+      splat = null;
+      sparkRenderer = null;
+      renderer = null;
+      viewer = null;
+    };
+
+    const updateConfig = (nextConfig: LowAltitudeSceneConfig) => {
+      currentConfig = {
+        ...nextConfig,
+        splatPlacement: cloneSceneSplatPlacement(nextConfig.splatPlacement),
+      };
+      geospatial.sceneOrigin = currentConfig.sceneOrigin;
+      currentAnchorHeightMeters =
+        currentConfig.sceneOrigin.altitudeMeters + currentConfig.splatPlacement.heightOffsetMeters;
+      if (extensionContext) {
+        extensionContext.config = currentConfig;
+      }
+      applySplatPlacement(
+        modelRoot,
+        geospatial,
+        currentConfig.splatPlacement,
+        currentAnchorHeightMeters
+      );
+      viewer?.scene.requestRender();
+    };
+
+    return createRuntime("ready", "", destroy, resize, updateConfig);
   } catch (error) {
+    cleanupRenderHooks();
     extension?.dispose?.();
+    splat?.removeFromParent();
     splat?.dispose?.();
-    sparkControls = null;
     sparkRenderer?.dispose?.();
     renderer?.dispose();
+    if (viewer && !viewer.isDestroyed()) {
+      viewer.destroy();
+    }
     return createRuntime(
       "error",
-      error instanceof Error ? error.message : "无法初始化 3DGS 场景",
-      () => {},
-      () => {}
+      error instanceof Error ? error.message : "无法初始化 Cesium + 3DGS 场景"
     );
   }
 }
