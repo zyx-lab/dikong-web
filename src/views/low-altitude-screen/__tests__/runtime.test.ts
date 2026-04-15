@@ -1,296 +1,337 @@
+import * as THREE from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const TEST_SPLAT_URL = "/JNUAerial-with_Park-y_up-lod.rad";
+const TEST_SPLAT_URL = "/model/JNUAerial-with_Park-y_up-lod.rad";
 
+const rendererCtor = vi.fn();
 const rendererSetPixelRatio = vi.fn();
 const rendererSetSize = vi.fn();
 const rendererRender = vi.fn();
-const rendererSetAnimationLoop = vi.fn();
+const rendererSetClearColor = vi.fn();
+const rendererResetState = vi.fn();
+const rendererSetViewport = vi.fn();
 const rendererDispose = vi.fn();
 const sparkRendererDispose = vi.fn();
 const splatUpdateGenerator = vi.fn();
 const splatDispose = vi.fn();
 const sparkRendererCtor = vi.fn();
-const sparkControlsCtor = vi.fn();
-const sparkControlsUpdate = vi.fn();
 const splatCtor = vi.fn();
-const cubeTextureLoaderLoad = vi.fn();
 const fetchMock = vi.fn();
-const mockSceneInstances: Array<{ add: ReturnType<typeof vi.fn>; background: unknown }> = [];
+const createLowAltitudeCesiumViewerMock = vi.fn();
+const getSceneHomeViewSnapshotMock = vi.fn();
+const syncThreeCameraFromCesiumViewerMock = vi.fn();
+const preRenderAddEventListener = vi.fn();
+const preRenderRemoveEventListener = vi.fn();
+const postRenderAddEventListener = vi.fn();
+const postRenderRemoveEventListener = vi.fn();
 
 vi.stubGlobal("fetch", fetchMock);
 
-class MockSparkRenderer {
-  dispose = sparkRendererDispose;
+vi.mock("../scene/cesium-base-layer", () => ({
+  createLowAltitudeCesiumViewer: createLowAltitudeCesiumViewerMock,
+  getSceneHomeViewSnapshot: getSceneHomeViewSnapshotMock,
+  syncThreeCameraFromCesiumViewer: syncThreeCameraFromCesiumViewerMock,
+}));
 
-  constructor(options: unknown) {
-    sparkRendererCtor(options);
-  }
-}
-
-class MockSplatMesh {
-  initialized = Promise.resolve();
-  updateGenerator = splatUpdateGenerator;
-  quaternion = {
-    set: vi.fn(),
-  };
-  renderOrder = 0;
-  dispose = splatDispose;
-
-  constructor(options: { url: string; paged: boolean }) {
-    splatCtor(options);
-  }
-}
-
-class MockSparkControls {
-  update = sparkControlsUpdate;
-
-  constructor(options: unknown) {
-    sparkControlsCtor(options);
-  }
-}
-
-vi.mock("three", () => ({
-  Scene: class {
-    add = vi.fn();
-    background: unknown;
-
-    constructor() {
-      mockSceneInstances.push(this);
-    }
-  },
-  PerspectiveCamera: class {
-    aspect = 1;
-    position = { set: vi.fn() };
-    lookAt = vi.fn();
-    updateProjectionMatrix = vi.fn();
+vi.mock("cesium", () => ({
+  Cartographic: class MockCartographic {
     constructor(
-      public fov: number,
-      public aspectArg: number,
-      public near: number,
-      public far: number
+      public longitude = 0,
+      public latitude = 0,
+      public height = 0
     ) {}
   },
-  WebGLRenderer: class {
+  Math: {
+    toRadians(value: number) {
+      return (value * Math.PI) / 180;
+    },
+  },
+}));
+
+vi.mock("three", async () => {
+  const actual = await vi.importActual<typeof import("three")>("three");
+
+  class MockWebGLRenderer {
     domElement = document.createElement("canvas");
     outputColorSpace: unknown;
     sortObjects = true;
     setPixelRatio = rendererSetPixelRatio;
     setSize = rendererSetSize;
+    setViewport = rendererSetViewport;
     render = rendererRender;
-    setAnimationLoop = rendererSetAnimationLoop;
+    setClearColor = rendererSetClearColor;
+    resetState = rendererResetState;
     dispose = rendererDispose;
-    constructor() {}
-  },
-  Color: class {
-    constructor(public value: string) {}
-  },
-  CubeTextureLoader: class {
-    load = cubeTextureLoaderLoad;
-  },
-  AmbientLight: class {
-    constructor() {}
-  },
-  DirectionalLight: class {
-    position = { set: vi.fn() };
-    constructor() {}
-  },
-  Clock: class {
-    elapsedTime = 0;
-    getDelta() {
-      this.elapsedTime += 1 / 60;
-      return 1 / 60;
+
+    constructor(options: unknown) {
+      rendererCtor(options);
     }
-  },
-  SRGBColorSpace: "srgb",
-}));
+  }
+
+  class MockCubeTextureLoader {
+    load() {
+      return { colorSpace: undefined };
+    }
+  }
+
+  return {
+    ...actual,
+    CubeTextureLoader: MockCubeTextureLoader,
+    WebGLRenderer: MockWebGLRenderer,
+  };
+});
+
+class MockSparkRenderer extends THREE.Object3D {
+  dispose = sparkRendererDispose;
+
+  constructor(options: unknown) {
+    super();
+    sparkRendererCtor(options);
+  }
+}
+
+class MockSplatMesh extends THREE.Object3D {
+  initialized = Promise.resolve();
+  updateGenerator = splatUpdateGenerator;
+  dispose = splatDispose;
+
+  constructor(options: { url: string; paged: boolean }) {
+    super();
+    splatCtor(options);
+  }
+}
 
 vi.mock("@sparkjsdev/spark", () => ({
   SparkRenderer: MockSparkRenderer,
-  SparkControls: MockSparkControls,
   SplatMesh: MockSplatMesh,
 }));
+
+function createSceneConfig() {
+  return {
+    splatUrl: TEST_SPLAT_URL,
+    backgroundColor: "#09131d",
+    baseMapMode: "satellite" as const,
+    sceneOrigin: {
+      longitude: 113.52958706944445,
+      latitude: 22.252818819444443,
+      altitudeMeters: 86.885,
+    },
+    homeView: {
+      longitude: 113.52958706944445,
+      latitude: 22.252818819444443,
+      height: 1200,
+      headingDeg: 0,
+      pitchDeg: -40,
+      rollDeg: 0,
+    },
+    splatPlacement: {
+      anchorLng: 113.52964,
+      anchorLat: 22.25333,
+      heightOffsetMeters: 80,
+      eastMeters: 0,
+      northMeters: 0,
+      upMeters: 0,
+      headingDeg: 290,
+      pitchDeg: 0,
+      rollDeg: 90,
+      scale: 57,
+    },
+    showCalibrationPanel: false,
+  };
+}
+
+function createViewerStub() {
+  const sceneCanvas = document.createElement("canvas");
+  Object.defineProperty(sceneCanvas, "clientWidth", { configurable: true, value: 1280 });
+  Object.defineProperty(sceneCanvas, "clientHeight", { configurable: true, value: 720 });
+  Object.defineProperty(sceneCanvas, "width", { configurable: true, value: 1280 });
+  Object.defineProperty(sceneCanvas, "height", { configurable: true, value: 720 });
+
+  return {
+    destroy: vi.fn(),
+    isDestroyed: vi.fn(() => false),
+    resize: vi.fn(),
+    scene: {
+      canvas: sceneCanvas,
+      context: {
+        _gl: {},
+      },
+      frameState: {
+        frameNumber: 1,
+      },
+      globe: {
+        getHeight: vi.fn(() => 12),
+      },
+      postRender: {
+        addEventListener: postRenderAddEventListener,
+        removeEventListener: postRenderRemoveEventListener,
+      },
+      preRender: {
+        addEventListener: preRenderAddEventListener,
+        removeEventListener: preRenderRemoveEventListener,
+      },
+      requestRender: vi.fn(),
+    },
+    camera: {
+      positionWC: {},
+      directionWC: {},
+      frustum: {
+        projectionMatrix: {},
+        near: 0.5,
+        far: 5000,
+      },
+      upWC: {},
+      viewMatrix: {},
+    },
+  };
+}
 
 describe("mountDashboardScene", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fetchMock.mockReset();
-    mockSceneInstances.length = 0;
-    cubeTextureLoaderLoad.mockReset();
-    cubeTextureLoaderLoad.mockImplementation(() => ({ colorSpace: undefined }));
     fetchMock.mockResolvedValue({
       ok: true,
       headers: {
         get: () => "application/octet-stream",
       },
     });
+    createLowAltitudeCesiumViewerMock.mockResolvedValue(createViewerStub());
+    getSceneHomeViewSnapshotMock.mockReturnValue({
+      longitude: 113.52961,
+      latitude: 22.25331,
+      height: 1450,
+      headingDeg: 286,
+      pitchDeg: -42,
+      rollDeg: 0,
+    });
   });
 
   it("returns a noop runtime when webgl is unavailable", async () => {
     const { mountDashboardScene } = await import("../scene/runtime");
-    const canvas = document.createElement("canvas");
-    vi.spyOn(canvas, "getContext").mockReturnValue(null);
+    const mapContainer = document.createElement("div");
+    const unsupportedViewer = createViewerStub();
+    (unsupportedViewer.scene as { context?: { _gl?: {} } }).context = undefined;
+    createLowAltitudeCesiumViewerMock.mockResolvedValueOnce(unsupportedViewer);
 
-    const runtime = await mountDashboardScene(canvas, {
-      splatUrl: TEST_SPLAT_URL,
-      backgroundColor: "#09131d",
-      cameraPosition: [1.8, 1.3, 2.2],
-      cameraTarget: [0, 0, 0],
-      interactive: false,
-    });
+    const runtime = await mountDashboardScene(mapContainer, createSceneConfig());
 
+    expect(createLowAltitudeCesiumViewerMock).toHaveBeenCalledTimes(1);
     expect(sparkRendererCtor).not.toHaveBeenCalled();
-    expect(splatCtor).not.toHaveBeenCalled();
     expect(typeof runtime.destroy).toBe("function");
     expect(typeof runtime.resize).toBe("function");
   });
 
-  it("initializes SparkRenderer and SplatMesh with the configured splat url", async () => {
+  it("creates a Cesium-backed scene host using the shared Cesium canvas and render hooks", async () => {
     const { mountDashboardScene } = await import("../scene/runtime");
-    const canvas = document.createElement("canvas");
-    vi.spyOn(canvas, "getContext").mockImplementation((contextId: string) => {
-      if (contextId === "webgl2" || contextId === "webgl") {
-        return {} as RenderingContext;
-      }
-      return null;
+    const mapContainer = document.createElement("div");
+    const createExtension = vi.fn();
+
+    await mountDashboardScene(mapContainer, createSceneConfig(), {
+      createExtension,
     });
 
-    await mountDashboardScene(canvas, {
-      splatUrl: TEST_SPLAT_URL,
-      backgroundColor: "#09131d",
-      cameraPosition: [1.8, 1.3, 2.2],
-      cameraTarget: [0, 0, 0],
-      interactive: false,
-    });
-
+    expect(createLowAltitudeCesiumViewerMock).toHaveBeenCalledTimes(1);
+    expect(preRenderAddEventListener).toHaveBeenCalledTimes(1);
+    expect(postRenderAddEventListener).toHaveBeenCalledTimes(1);
+    expect(rendererCtor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alpha: true,
+        antialias: false,
+        canvas: expect.any(HTMLCanvasElement),
+        context: {},
+      })
+    );
     expect(sparkRendererCtor).toHaveBeenCalledTimes(1);
+    expect(sparkRendererCtor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enableLod: true,
+        originDistance: 0,
+        preUpdate: true,
+        syncAutoViewpoints: true,
+      })
+    );
     expect(splatCtor).toHaveBeenCalledWith({
       url: TEST_SPLAT_URL,
       paged: true,
     });
-    expect(splatUpdateGenerator).toHaveBeenCalledTimes(1);
-    expect(rendererSetAnimationLoop).toHaveBeenCalledTimes(1);
+    expect(createExtension).toHaveBeenCalledTimes(1);
+    expect(createExtension.mock.calls[0]?.[0]).toMatchObject({
+      canvas: expect.any(HTMLCanvasElement),
+      geospatial: expect.objectContaining({
+        sceneOrigin: expect.objectContaining({
+          longitude: 113.52958706944445,
+        }),
+      }),
+      modelRoot: expect.any(THREE.Group),
+      sceneRoot: expect.any(THREE.Group),
+    });
   });
 
-  it("treats the interactive flag as the canvas pointer-event contract", async () => {
+  it("removes Cesium render hooks during destroy", async () => {
     const { mountDashboardScene } = await import("../scene/runtime");
-    const canvas = document.createElement("canvas");
-    vi.spyOn(canvas, "getContext").mockImplementation((contextId: string) => {
-      if (contextId === "webgl2" || contextId === "webgl") {
-        return {} as RenderingContext;
-      }
-      return null;
-    });
+    const mapContainer = document.createElement("div");
 
-    await mountDashboardScene(canvas, {
-      splatUrl: TEST_SPLAT_URL,
-      backgroundColor: "#09131d",
-      cameraPosition: [1.8, 1.3, 2.2],
-      cameraTarget: [0, 0, 0],
-      interactive: true,
-    });
+    const runtime = await mountDashboardScene(mapContainer, createSceneConfig());
 
-    expect(canvas.style.pointerEvents).toBe("auto");
-    expect(canvas.style.touchAction).toBe("none");
+    runtime.destroy();
+
+    expect(preRenderRemoveEventListener).toHaveBeenCalledTimes(1);
+    expect(postRenderRemoveEventListener).toHaveBeenCalledTimes(1);
+    expect(rendererDispose).toHaveBeenCalledTimes(1);
   });
 
-  it("wires SparkControls into the animation loop when the scene is interactive", async () => {
+  it("publishes the current Cesium camera snapshot through scene options", async () => {
     const { mountDashboardScene } = await import("../scene/runtime");
-    const canvas = document.createElement("canvas");
-    vi.spyOn(canvas, "getContext").mockImplementation((contextId: string) => {
-      if (contextId === "webgl2" || contextId === "webgl") {
-        return {} as RenderingContext;
-      }
-      return null;
+    const mapContainer = document.createElement("div");
+    const onCameraViewChange = vi.fn();
+
+    await mountDashboardScene(mapContainer, createSceneConfig(), {
+      onCameraViewChange,
     });
 
-    await mountDashboardScene(canvas, {
-      splatUrl: TEST_SPLAT_URL,
-      backgroundColor: "#09131d",
-      cameraPosition: [1.8, 1.3, 2.2],
-      cameraTarget: [0, 0, 0],
-      interactive: true,
+    const preRenderHandler = preRenderAddEventListener.mock.calls[0]?.[0] as
+      | (() => void)
+      | undefined;
+    expect(preRenderHandler).toBeTypeOf("function");
+
+    preRenderHandler?.();
+
+    expect(getSceneHomeViewSnapshotMock).toHaveBeenCalledTimes(1);
+    expect(onCameraViewChange).toHaveBeenCalledWith({
+      longitude: 113.52961,
+      latitude: 22.25331,
+      height: 1450,
+      headingDeg: 286,
+      pitchDeg: -42,
+      rollDeg: 0,
     });
-
-    expect(sparkControlsCtor).toHaveBeenCalledWith({ canvas });
-    expect(rendererSetAnimationLoop).toHaveBeenCalledTimes(1);
-
-    const animate = rendererSetAnimationLoop.mock.calls[0]?.[0] as (() => void) | undefined;
-    expect(animate).toBeTypeOf("function");
-
-    animate?.();
-
-    expect(sparkControlsUpdate).toHaveBeenCalledTimes(1);
   });
 
-  it("loads the clouds1 skybox into the three scene background", async () => {
-    const skyboxTexture = { kind: "skybox" };
-    cubeTextureLoaderLoad.mockImplementation(
-      (urls: string[], onLoad?: (texture: typeof skyboxTexture) => void) => {
-        onLoad?.(skyboxTexture);
-        return skyboxTexture;
-      }
-    );
+  it("applies camera state updates onto the Three camera", async () => {
+    const { applyCameraStateToThreeCamera } = await import("../scene/runtime");
+    const camera = new THREE.PerspectiveCamera();
 
-    const { mountDashboardScene } = await import("../scene/runtime");
-    const canvas = document.createElement("canvas");
-    vi.spyOn(canvas, "getContext").mockImplementation((contextId: string) => {
-      if (contextId === "webgl2" || contextId === "webgl") {
-        return {} as RenderingContext;
-      }
-      return null;
+    applyCameraStateToThreeCamera(camera, {
+      position: { x: 120, y: 80, z: -40 },
+      direction: { x: 0, y: 0, z: -1 },
+      up: { x: 0, y: 1, z: 0 },
+      aspect: 1.8,
+      fovDeg: 52,
+      near: 0.5,
+      far: 25000,
     });
 
-    await mountDashboardScene(canvas, {
-      splatUrl: TEST_SPLAT_URL,
-      backgroundColor: "#09131d",
-      cameraPosition: [1.8, 1.3, 2.2],
-      cameraTarget: [0, 0, 0],
-      interactive: false,
-    });
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
 
-    expect(cubeTextureLoaderLoad).toHaveBeenCalledWith(
-      [
-        "/skybox/clouds1/px.bmp",
-        "/skybox/clouds1/nx.bmp",
-        "/skybox/clouds1/py.bmp",
-        "/skybox/clouds1/ny.bmp",
-        "/skybox/clouds1/pz.bmp",
-        "/skybox/clouds1/nz.bmp",
-      ],
-      expect.any(Function),
-      undefined,
-      expect.any(Function)
-    );
-    expect(mockSceneInstances[0]?.background).toBe(skyboxTexture);
-  });
-
-  it("returns an error runtime when the configured splat url resolves to html", async () => {
-    const { mountDashboardScene } = await import("../scene/runtime");
-    const canvas = document.createElement("canvas");
-    vi.spyOn(canvas, "getContext").mockImplementation((contextId: string) => {
-      if (contextId === "webgl2" || contextId === "webgl") {
-        return {} as RenderingContext;
-      }
-      return null;
-    });
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      headers: {
-        get: () => "text/html",
-      },
-    });
-
-    const runtime = await mountDashboardScene(canvas, {
-      splatUrl: TEST_SPLAT_URL,
-      backgroundColor: "#09131d",
-      cameraPosition: [1.8, 1.3, 2.2],
-      cameraTarget: [0, 0, 0],
-      interactive: false,
-    });
-
-    expect(splatCtor).not.toHaveBeenCalled();
-    expect(runtime.status).toBe("error");
-    expect(runtime.errorMessage).toContain("HTML");
+    expect(camera.position.x).toBeCloseTo(120, 6);
+    expect(camera.position.y).toBeCloseTo(80, 6);
+    expect(camera.position.z).toBeCloseTo(-40, 6);
+    expect(camera.aspect).toBeCloseTo(1.8, 6);
+    expect(camera.fov).toBeCloseTo(52, 6);
+    expect(camera.near).toBeCloseTo(0.5, 6);
+    expect(camera.far).toBeCloseTo(25000, 6);
+    expect(direction.z).toBeLessThan(-0.9);
   });
 });

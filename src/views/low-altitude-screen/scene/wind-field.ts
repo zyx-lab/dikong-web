@@ -9,6 +9,7 @@ import type {
   DashboardSceneExtensionContext,
   DashboardSceneMountOptions,
 } from "./runtime";
+import { DEFAULT_SCENE_ORIGIN, getAverageMatrixScale, readEnvNumber } from "./geospatial";
 
 export type WindRenderMode = "arrow" | "particle";
 export type WindFieldStatus = "idle" | "loading" | "ready" | "error";
@@ -118,6 +119,7 @@ interface WindFieldState {
   particles?: THREE.Points;
   playbackTime: number;
   root?: THREE.Group;
+  worldToLocalScale: number;
 }
 
 const DEFAULT_WIND_DATA_URL = "/generated/secondWindSpeed_GHH234012_20260116.processed.json";
@@ -135,14 +137,9 @@ const RADAR_SENSOR_STEM_BASE_RADIUS = 0.018;
 const SCENE_OCCLUDER_RENDER_ORDER = 90;
 const RADAR_RENDER_ORDER = 140;
 const DEFAULT_RADAR_GPS_POSITION = Object.freeze({
-  altitudeMeters: 86.885,
-  latitude: 22.252818819444443,
-  longitude: 113.52958706944445,
-});
-const SCENE_GPS_ORIGIN = Object.freeze({
-  altitudeMeters: 86.885,
-  latitude: 22.252818819444443,
-  longitude: 113.52958706944445,
+  altitudeMeters: DEFAULT_SCENE_ORIGIN.altitudeMeters,
+  latitude: DEFAULT_SCENE_ORIGIN.latitude,
+  longitude: DEFAULT_SCENE_ORIGIN.longitude,
 });
 const RADAR_GPS_POSITION = Object.freeze({
   altitudeMeters: readEnvNumber(
@@ -158,61 +155,6 @@ const RADAR_GPS_POSITION = Object.freeze({
     DEFAULT_RADAR_GPS_POSITION.longitude
   ),
 });
-const SFM_TO_ENU_MATRIX = new THREE.Matrix4().set(
-  23.32268437,
-  23.71730027,
-  -52.64161238,
-  35.91473514,
-  57.73477094,
-  -10.15823258,
-  21.00247195,
-  52.1704996,
-  -0.58814194,
-  -56.67360295,
-  -25.79445891,
-  24.2211397,
-  0,
-  0,
-  0,
-  1
-);
-const SFM_TO_UNITY_MATRIX = new THREE.Matrix4().set(
-  1,
-  0,
-  0,
-  0,
-  0,
-  -0.9081,
-  -0.4187,
-  0,
-  0,
-  0.4187,
-  -0.9081,
-  0,
-  0,
-  0,
-  0,
-  1
-);
-const RIGHT_TO_LEFT_HAND_MATRIX = new THREE.Matrix4().makeScale(1, 1, -1);
-const RADAR_LOCAL_TO_ENU_MATRIX = new THREE.Matrix4().set(
-  1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  1,
-  0,
-  0,
-  1,
-  0,
-  0,
-  0,
-  0,
-  0,
-  1
-);
 const radarLowColor = new THREE.Color("#4ca8ff");
 const radarMidColor = new THREE.Color("#52ffd7");
 const radarHighColor = new THREE.Color("#ffb36b");
@@ -227,9 +169,6 @@ const radarArrowCenter = new THREE.Vector3();
 const radarArrowScale = new THREE.Vector3();
 const radarArrowQuaternion = new THREE.Quaternion();
 const radarArrowMatrixHelper = new THREE.Object3D();
-const radarLocalToWorldMatrix = createRadarLocalToWorldMatrix();
-const RADAR_LOCAL_UNIT_SCALE = getAverageMatrixScale(radarLocalToWorldMatrix);
-const RADAR_WORLD_TO_LOCAL_SCALE = RADAR_LOCAL_UNIT_SCALE > 0 ? 1 / RADAR_LOCAL_UNIT_SCALE : 1;
 
 export function buildWindLegendStops(maxHorizontalSpeed: number): WindLegendStop[] {
   const maxSpeed = Math.max(maxHorizontalSpeed, 0);
@@ -266,6 +205,7 @@ export function createWindFieldSceneExtension(
       layerVisuals: [],
       particleSeeds: [],
       playbackTime: 0,
+      worldToLocalScale: 1,
     };
 
     options.onStatusChange?.({
@@ -281,11 +221,11 @@ export function createWindFieldSceneExtension(
 
       state.data = data;
       state.root = createWindFieldRoot(context, data, state);
-      context.scene.add(state.root);
+      context.sceneRoot.add(state.root);
 
       if (occluderSource) {
         state.occluder = createSceneOccluderMesh(occluderSource);
-        context.scene.add(state.occluder);
+        context.modelRoot.add(state.occluder);
       }
 
       applyWindVisibility(state, options.visible.value, options.renderMode.value);
@@ -299,12 +239,12 @@ export function createWindFieldSceneExtension(
       return {
         dispose() {
           if (state.root) {
-            context.scene.remove(state.root);
+            context.sceneRoot.remove(state.root);
             disposeObject3D(state.root);
             state.root = undefined;
           }
           if (state.occluder) {
-            context.scene.remove(state.occluder);
+            context.modelRoot.remove(state.occluder);
             disposeObject3D(state.occluder);
             state.occluder = undefined;
           }
@@ -332,8 +272,7 @@ export function createWindFieldSceneExtension(
       } satisfies DashboardSceneExtension;
     } catch (error) {
       options.onStatusChange?.({
-        errorMessage:
-          error instanceof Error ? error.message : "无法初始化风场可视化",
+        errorMessage: error instanceof Error ? error.message : "无法初始化风场可视化",
         status: "error",
       });
       return undefined;
@@ -361,111 +300,6 @@ function formatDuration(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = Math.floor(totalSeconds % 60);
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function degreesToRadians(value: number): number {
-  return (value * Math.PI) / 180;
-}
-
-function readEnvNumber(rawValue: string | number | undefined, fallbackValue: number): number {
-  if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
-    return rawValue;
-  }
-  if (typeof rawValue === "string") {
-    const parsed = Number(rawValue.trim());
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-  return fallbackValue;
-}
-
-function geodeticToEcef(
-  latitude: number,
-  longitude: number,
-  altitudeMeters: number
-): THREE.Vector3 {
-  const semiMajorAxis = 6378137;
-  const flattening = 1 / 298.257223563;
-  const eccentricitySquared = 2 * flattening - flattening * flattening;
-  const latitudeRad = degreesToRadians(latitude);
-  const longitudeRad = degreesToRadians(longitude);
-  const sinLatitude = Math.sin(latitudeRad);
-  const cosLatitude = Math.cos(latitudeRad);
-  const sinLongitude = Math.sin(longitudeRad);
-  const cosLongitude = Math.cos(longitudeRad);
-  const primeVerticalRadius =
-    semiMajorAxis / Math.sqrt(1 - eccentricitySquared * sinLatitude * sinLatitude);
-
-  return new THREE.Vector3(
-    (primeVerticalRadius + altitudeMeters) * cosLatitude * cosLongitude,
-    (primeVerticalRadius + altitudeMeters) * cosLatitude * sinLongitude,
-    (primeVerticalRadius * (1 - eccentricitySquared) + altitudeMeters) * sinLatitude
-  );
-}
-
-function geodeticToEnu(
-  latitude: number,
-  longitude: number,
-  altitudeMeters: number,
-  originLatitude: number,
-  originLongitude: number,
-  originAltitudeMeters: number
-): THREE.Vector3 {
-  const ecef = geodeticToEcef(latitude, longitude, altitudeMeters);
-  const originEcef = geodeticToEcef(originLatitude, originLongitude, originAltitudeMeters);
-  const delta = ecef.sub(originEcef);
-  const originLatitudeRad = degreesToRadians(originLatitude);
-  const originLongitudeRad = degreesToRadians(originLongitude);
-  const sinLatitude = Math.sin(originLatitudeRad);
-  const cosLatitude = Math.cos(originLatitudeRad);
-  const sinLongitude = Math.sin(originLongitudeRad);
-  const cosLongitude = Math.cos(originLongitudeRad);
-
-  return new THREE.Vector3(
-    -sinLongitude * delta.x + cosLongitude * delta.y,
-    -sinLatitude * cosLongitude * delta.x -
-      sinLatitude * sinLongitude * delta.y +
-      cosLatitude * delta.z,
-    cosLatitude * cosLongitude * delta.x +
-      cosLatitude * sinLongitude * delta.y +
-      sinLatitude * delta.z
-  );
-}
-
-function createRadarLocalToWorldMatrix(): THREE.Matrix4 {
-  const radarEnuOrigin = geodeticToEnu(
-    RADAR_GPS_POSITION.latitude,
-    RADAR_GPS_POSITION.longitude,
-    RADAR_GPS_POSITION.altitudeMeters,
-    SCENE_GPS_ORIGIN.latitude,
-    SCENE_GPS_ORIGIN.longitude,
-    SCENE_GPS_ORIGIN.altitudeMeters
-  );
-  const enuToUnityMatrix = SFM_TO_UNITY_MATRIX.clone().multiply(SFM_TO_ENU_MATRIX.clone().invert());
-  const radarOriginTranslation = new THREE.Matrix4().makeTranslation(
-    radarEnuOrigin.x,
-    radarEnuOrigin.y,
-    radarEnuOrigin.z
-  );
-  const localVerticalOffset = new THREE.Matrix4().makeTranslation(
-    0,
-    RADAR_VERTICAL_OFFSET_METERS,
-    0
-  );
-
-  return RIGHT_TO_LEFT_HAND_MATRIX.clone()
-    .multiply(enuToUnityMatrix)
-    .multiply(radarOriginTranslation)
-    .multiply(localVerticalOffset)
-    .multiply(RADAR_LOCAL_TO_ENU_MATRIX);
-}
-
-function getAverageMatrixScale(matrix: THREE.Matrix4): number {
-  const xAxis = new THREE.Vector3().setFromMatrixColumn(matrix, 0).length();
-  const yAxis = new THREE.Vector3().setFromMatrixColumn(matrix, 1).length();
-  const zAxis = new THREE.Vector3().setFromMatrixColumn(matrix, 2).length();
-  return (xAxis + yAxis + zAxis) / 3;
 }
 
 function mixRadarColor(normalizedSpeed: number): THREE.Color {
@@ -510,10 +344,7 @@ function setLineMaterialResolution(
   );
 }
 
-function createRadarRing(
-  radius: number,
-  context: DashboardSceneExtensionContext
-): Line2 {
+function createRadarRing(radius: number, context: DashboardSceneExtensionContext): Line2 {
   const pointPositions: number[] = [];
   const segments = 48;
   for (let index = 0; index <= segments; index += 1) {
@@ -588,6 +419,12 @@ function createWindFieldRoot(
   data: ProcessedWindData,
   state: WindFieldState
 ): THREE.Group {
+  const radarLocalToWorldMatrix = context.geospatial.createRadarTransformMatrix(
+    RADAR_GPS_POSITION,
+    RADAR_VERTICAL_OFFSET_METERS
+  );
+  const radarLocalUnitScale = getAverageMatrixScale(radarLocalToWorldMatrix);
+  state.worldToLocalScale = radarLocalUnitScale > 0 ? 1 / radarLocalUnitScale : 1;
   const root = new THREE.Group();
   root.name = "LowAltitudeWindField";
   root.matrixAutoUpdate = false;
@@ -604,7 +441,7 @@ function createWindFieldRoot(
 
   const markerGroup = new THREE.Group();
   const sensorSphere = new THREE.Mesh(
-    new THREE.SphereGeometry(RADAR_SENSOR_MARKER_RADIUS * RADAR_WORLD_TO_LOCAL_SCALE, 24, 24),
+    new THREE.SphereGeometry(RADAR_SENSOR_MARKER_RADIUS * state.worldToLocalScale, 24, 24),
     new THREE.MeshBasicMaterial({
       color: "#8fdcff",
       depthTest: true,
@@ -622,8 +459,8 @@ function createWindFieldRoot(
     const topLayerRadius = getLayerDisplayRadius(data, topLayer);
     const stem = new THREE.Mesh(
       new THREE.CylinderGeometry(
-        RADAR_SENSOR_STEM_RADIUS * RADAR_WORLD_TO_LOCAL_SCALE,
-        RADAR_SENSOR_STEM_BASE_RADIUS * RADAR_WORLD_TO_LOCAL_SCALE,
+        RADAR_SENSOR_STEM_RADIUS * state.worldToLocalScale,
+        RADAR_SENSOR_STEM_BASE_RADIUS * state.worldToLocalScale,
         topLayerHeight,
         16
       ),
@@ -832,7 +669,7 @@ function updateWindVisualization(
     const baseZ = Math.sin(seed.baseAngle) * localRadius;
     const drift = (phase - 0.5) * 2;
     const jitter =
-      Math.sin(playbackTime * 1.6 + seed.lateralJitter) * 0.03 * RADAR_WORLD_TO_LOCAL_SCALE;
+      Math.sin(playbackTime * 1.6 + seed.lateralJitter) * 0.03 * state.worldToLocalScale;
 
     radarFlowVector.set(
       sample.vectorX * RADAR_FLOW_VISUAL_GAIN,
@@ -843,11 +680,7 @@ function updateWindVisualization(
     radarPosition.x += Math.cos(seed.lateralJitter) * jitter;
     radarPosition.z += Math.sin(seed.lateralJitter) * jitter;
 
-    if (
-      showVerticalAirflow &&
-      sample.verticalSpeed !== null &&
-      data.meta.maxAbsVerticalSpeed > 0
-    ) {
+    if (showVerticalAirflow && sample.verticalSpeed !== null && data.meta.maxAbsVerticalSpeed > 0) {
       radarPosition.y +=
         sample.verticalSpeed *
         RADAR_VERTICAL_VISUAL_GAIN *
@@ -878,14 +711,12 @@ function updateWindVisualization(
     const arrowLength =
       Math.max(0.14, Math.min(maxArrowLength / 0.3, 0.16 + normalizedSpeed * 0.22)) *
       0.3 *
-      RADAR_WORLD_TO_LOCAL_SCALE;
+      state.worldToLocalScale;
     const shaftLength = arrowLength * 0.56;
     const headLength = arrowLength * 0.44;
     const shaftRadius =
-      Math.max(0.016, Math.min(layerRadius * 0.12, 0.04)) *
-      0.3 *
-      RADAR_WORLD_TO_LOCAL_SCALE;
-    const headRadius = Math.max(shaftRadius * 2.25, 0.05 * 0.3 * RADAR_WORLD_TO_LOCAL_SCALE);
+      Math.max(0.016, Math.min(layerRadius * 0.12, 0.04)) * 0.3 * state.worldToLocalScale;
+    const headRadius = Math.max(shaftRadius * 2.25, 0.05 * 0.3 * state.worldToLocalScale);
 
     radarArrowCenter.copy(radarPosition).addScaledVector(radarArrowDirection, shaftLength * 0.5);
     radarArrowMatrixHelper.position.copy(radarArrowCenter);
@@ -930,10 +761,7 @@ function applyWindVisibility(
   }
 }
 
-function syncWindResolution(
-  state: WindFieldState,
-  context: DashboardSceneExtensionContext
-): void {
+function syncWindResolution(state: WindFieldState, context: DashboardSceneExtensionContext): void {
   state.layerVisuals.forEach((visual) => {
     const material = visual.ring.material as LineMaterial;
     setLineMaterialResolution(material, context);

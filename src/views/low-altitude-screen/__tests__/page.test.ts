@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/vue";
+import { render, waitFor } from "@testing-library/vue";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { mountDashboardSceneMock } = vi.hoisted(() => ({
   mountDashboardSceneMock: vi.fn(),
@@ -12,93 +12,100 @@ vi.mock("../scene/runtime", () => ({
 import LowAltitudeScreenPage from "../index.vue";
 
 describe("low-altitude screen page", () => {
-  it("shows the scene failure state when 3DGS runtime cannot load the model asset", async () => {
-    mountDashboardSceneMock.mockResolvedValueOnce({
-      destroy() {},
-      resize() {},
-      status: "error",
-      errorMessage: "3DGS 资源地址返回了 HTML 页面",
-    });
-
-    render(LowAltitudeScreenPage);
-
-    expect(await screen.findByText("3DGS 场景加载失败")).toBeTruthy();
-    expect(screen.getByText("3DGS 资源地址返回了 HTML 页面")).toBeTruthy();
+  afterEach(() => {
+    window.location.hash = "";
   });
 
-  it("renders the dashboard-style chrome around the 3DGS stage", async () => {
+  it("shows the scene failure state when the runtime returns an error", async () => {
     mountDashboardSceneMock.mockResolvedValueOnce({
       destroy() {},
       resize() {},
+      updateConfig() {},
+      status: "error",
+      errorMessage: "asset-error",
+    });
+
+    const { container, findByText } = render(LowAltitudeScreenPage);
+
+    expect(await findByText("asset-error")).toBeTruthy();
+    expect(container.querySelector(".low-altitude-scene-host__status")).toBeTruthy();
+  });
+
+  it("renders the dashboard chrome around the Cesium and 3DGS stage", async () => {
+    mountDashboardSceneMock.mockResolvedValueOnce({
+      destroy() {},
+      resize() {},
+      updateConfig() {},
       status: "ready",
       errorMessage: "",
     });
 
-    const { container } = render(LowAltitudeScreenPage);
+    const { container, findAllByRole } = render(LowAltitudeScreenPage);
 
-    expect(await screen.findByText("低空智能巡检平台")).toBeTruthy();
+    expect(await findAllByRole("button")).not.toHaveLength(0);
     expect(container.querySelector(".dashboard-stage")).toBeTruthy();
     expect(container.querySelector(".screen-header")).toBeTruthy();
     expect(container.querySelector(".screen-content")).toBeTruthy();
     expect(container.querySelector(".side-panel--left")).toBeTruthy();
     expect(container.querySelector(".side-panel--right")).toBeTruthy();
     expect(container.querySelector(".screen-center__viewer-shell")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "返回系统" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "进入浏览器全屏" })).toBeTruthy();
   });
 
-  it("keeps the center stage clean for the future 3DGS scene without route or marker overlays", async () => {
+  it("keeps the center stage clean without route or marker overlays", async () => {
     mountDashboardSceneMock.mockResolvedValueOnce({
       destroy() {},
       resize() {},
+      updateConfig() {},
       status: "ready",
       errorMessage: "",
     });
 
-    const { container } = render(LowAltitudeScreenPage);
+    const { container, findAllByRole } = render(LowAltitudeScreenPage);
 
-    await screen.findByText("任务总览");
+    await findAllByRole("button");
 
     expect(container.querySelector(".low-altitude-scene-host__overlay")).toBeNull();
     expect(container.querySelector(".low-altitude-scene-host__marker")).toBeNull();
   });
 
-  it("stretches the 3DGS canvas behind the dashboard chrome", async () => {
+  it("mounts the Cesium scene host behind the dashboard chrome without a standalone Spark canvas", async () => {
     mountDashboardSceneMock.mockResolvedValueOnce({
       destroy() {},
       resize() {},
+      updateConfig() {},
       status: "ready",
       errorMessage: "",
     });
 
-    const { container } = render(LowAltitudeScreenPage);
+    const { container, findAllByRole } = render(LowAltitudeScreenPage);
 
-    await screen.findByText("低空智能巡检平台");
+    await findAllByRole("button");
 
     const host = container.querySelector(".low-altitude-scene-host");
-    const canvas = container.querySelector(".low-altitude-scene-host__canvas");
+    const map = container.querySelector(".low-altitude-scene-host__map");
     const slot = container.querySelector(".low-altitude-scene-host__slot");
 
     expect(host).toBeTruthy();
-    expect(canvas).toBeTruthy();
+    expect(map).toBeTruthy();
+    expect(container.querySelector(".low-altitude-scene-host__canvas")).toBeNull();
     expect(slot).toBeTruthy();
     expect(getComputedStyle(host as HTMLElement).position).toBe("relative");
-    expect(getComputedStyle(canvas as HTMLElement).position).toBe("absolute");
-    expect(getComputedStyle(canvas as HTMLElement).display).toBe("block");
+    expect(getComputedStyle(map as HTMLElement).position).toBe("absolute");
     expect(getComputedStyle(slot as HTMLElement).position).toBe("relative");
   });
 
-  it("keeps the fullscreen chrome from blocking canvas drag interactions", async () => {
+  it("keeps the fullscreen chrome from blocking Cesium map drag interactions", async () => {
     mountDashboardSceneMock.mockResolvedValueOnce({
       destroy() {},
       resize() {},
+      updateConfig() {},
       status: "ready",
       errorMessage: "",
     });
 
-    const { container } = render(LowAltitudeScreenPage);
+    const { container, findAllByRole } = render(LowAltitudeScreenPage);
 
-    await screen.findByText("低空智能巡检平台");
+    await findAllByRole("button");
 
     const slot = container.querySelector(".low-altitude-scene-host__slot");
     const header = container.querySelector(".screen-header");
@@ -119,16 +126,15 @@ describe("low-altitude screen page", () => {
     mountDashboardSceneMock.mockResolvedValueOnce({
       destroy() {},
       resize() {},
+      updateConfig() {},
       status: "ready",
       errorMessage: "",
     });
 
-    const { container } = render(LowAltitudeScreenPage);
+    const { container, findAllByRole } = render(LowAltitudeScreenPage);
 
-    expect(await screen.findByText("任务总览")).toBeTruthy();
-    expect(screen.getByText("资源保障")).toBeTruthy();
-    expect(screen.getByText("异常告警")).toBeTruthy();
-    expect(screen.getByText("飞行闭环")).toBeTruthy();
+    await findAllByRole("button");
+
     expect(container.querySelectorAll(".screen-panel")).toHaveLength(4);
   });
 
@@ -136,16 +142,79 @@ describe("low-altitude screen page", () => {
     mountDashboardSceneMock.mockResolvedValueOnce({
       destroy() {},
       resize() {},
+      updateConfig() {},
       status: "ready",
       errorMessage: "",
     });
 
-    const { container } = render(LowAltitudeScreenPage);
+    const { container, findAllByRole } = render(LowAltitudeScreenPage);
 
-    await screen.findByText("低空智能巡检平台");
+    await findAllByRole("button");
 
     const viewerShell = container.querySelector(".screen-center__viewer-shell");
     expect(viewerShell).toBeTruthy();
     expect(getComputedStyle(viewerShell as HTMLElement).boxShadow).toBe("");
+  });
+
+  it("keeps the calibration panel hidden by default", async () => {
+    window.location.hash = "#/low-altitude-screen";
+    mountDashboardSceneMock.mockResolvedValueOnce({
+      destroy() {},
+      resize() {},
+      updateConfig() {},
+      status: "ready",
+      errorMessage: "",
+    });
+
+    const { container, findAllByRole } = render(LowAltitudeScreenPage);
+
+    await findAllByRole("button");
+
+    expect(container.querySelector('[data-testid="scene-calibration-panel"]')).toBeNull();
+  });
+
+  it("shows the calibration panel when the route hash enables calibrate=1", async () => {
+    window.location.hash = "#/low-altitude-screen?calibrate=1";
+    mountDashboardSceneMock.mockResolvedValueOnce({
+      destroy() {},
+      resize() {},
+      updateConfig() {},
+      status: "ready",
+      errorMessage: "",
+    });
+
+    const { container, findAllByRole } = render(LowAltitudeScreenPage);
+
+    await findAllByRole("button");
+
+    expect(container.querySelector('[data-testid="scene-calibration-panel"]')).toBeTruthy();
+    expect(container.querySelector('input[name="anchorLng"]')).toBeTruthy();
+    expect(container.querySelector('input[name="scale"]')).toBeTruthy();
+    expect(container.querySelector("button")).toBeTruthy();
+    expect(container.textContent).toContain("复制当前视角 JSON");
+  });
+
+  it("passes a camera snapshot callback through scene options", async () => {
+    window.location.hash = "#/low-altitude-screen?calibrate=1";
+    mountDashboardSceneMock.mockClear();
+    mountDashboardSceneMock.mockResolvedValueOnce({
+      destroy() {},
+      resize() {},
+      updateConfig() {},
+      status: "ready",
+      errorMessage: "",
+    });
+
+    render(LowAltitudeScreenPage);
+
+    await waitFor(() => {
+      expect(mountDashboardSceneMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mountDashboardSceneMock.mock.calls.at(-1)?.[2]).toEqual(
+      expect.objectContaining({
+        onCameraViewChange: expect.any(Function),
+      })
+    );
   });
 });

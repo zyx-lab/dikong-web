@@ -89,10 +89,42 @@ export interface SceneMarker {
   label: string;
 }
 
+export type SceneBaseMapMode = "satellite" | "terrain" | "vector";
+
+export interface SceneOriginConfig {
+  longitude: number;
+  latitude: number;
+  altitudeMeters: number;
+}
+
+export interface SceneHomeViewConfig {
+  longitude: number;
+  latitude: number;
+  height: number;
+  headingDeg: number;
+  pitchDeg: number;
+  rollDeg: number;
+}
+
+export interface SceneSplatPlacement {
+  anchorLng: number;
+  anchorLat: number;
+  heightOffsetMeters: number;
+  eastMeters: number;
+  northMeters: number;
+  upMeters: number;
+  headingDeg: number;
+  pitchDeg: number;
+  rollDeg: number;
+  scale: number;
+}
+
 export interface LowAltitudeSceneConfig {
   splatUrl: string;
   backgroundColor: string;
-  cameraPosition: [number, number, number];
-  cameraTarget: [number, number, number];
-  interactive: boolean;
+  baseMapMode: SceneBaseMapMode;
+  sceneOrigin: SceneOriginConfig;
+  homeView: SceneHomeViewConfig;
+  splatPlacement: SceneSplatPlacement;
+  showCalibrationPanel: boolean;
 }
