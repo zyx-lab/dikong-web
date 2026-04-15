@@ -39,6 +39,18 @@ export interface SparkRendererOptions {
      */
     preUpdate?: boolean;
     /**
+     * Whether to poll auto viewpoints in the same render tick instead of deferring
+     * to a timeout.
+     * @default false
+     */
+    syncAutoViewpoints?: boolean;
+    /**
+     * Maximum world-space distance the Spark origin may drift before a new
+     * accumulator origin is chosen.
+     * @default 1
+     */
+    originDistance?: number;
+    /**
      * Maximum standard deviations from the center to render Gaussians. Values
      * Math.sqrt(4)..Math.sqrt(9) produce acceptable results and can be tweaked for
      * performance.
@@ -220,6 +232,8 @@ export declare class SparkRenderer extends THREE.Mesh {
     uniforms: ReturnType<typeof SparkRenderer.makeUniforms>;
     autoUpdate: boolean;
     preUpdate: boolean;
+    syncAutoViewpoints: boolean;
+    originDistance: number;
     static sparkOverride?: SparkRenderer;
     renderSize: THREE.Vector2;
     maxStdDev: number;

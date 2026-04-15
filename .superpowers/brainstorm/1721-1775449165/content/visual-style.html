@@ -1,0 +1,422 @@
+<h2>无人机大屏优化方向</h2>
+<p class="subtitle">先只选整体气质。你点一个最接近你想要的大屏方向，我再继续细化布局和组件。</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. 冷静指挥中心</div>
+        <div
+          class="mockup-body"
+          style="
+            min-height: 260px;
+            padding: 18px;
+            color: #d9ecff;
+            background: linear-gradient(180deg, #081521, #0f2434);
+          "
+        >
+          <div
+            style="display: grid; grid-template-columns: 240px 1fr 240px; gap: 14px; height: 100%"
+          >
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div
+                style="
+                  height: 42px;
+                  background: rgba(10, 27, 41, 0.9);
+                  border: 1px solid rgba(120, 190, 255, 0.18);
+                  border-radius: 14px;
+                "
+              ></div>
+              <div
+                style="
+                  flex: 1;
+                  background: linear-gradient(
+                    180deg,
+                    rgba(12, 31, 48, 0.98),
+                    rgba(8, 21, 33, 0.92)
+                  );
+                  border: 1px solid rgba(120, 190, 255, 0.16);
+                  border-radius: 20px;
+                "
+              ></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div
+                style="
+                  height: 64px;
+                  background: rgba(7, 18, 28, 0.72);
+                  border: 1px solid rgba(120, 190, 255, 0.14);
+                  border-radius: 20px;
+                "
+              ></div>
+              <div
+                style="
+                  position: relative;
+                  flex: 1;
+                  background:
+                    radial-gradient(
+                      circle at 50% 50%,
+                      rgba(78, 148, 201, 0.16),
+                      rgba(8, 21, 33, 0.88) 58%
+                    ),
+                    linear-gradient(135deg, rgba(13, 42, 57, 0.88), rgba(24, 38, 24, 0.65));
+                  border: 1px solid rgba(116, 203, 255, 0.14);
+                  border-radius: 28px;
+                "
+              >
+                <div
+                  style="
+                    position: absolute;
+                    inset: 18% 18% auto 18%;
+                    height: 3px;
+                    background: #68beff;
+                    box-shadow: 0 0 16px rgba(104, 190, 255, 0.42);
+                    transform: rotate(-12deg);
+                  "
+                ></div>
+                <div
+                  style="
+                    position: absolute;
+                    top: 34%;
+                    left: 26%;
+                    width: 12px;
+                    height: 12px;
+                    background: #74f0cd;
+                    border-radius: 50%;
+                    box-shadow: 0 0 18px rgba(116, 240, 205, 0.7);
+                  "
+                ></div>
+                <div
+                  style="
+                    position: absolute;
+                    right: 22%;
+                    bottom: 22%;
+                    width: 12px;
+                    height: 12px;
+                    background: #ff8d8d;
+                    border-radius: 50%;
+                    box-shadow: 0 0 18px rgba(255, 141, 141, 0.65);
+                  "
+                ></div>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div
+                style="
+                  height: 120px;
+                  background: linear-gradient(
+                    180deg,
+                    rgba(12, 31, 48, 0.98),
+                    rgba(8, 21, 33, 0.92)
+                  );
+                  border: 1px solid rgba(120, 190, 255, 0.16);
+                  border-radius: 20px;
+                "
+              ></div>
+              <div
+                style="
+                  flex: 1;
+                  background: linear-gradient(
+                    180deg,
+                    rgba(12, 31, 48, 0.98),
+                    rgba(8, 21, 33, 0.92)
+                  );
+                  border: 1px solid rgba(120, 190, 255, 0.16);
+                  border-radius: 20px;
+                "
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>冷静指挥中心</h3>
+      <p>更克制、更专业，强调态势总览、层级秩序和夜航值守感，适合长期作为系统首页。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. 港区工业雷达屏</div>
+        <div
+          class="mockup-body"
+          style="
+            min-height: 260px;
+            padding: 18px;
+            color: #eff7ef;
+            background: linear-gradient(180deg, #101714, #243326);
+          "
+        >
+          <div
+            style="display: grid; grid-template-columns: 220px 1fr 260px; gap: 14px; height: 100%"
+          >
+            <div style="display: flex; flex-direction: column; gap: 14px">
+              <div
+                style="
+                  height: 54px;
+                  background: rgba(11, 18, 13, 0.78);
+                  border-left: 3px solid #8fd16f;
+                  border-radius: 12px;
+                "
+              ></div>
+              <div
+                style="
+                  height: 94px;
+                  background: rgba(11, 18, 13, 0.78);
+                  border-left: 3px solid #d2c56a;
+                  border-radius: 12px;
+                "
+              ></div>
+              <div
+                style="
+                  flex: 1;
+                  background: rgba(11, 18, 13, 0.78);
+                  border-left: 3px solid #72c6b6;
+                  border-radius: 12px;
+                "
+              ></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div
+                style="
+                  height: 66px;
+                  background: rgba(13, 18, 14, 0.65);
+                  border: 1px solid rgba(207, 232, 170, 0.1);
+                  border-radius: 14px;
+                "
+              ></div>
+              <div
+                style="
+                  position: relative;
+                  flex: 1;
+                  background: radial-gradient(
+                    circle at 50% 50%,
+                    rgba(161, 182, 78, 0.16),
+                    rgba(15, 26, 18, 0.84) 62%
+                  );
+                  border: 1px solid rgba(207, 232, 170, 0.12);
+                  border-radius: 24px;
+                "
+              >
+                <div
+                  style="
+                    position: absolute;
+                    inset: 18px;
+                    border: 1px dashed rgba(196, 230, 131, 0.22);
+                    border-radius: 50%;
+                  "
+                ></div>
+                <div
+                  style="
+                    position: absolute;
+                    inset: 42px;
+                    border: 1px dashed rgba(196, 230, 131, 0.18);
+                    border-radius: 50%;
+                  "
+                ></div>
+                <div
+                  style="
+                    position: absolute;
+                    top: 24%;
+                    left: 48%;
+                    width: 10px;
+                    height: 10px;
+                    background: #8fff82;
+                    border-radius: 50%;
+                    box-shadow: 0 0 14px rgba(143, 255, 130, 0.75);
+                  "
+                ></div>
+                <div
+                  style="
+                    position: absolute;
+                    right: 18%;
+                    bottom: 28%;
+                    width: 10px;
+                    height: 10px;
+                    background: #ffd36a;
+                    border-radius: 50%;
+                    box-shadow: 0 0 14px rgba(255, 211, 106, 0.75);
+                  "
+                ></div>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 14px">
+              <div
+                style="
+                  height: 108px;
+                  background: rgba(11, 18, 13, 0.78);
+                  border-top: 2px solid #8fd16f;
+                  border-radius: 12px;
+                "
+              ></div>
+              <div
+                style="
+                  height: 88px;
+                  background: rgba(11, 18, 13, 0.78);
+                  border-top: 2px solid #d9815d;
+                  border-radius: 12px;
+                "
+              ></div>
+              <div
+                style="
+                  flex: 1;
+                  background: rgba(11, 18, 13, 0.78);
+                  border-top: 2px solid #72c6b6;
+                  border-radius: 12px;
+                "
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>港区工业雷达屏</h3>
+      <p>更有港区工业和雷达监测味道，绿色与土黄更明显，信号感更强，适合强调巡检和预警。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C. 高密度作战控制台</div>
+        <div
+          class="mockup-body"
+          style="
+            min-height: 260px;
+            padding: 18px;
+            color: #ebf4ff;
+            background: linear-gradient(180deg, #0a0f18, #161b25);
+          "
+        >
+          <div
+            style="display: grid; grid-template-columns: 280px 1fr 280px; gap: 10px; height: 100%"
+          >
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div
+                style="
+                  height: 44px;
+                  background: #101826;
+                  border: 1px solid rgba(110, 156, 255, 0.14);
+                  border-radius: 10px;
+                "
+              ></div>
+              <div
+                style="
+                  height: 44px;
+                  background: #101826;
+                  border: 1px solid rgba(110, 156, 255, 0.14);
+                  border-radius: 10px;
+                "
+              ></div>
+              <div
+                style="
+                  flex: 1;
+                  background: #101826;
+                  border: 1px solid rgba(110, 156, 255, 0.14);
+                  border-radius: 10px;
+                "
+              ></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div
+                style="
+                  height: 58px;
+                  background: #101826;
+                  border: 1px solid rgba(110, 156, 255, 0.14);
+                  border-radius: 12px;
+                "
+              ></div>
+              <div
+                style="
+                  position: relative;
+                  flex: 1;
+                  background: linear-gradient(
+                    180deg,
+                    rgba(16, 24, 38, 0.96),
+                    rgba(16, 24, 38, 0.92)
+                  );
+                  border: 1px solid rgba(110, 156, 255, 0.14);
+                  border-radius: 14px;
+                "
+              >
+                <div
+                  style="
+                    position: absolute;
+                    top: 30%;
+                    right: 12%;
+                    left: 12%;
+                    height: 2px;
+                    background: #66b2ff;
+                  "
+                ></div>
+                <div
+                  style="
+                    position: absolute;
+                    top: 22%;
+                    left: 26%;
+                    width: 8px;
+                    height: 8px;
+                    background: #7cf7d6;
+                    border-radius: 50%;
+                  "
+                ></div>
+                <div
+                  style="
+                    position: absolute;
+                    right: 24%;
+                    bottom: 24%;
+                    width: 8px;
+                    height: 8px;
+                    background: #ff8181;
+                    border-radius: 50%;
+                  "
+                ></div>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div
+                style="
+                  height: 66px;
+                  background: #101826;
+                  border: 1px solid rgba(110, 156, 255, 0.14);
+                  border-radius: 10px;
+                "
+              ></div>
+              <div
+                style="
+                  height: 66px;
+                  background: #101826;
+                  border: 1px solid rgba(110, 156, 255, 0.14);
+                  border-radius: 10px;
+                "
+              ></div>
+              <div
+                style="
+                  height: 66px;
+                  background: #101826;
+                  border: 1px solid rgba(110, 156, 255, 0.14);
+                  border-radius: 10px;
+                "
+              ></div>
+              <div
+                style="
+                  flex: 1;
+                  background: #101826;
+                  border: 1px solid rgba(110, 156, 255, 0.14);
+                  border-radius: 10px;
+                "
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>高密度作战控制台</h3>
+      <p>信息更密、更像实时控制台，适合追求专业感和效率，但风险是容易显得紧张和压迫。</p>
+    </div>
+  </div>
+</div>

@@ -12,6 +12,16 @@
         <Fullscreen />
       </div>
 
+      <!-- 大屏入口 -->
+      <button
+        type="button"
+        class="navbar-actions__item navbar-actions__screen-entry"
+        aria-label="打开低空管理大屏"
+        @click="openLowAltitudeScreen"
+      >
+        <span class="navbar-actions__screen-label">大屏</span>
+      </button>
+
       <!-- 布局大小 -->
       <div class="navbar-actions__item">
         <SizeSelect />
@@ -67,6 +77,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { defaults } from "@/settings";
@@ -115,6 +126,11 @@ function handleTenantChange(tenantId: number) {
       ElMessage.error(error.message || "切换租户失败");
     }
   );
+}
+
+function openLowAltitudeScreen() {
+  const href = router.resolve({ path: "/low-altitude-screen" }).href;
+  window.open(href, "_blank", "noopener,noreferrer");
 }
 
 /**
@@ -233,6 +249,27 @@ function handleSettingsClick() {
         color: var(--el-color-primary);
       }
     }
+  }
+
+  &__screen-entry {
+    color: var(--el-text-color-regular);
+    background: transparent;
+    border: none;
+  }
+
+  &__screen-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 28px;
+    padding: 0 8px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    border: 1px solid currentColor;
+    border-radius: 999px;
   }
 
   .user-profile {

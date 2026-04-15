@@ -76,13 +76,15 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
-        <el-form-item label="所属部门" prop="department">
-          <el-input
-            v-model="filterForm.department"
-            placeholder="请输入所属部门"
-            clearable
-            class="filter-field--md"
-            @keyup.enter="handleQuery"
+        <el-form-item label="创建时间" prop="createdRange">
+          <el-date-picker
+            v-model="filterForm.createdRange"
+            type="daterange"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            range-separator="至"
+            class="filter-field--lg"
           />
         </el-form-item>
         <el-form-item label="更新时间" prop="updatedRange">
@@ -154,7 +156,6 @@
               <div class="route-card__body-head">
                 <div>
                   <h3>{{ route.routeName }}</h3>
-                  <p>所属部门：{{ route.department || "未配置" }}</p>
                 </div>
                 <el-tag size="small" effect="plain" class="route-type-tag">
                   {{ getRouteTypeLabel(route.routeType) }}
@@ -163,7 +164,8 @@
 
               <div class="route-card__meta">
                 <span>机型：{{ route.droneModel }}</span>
-                <span>创建人：{{ route.creatorName || "—" }}</span>
+                <span>创建人：{{ route.creatorName || "-" }}</span>
+                <span>创建时间：{{ route.createdAt }}</span>
                 <span>更新时间：{{ route.updatedAt }}</span>
               </div>
 
@@ -230,9 +232,6 @@
         <el-form-item label="航线名称" prop="routeName">
           <el-input v-model="createForm.routeName" placeholder="请输入航线名称" />
         </el-form-item>
-        <el-form-item label="所属部门" prop="department">
-          <el-input v-model="createForm.department" placeholder="请输入所属部门" />
-        </el-form-item>
         <el-form-item label="航线类型" prop="routeType">
           <el-select v-model="createForm.routeType" placeholder="请选择航线类型" class="w-full">
             <el-option
@@ -261,8 +260,10 @@ import { useWindowSize } from "@vueuse/core";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useRouter } from "vue-router";
+import RouteAPI, { type RouteRead } from "@/api/flight/route";
 import { RouteType } from "@/api/flight/types";
-import { deletePersistedRouteRecord, loadPersistedRouteRecords, saveRouteDraft } from "./storage";
+import { saveRouteDraft } from "./storage";
+import { hydrateRouteRecord } from "./route-xml";
 import type { CreateRouteForm, RouteFilterForm, RouteRecordModel } from "./types";
 import {
   createEmptyRoute,
@@ -305,14 +306,13 @@ const listLoading = ref(false);
 const filterForm = reactive<RouteFilterForm>({
   routeName: "",
   creatorName: "",
-  department: "",
   routeType: undefined,
+  createdRange: [],
   updatedRange: [],
 });
 
 const createForm = reactive<CreateRouteForm>({
   routeName: "",
-  department: "",
   routeType: RouteType.POINT,
 });
 
@@ -323,7 +323,6 @@ const queryParams = reactive({
 
 const createRules: FormRules = {
   routeName: [{ required: true, message: "请输入航线名称", trigger: "blur" }],
-  department: [{ required: true, message: "请输入所属部门", trigger: "blur" }],
   routeType: [{ required: true, message: "请选择航线类型", trigger: "change" }],
 };
 
@@ -338,8 +337,11 @@ const filteredRoutes = computed(() =>
     if (filterForm.creatorName && !route.creatorName.includes(filterForm.creatorName.trim())) {
       return false;
     }
-    if (filterForm.department && !route.department.includes(filterForm.department.trim())) {
-      return false;
+    if (filterForm.createdRange.length === 2) {
+      const [start, end] = filterForm.createdRange;
+      if (route.createdAt < start || route.createdAt > end) {
+        return false;
+      }
     }
     if (filterForm.updatedRange.length === 2) {
       const [start, end] = filterForm.updatedRange;
@@ -371,8 +373,8 @@ const hasActiveFilters = computed(() =>
   Boolean(
     filterForm.routeName ||
     filterForm.creatorName ||
-    filterForm.department ||
     filterForm.routeType ||
+    filterForm.createdRange.length ||
     filterForm.updatedRange.length
   )
 );
@@ -382,23 +384,75 @@ function getRouteCardStats(route: RouteRecordModel) {
   return getRouteStatItems(route);
 }
 
-function refreshRouteRecords() {
-  routeRecords.value = loadPersistedRouteRecords();
+function ensureCurrentPage() {
+  const maxPage = Math.max(1, Math.ceil(filteredRoutes.value.length / queryParams.pageSize));
+  if (queryParams.pageNum > maxPage) {
+    queryParams.pageNum = maxPage;
+  }
 }
 
-function loadRouteList() {
-  refreshRouteRecords();
-  listLoading.value = false;
+async function fetchAllRouteSummaries(name?: string) {
+  const pageSize = 100;
+  const allRoutes: RouteRead[] = [];
+  let pageNum = 1;
+  let total = Number.POSITIVE_INFINITY;
+
+  while (allRoutes.length < total) {
+    const pageResult = await RouteAPI.getPage({
+      pageNum,
+      pageSize,
+      name,
+    });
+
+    const currentRoutes = pageResult?.list || [];
+    total = pageResult?.total ?? currentRoutes.length;
+
+    if (currentRoutes.length === 0) {
+      break;
+    }
+
+    allRoutes.push(...currentRoutes);
+    pageNum += 1;
+  }
+
+  return allRoutes;
+}
+
+async function hydrateRouteRecords(routes: RouteRead[]) {
+  return Promise.all(
+    routes.map(async (route) => {
+      try {
+        const kmzResponse = await RouteAPI.getKmz(route.id);
+        return await hydrateRouteRecord(route, kmzResponse.data);
+      } catch {
+        return hydrateRouteRecord(route);
+      }
+    })
+  );
+}
+
+async function loadRouteList() {
+  listLoading.value = true;
+
+  try {
+    const routeName = filterForm.routeName.trim();
+    const summaries = await fetchAllRouteSummaries(routeName || undefined);
+    routeRecords.value = await hydrateRouteRecords(summaries);
+    ensureCurrentPage();
+  } catch {
+    routeRecords.value = [];
+  } finally {
+    listLoading.value = false;
+  }
 }
 
 function handleQuery() {
   queryParams.pageNum = 1;
-  loadRouteList();
+  void loadRouteList();
 }
 
 function resetCreateForm() {
   createForm.routeName = "";
-  createForm.department = "";
   createForm.routeType = RouteType.POINT;
 }
 
@@ -411,8 +465,8 @@ function openCreateDialog() {
 function resetFilterForm() {
   filterForm.routeName = "";
   filterForm.creatorName = "";
-  filterForm.department = "";
   filterForm.routeType = undefined;
+  filterForm.createdRange = [];
   filterForm.updatedRange = [];
 }
 
@@ -420,7 +474,7 @@ function handleResetQuery() {
   queryFormRef.value?.resetFields();
   resetFilterForm();
   queryParams.pageNum = 1;
-  loadRouteList();
+  void loadRouteList();
 }
 
 function closeCreateDialog() {
@@ -438,7 +492,6 @@ async function startCreate() {
     id: createRouteDraftId(),
     persisted: false,
     routeName: createForm.routeName.trim(),
-    department: createForm.department.trim(),
     routeType: createForm.routeType,
     loopConfig:
       createForm.routeType === RouteType.LOOP
@@ -479,23 +532,19 @@ async function handleDeleteRoute(route: RouteRecordModel) {
       type: "warning",
     });
 
-    routeRecords.value = deletePersistedRouteRecord(route.id);
+    await RouteAPI.delete(route.id);
+    await loadRouteList();
     ElMessage.success("删除成功");
-
-    const maxPage = Math.max(1, Math.ceil(routeRecords.value.length / queryParams.pageSize));
-    if (queryParams.pageNum > maxPage) {
-      queryParams.pageNum = maxPage;
-    }
   } catch {
     // 用户取消
   }
 }
 
 onMounted(() => {
-  refreshRouteRecords();
+  void loadRouteList();
 });
 
 onActivated(() => {
-  refreshRouteRecords();
+  void loadRouteList();
 });
 </script>
