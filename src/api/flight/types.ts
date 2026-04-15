@@ -76,20 +76,50 @@ export interface RouteInfo {
 }
 
 export interface FlightRecordQuery extends PageQuery {
+  flightNo?: string;
   droneId?: number;
+  missionId?: number;
+  pilotId?: number;
   status?: number;
-  startTime?: string;
-  endTime?: string;
 }
 
-export interface FlightRecord {
+export interface FlightRecordWire {
   id: number;
-  taskName: string;
-  droneId: number;
-  droneName: string;
-  takeoffTime: string;
-  landingTime: string;
-  flightDuration: number;
-  flightDistance: number;
+  flight_no: string;
+  mission: number | null;
+  mission_name: string;
+  route_name: string;
+  airport_name: string;
+  drone: number | null;
+  device_sn: string;
+  drone_name: string;
+  pilot: number | null;
+  pilot_name: string;
+  start_time: string | null;
+  end_time: string | null;
+  flight_duration: number | null;
+  photo_count: number;
+  video_count: number;
   status: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FlightRecordInfo {
+  id: number;
+  flightNo: string;
+  missionName: string;
+  routeName: string;
+  airportName: string;
+  deviceSn: string;
+  droneName: string;
+  pilotName: string;
+  startTime: string | null;
+  endTime: string | null;
+  flightDuration: number | null;
+  photoCount: number;
+  videoCount: number;
+  status: number;
+  createdAt: string;
+  updatedAt: string;
 }

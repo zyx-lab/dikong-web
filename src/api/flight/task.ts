@@ -2,57 +2,70 @@ import request from "@/utils/request";
 import type { BaseQueryParams, PageResult } from "@/types/api";
 
 /**
- * 任务查询分页参数
+ * Wire 类型：对应后端原始字段（snake_case）
+ */
+export interface TaskWire {
+  id: number;
+  name: string;
+  // backend may return either `route` or `route_id` for the route id
+  route?: number;
+  route_id?: number;
+  route_name?: string;
+  // backend may return either `drone` or `drone_id` for the drone id
+  drone?: number;
+  drone_id?: number;
+  drone_name?: string;
+  // pilot fields
+  pilot?: number;
+  pilot_name?: string;
+  scheduled_at?: string;
+  started_at?: string;
+  finished_at?: string;
+  status?: number;
+  sync_status?: string;
+  execution_status?: string;
+  last_sync_at?: string;
+  created_at?: string;
+  updated_at?: string;
+  remark?: string;
+  dji_job_id?: string;
+}
+
+/**
+ * 页面使用的对象（camelCase）
+ */
+export interface TaskVO {
+  id: number;
+  name: string;
+  routeId?: number;
+  routeName?: string;
+  droneId?: number;
+  droneName?: string;
+  pilotId?: number;
+  pilotName?: string;
+  scheduledAt?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  status?: number;
+  syncStatus?: string;
+  executionStatus?: string;
+  lastSyncAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  remark?: string;
+  djiJobId?: string;
+}
+
+/**
+ * 查询参数（保持 pageNum/pageSize）
  */
 export interface TaskPageQuery extends BaseQueryParams {
-  /** 任务名称 */
   name?: string;
-  /** 任务状态 */
   status?: number;
 }
 
 /**
- * 任务视图对象
- */
-export interface TaskVO {
-  id: number;
-  /** 任务名称 */
-  name: string;
-  /** 任务航线ID */
-  routeId: number;
-  /** 航线名称 */
-  routeName: string;
-  /** 所属部门 (原型展示用) */
-  department?: string;
-  /** 执行机场 (原型展示用) */
-  airportName?: string;
-  /** 执行无人机ID */
-  droneId: number;
-  /** 无人机名称 */
-  droneName: string;
-  /** 执行飞手ID */
-  pilotId: number;
-  /** 飞手姓名 */
-  pilotName: string;
-  /** 应用算法 (原型展示用) */
-  algorithm?: string;
-  /** 任务策略 (原型展示用) */
-  strategy?: string;
-  /** 状态(0:待执行 1:执行中 2:已暂停 3:已完成 4:已取消 5:执行失败) */
-  status: number;
-  /** 计划执行时间 */
-  scheduledAt?: string;
-  /** 备注 */
-  remark?: string;
-  /** 创建人 */
-  creatorName?: string;
-  /** 创建时间 */
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-/**
- * 任务表单对象
+ * 页面表单对象（前端内部使用 camelCase）
  */
 export interface TaskForm {
   id?: number;
@@ -62,77 +75,192 @@ export interface TaskForm {
   pilotId?: number;
   scheduledAt?: string;
   remark?: string;
-  algorithm?: string;
-  strategy?: string;
-  department?: string;
-  airportName?: string;
+}
+
+/** 航线下拉项 */
+export interface RouteOption {
+  id: number;
+  name: string;
+}
+
+/** 租户成员（飞手）下拉项 */
+export interface MemberOption {
+  memberId: number;
+  displayName: string;
+  roleCodes: string[];
 }
 
 const TASK_BASE_URL = "/api/v1/missions";
 
+function mapTaskWireToVO(w: TaskWire): TaskVO {
+  return {
+    id: w.id,
+    name: w.name,
+    routeId: w.route ?? w.route_id,
+    routeName: w.route_name,
+    droneId: w.drone ?? w.drone_id,
+    droneName: w.drone_name,
+    pilotId: w.pilot,
+    pilotName: w.pilot_name,
+    scheduledAt: w.scheduled_at,
+    startedAt: w.started_at,
+    finishedAt: w.finished_at,
+    status:
+      typeof w.status === "number" ? w.status : w.status != null ? Number(w.status) : undefined,
+    syncStatus: w.sync_status,
+    executionStatus: w.execution_status,
+    lastSyncAt: w.last_sync_at,
+    createdAt: w.created_at,
+    updatedAt: w.updated_at,
+    remark: w.remark,
+    djiJobId: w.dji_job_id,
+  };
+}
+
+function mapFormToWire(form: TaskForm): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    name: form.name,
+  };
+
+  if (form.routeId !== undefined) body.route = form.routeId;
+  if (form.droneId !== undefined) body.drone = form.droneId;
+  if (form.pilotId !== undefined) body.pilot = form.pilotId;
+  if (form.scheduledAt) body.scheduled_at = form.scheduledAt;
+  if (form.remark) body.remark = form.remark;
+
+  return body;
+}
+
+function mapUpdateToWire(form: TaskForm): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (form.name !== undefined) body.name = form.name;
+  if (form.scheduledAt !== undefined) body.scheduled_at = form.scheduledAt;
+  if (form.remark !== undefined) body.remark = form.remark;
+  return body;
+}
+
 const TaskAPI = {
-  /**
-   * 获取任务分页列表
-   *
-   * @param queryParams 查询参数
-   */
-  getPage(queryParams: TaskPageQuery) {
-    return request<any, PageResult<TaskVO>>({
-      url: `${TASK_BASE_URL}/page`,
+  /** 获取任务分页列表，返回已映射的 camelCase 数据 */
+  async getPage(queryParams: TaskPageQuery) {
+    // backend may return different shapes; the request layer already unwraps the outer `code/msg/data`
+    const raw = await request<any, any>({
+      url: `${TASK_BASE_URL}`,
       method: "get",
       params: queryParams,
     });
+
+    // support multiple shapes: { results, count } | { list, total } | direct array
+    let list: TaskWire[] = [];
+    let total = 0;
+
+    if (Array.isArray(raw?.results)) {
+      list = raw.results;
+      total = raw.count ?? raw.total ?? raw.results.length;
+    } else if (Array.isArray(raw?.list)) {
+      list = raw.list;
+      total = raw.total ?? raw.count ?? raw.list.length;
+    } else if (Array.isArray(raw)) {
+      list = raw;
+      total = raw.length;
+    } else if (Array.isArray(raw?.data?.results)) {
+      list = raw.data.results;
+      total = raw.data.count ?? raw.data.total ?? raw.data.results.length;
+    } else if (Array.isArray(raw?.data?.list)) {
+      list = raw.data.list;
+      total = raw.data.total ?? raw.data.count ?? raw.data.list.length;
+    }
+
+    return {
+      list: (list ?? []).map(mapTaskWireToVO),
+      total: total ?? 0,
+    } as PageResult<TaskVO> & { list: TaskVO[] };
   },
 
-  /**
-   * 获取任务明细
-   *
-   * @param id 任务ID
-   */
-  getDetail(id: number) {
-    return request<any, TaskForm>({
+  /** 获取单条任务并映射 */
+  async getDetail(id: number) {
+    const data = await request<any, TaskWire>({
       url: `${TASK_BASE_URL}/${id}`,
       method: "get",
     });
+    return mapTaskWireToVO(data as TaskWire);
   },
 
-  /**
-   * 新增任务
-   *
-   * @param data 表单数据
-   */
+  /** 新增任务（在 API 层做表单字段到后端字段的转换） */
   add(data: TaskForm) {
+    const body = mapFormToWire(data);
     return request({
       url: `${TASK_BASE_URL}`,
       method: "post",
-      data,
+      data: body,
     });
   },
 
-  /**
-   * 修改任务
-   *
-   * @param id 任务ID
-   * @param data 表单数据
-   */
+  /** 修改任务 */
   update(id: number, data: TaskForm) {
+    const body = mapUpdateToWire(data);
     return request({
       url: `${TASK_BASE_URL}/${id}`,
       method: "put",
-      data,
+      data: body,
     });
   },
 
-  /**
-   * 删除任务
-   *
-   * @param ids 任务ID，多个以逗号分隔
-   */
-  delete(ids: string) {
+  /** 删除任务 */
+  delete(id: number) {
     return request({
-      url: `${TASK_BASE_URL}/${ids}`,
+      url: `${TASK_BASE_URL}/${id}`,
       method: "delete",
     });
+  },
+
+  /** 推进任务 */
+  advance(id: number) {
+    return request({
+      url: `${TASK_BASE_URL}/${id}/advance`,
+      method: "post",
+    });
+  },
+
+  /** 获取航线列表（用于下拉选择） */
+  async getRoutes() {
+    const raw = await request<any, any>({ url: "/api/v1/routes", method: "get" });
+    const list: any[] = [];
+    if (Array.isArray(raw?.results)) {
+      for (const item of raw.results) {
+        if (Array.isArray(item?.data?.list)) list.push(...item.data.list);
+        else if (Array.isArray(item?.list)) list.push(...item.list);
+      }
+    } else if (Array.isArray(raw?.list)) {
+      list.push(...raw.list);
+    } else if (Array.isArray(raw)) {
+      list.push(...raw);
+    } else if (Array.isArray(raw?.data?.list)) {
+      list.push(...raw.data.list);
+    }
+    return list.map((r: any) => ({ id: r.id, name: r.name })) as RouteOption[];
+  },
+
+  /** 获取租户成员列表（用于下拉选择飞手） */
+  async getMembers() {
+    const raw = await request<any, any>({ url: "/api/v1/iam/tenant/members", method: "get" });
+    const list: any[] = [];
+    if (Array.isArray(raw?.results)) {
+      for (const item of raw.results) {
+        if (Array.isArray(item?.data?.list)) list.push(...item.data.list);
+        else if (Array.isArray(item?.list)) list.push(...item.list);
+      }
+    } else if (Array.isArray(raw?.list)) {
+      list.push(...raw.list);
+    } else if (Array.isArray(raw)) {
+      list.push(...raw);
+    } else if (Array.isArray(raw?.data?.list)) {
+      list.push(...raw.data.list);
+    }
+    return list.map((m: any) => ({
+      memberId: m.memberId,
+      displayName: m.displayName,
+      roleCodes: m.roleCodes ?? [],
+    })) as MemberOption[];
   },
 };
 

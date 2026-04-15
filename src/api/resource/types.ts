@@ -60,53 +60,56 @@ export enum PilotAccountStatus {
   ENABLED = 1,
 }
 
-export interface DroneQuery extends BaseQueryParams {
-  snCode?: string;
-  droneName?: string;
+/** 后端原始返回的无人机对象（snake_case） */
+export interface DroneWire {
+  id: number;
+  code?: string;
+  name?: string;
   model?: string;
-  organization?: string;
-  controlMode?: DroneControlMode;
-  controlAuthority?: DroneControlAuthority;
-  maintenanceStatus?: DroneMaintenanceStatus;
-  insuranceStatus?: DroneInsuranceStatus;
-  status?: DroneStatus;
+  device_sn?: string;
+  status?: string; // e.g. "ENABLED"
+  org_id?: number;
+  created_by_tenant_member_id?: number;
+  last_seen_at?: string;
+  dji_online?: boolean;
+  firmware_version?: string;
+  firmware_status?: string;
+  last_payload?: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DroneQuery extends BaseQueryParams {
+  code?: string;
+  deviceSn?: string;
+  model?: string;
+  name?: string;
 }
 
 export interface DroneInfo {
   id: number;
-  snCode: string;
-  droneName: string;
-  brand: string;
-  model: string;
-  controlMode: DroneControlMode;
-  airportName?: string;
-  organization: string;
-  controlAuthority: DroneControlAuthority[];
-  controlAuthorityNames?: string[];
-  status: DroneStatus;
-  maintenanceStatus: DroneMaintenanceStatus;
-  insuranceStatus: DroneInsuranceStatus;
-  createdAt: string;
-  remark?: string;
-  batteryLevel?: number;
-  lastFlightTime?: string;
-  totalFlightHours?: number;
+  code?: string;
+  name?: string;
+  model?: string;
+  deviceSn?: string;
+  status?: string;
+  orgId?: number;
+  createdByTenantMemberId?: number;
+  lastSeenAt?: string;
+  djiOnline?: boolean;
+  firmwareVersion?: string;
+  firmwareStatus?: string;
+  lastPayload?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface DroneForm {
   id?: number;
-  snCode: string;
-  droneName: string;
-  brand: string;
-  model: string;
-  controlMode?: DroneControlMode;
-  airportName?: string;
-  organization?: string;
-  controlAuthority: DroneControlAuthority[];
-  status?: DroneStatus;
-  maintenanceStatus?: DroneMaintenanceStatus;
-  insuranceStatus?: DroneInsuranceStatus;
-  remark?: string;
+  code?: string;
+  name?: string;
+  model?: string;
+  orgId?: number;
 }
 
 export interface AirportQuery extends BaseQueryParams {

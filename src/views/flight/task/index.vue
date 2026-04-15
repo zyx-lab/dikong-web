@@ -60,10 +60,8 @@
           >
             <el-option label="待执行" :value="0" />
             <el-option label="执行中" :value="1" />
-            <el-option label="已暂停" :value="2" />
-            <el-option label="已完成" :value="3" />
-            <el-option label="已取消" :value="4" />
-            <el-option label="执行失败" :value="5" />
+            <el-option label="执行完成" :value="2" />
+            <el-option label="飞行中" :value="3" />
           </el-select>
         </el-form-item>
         <el-form-item class="search-buttons">
@@ -79,9 +77,9 @@
           <el-button type="primary" icon="plus" @click="handleCreateClick">新增任务</el-button>
           <el-button
             type="danger"
-            :disabled="ids.length === 0"
             icon="delete"
-            @click="handleDelete()"
+            :disabled="ids.length === 0"
+            @click="handleBatchDelete"
           >
             批量删除
           </el-button>
@@ -104,47 +102,38 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="55" align="center" />
+        <el-table-column label="ID" prop="id" width="80" align="center" />
         <el-table-column label="任务名称" prop="name" min-width="150" show-overflow-tooltip />
         <el-table-column label="任务航线" prop="routeName" min-width="150" show-overflow-tooltip />
-        <el-table-column label="所属部门" prop="department" min-width="120" show-overflow-tooltip />
-        <el-table-column
-          label="执行机场"
-          prop="airportName"
-          min-width="120"
-          show-overflow-tooltip
-        />
         <el-table-column
           label="执行无人机"
           prop="droneName"
           min-width="120"
           show-overflow-tooltip
         />
-        <el-table-column label="执行飞手" prop="pilotName" min-width="100" show-overflow-tooltip />
-        <el-table-column label="应用算法" prop="algorithm" min-width="150" show-overflow-tooltip />
-        <el-table-column label="任务策略" prop="strategy" min-width="100" />
-        <el-table-column label="执行状态" prop="status" align="center" width="100">
-          <template #default="scope">
-            <el-tag v-if="scope.row.status === 0" type="info">待执行</el-tag>
-            <el-tag v-else-if="scope.row.status === 1" type="primary">执行中</el-tag>
-            <el-tag v-else-if="scope.row.status === 2" type="warning">已暂停</el-tag>
-            <el-tag v-else-if="scope.row.status === 3" type="success">已完成</el-tag>
-            <el-tag v-else-if="scope.row.status === 4" type="info">已取消</el-tag>
-            <el-tag v-else-if="scope.row.status === 5" type="danger">执行失败</el-tag>
-            <el-tag v-else type="info">未知</el-tag>
+        <el-table-column label="计划执行时间" min-width="160">
+          <template #default="{ row }">{{ formatTime(row.scheduledAt) }}</template>
+        </el-table-column>
+        <el-table-column label="任务状态" align="center" width="100">
+          <template #default="{ row }">
+            {{ formatStatus(row.status) }}
           </template>
         </el-table-column>
-        <el-table-column label="创建人" prop="creatorName" min-width="100" />
-        <el-table-column label="创建时间" prop="createdAt" min-width="160" />
-        <el-table-column fixed="right" label="操作" align="center" width="260">
+        <el-table-column label="创建时间" min-width="160">
+          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+        </el-table-column>
+        <el-table-column label="更新时间" min-width="160">
+          <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
+        </el-table-column>
+        <el-table-column label="开始时间" min-width="160">
+          <template #default="{ row }">{{ formatTime(row.startedAt) }}</template>
+        </el-table-column>
+        <el-table-column label="结束时间" min-width="160">
+          <template #default="{ row }">{{ formatTime(row.finishedAt) }}</template>
+        </el-table-column>
+        <el-table-column label="备注" prop="remark" min-width="120" show-overflow-tooltip />
+        <el-table-column fixed="right" label="操作" align="center" width="280">
           <template #default="scope">
-            <el-button
-              type="primary"
-              link
-              size="small"
-              @click.stop="handleFlightRecords(scope.row)"
-            >
-              飞行记录
-            </el-button>
             <el-button type="primary" link size="small" @click.stop="handleDetailClick(scope.row)">
               详情
             </el-button>
@@ -157,14 +146,19 @@
             >
               编辑
             </el-button>
+            <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
+              删除
+            </el-button>
+            <el-button type="primary" link size="small" @click.stop="handleAdvance(scope.row)">
+              推进任务
+            </el-button>
             <el-button
-              type="danger"
+              type="primary"
               link
               size="small"
-              icon="delete"
-              @click.stop="handleDelete(scope.row.id)"
+              @click.stop="handleLiveStream(liveUrlMap[scope.row.id])"
             >
-              删除
+              直播画面
             </el-button>
           </template>
         </el-table-column>
@@ -204,36 +198,37 @@
         </el-form-item>
         <el-form-item label="任务航线" prop="routeId">
           <el-select v-model="formData.routeId" placeholder="请选择航线" class="w-full">
-            <el-option label="前山河汛前岸线勘察" :value="1" />
-            <el-option label="珠海岸线巡查航线" :value="2" />
+            <el-option
+              v-for="item in routeOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
           </el-select>
         </el-form-item>
-        <el-form-item label="所属部门" prop="department">
-          <el-input v-model="formData.department" placeholder="请输入所属部门" />
-        </el-form-item>
-        <el-form-item label="执行机场" prop="airportName">
-          <el-input v-model="formData.airportName" placeholder="请选择或输入执行机场" />
-        </el-form-item>
-        <el-form-item label="执行机型">
+        <el-form-item label="执行无人机" prop="droneId">
           <el-select v-model="formData.droneId" placeholder="请选择无人机" class="w-full">
-            <el-option label="应急测绘-01 (CW-15)" :value="1" />
-            <el-option label="河道巡检-03 (M3E)" :value="2" />
+            <el-option
+              v-for="item in droneOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="执行飞手" prop="pilotId">
-          <el-select v-model="formData.pilotId" placeholder="请选择飞手" class="w-full">
-            <el-option label="孙工" :value="1" />
-            <el-option label="李主任" :value="2" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="应用算法" prop="algorithm">
-          <el-input v-model="formData.algorithm" placeholder="例如：水面漂浮物检测" />
-        </el-form-item>
-        <el-form-item label="任务策略" prop="strategy">
-          <el-select v-model="formData.strategy" placeholder="请选择策略" class="w-full">
-            <el-option label="手动执行" value="手动执行" />
-            <el-option label="周期定时" value="周期定时" />
-            <el-option label="定时执行" value="定时执行" />
+          <el-select
+            v-model="formData.pilotId"
+            placeholder="请选择执行飞手"
+            class="w-full"
+            clearable
+          >
+            <el-option
+              v-for="item in pilotOptions"
+              :key="item.memberId"
+              :label="item.displayName"
+              :value="item.memberId"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="计划时间" prop="scheduledAt">
@@ -263,6 +258,66 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- Detail dialog -->
+    <el-dialog
+      v-model="detailDialog.visible"
+      title="任务详情"
+      :width="dialogWidth"
+      align-center
+      destroy-on-close
+      custom-class="dialog-form-decorated"
+      class="dialog-form-decorated"
+      @close="closeDetailDialog"
+    >
+      <div v-loading="detailDialog.loading" style="min-height: 200px">
+        <template v-if="detailDialog.data">
+          <el-table :data="[detailDialog.data]" border size="small">
+            <el-table-column prop="id" label="任务ID" min-width="80" align="center" />
+            <el-table-column prop="name" label="任务名称" min-width="160" show-overflow-tooltip />
+            <el-table-column
+              prop="routeName"
+              label="任务航线"
+              min-width="150"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              prop="droneName"
+              label="执行无人机"
+              min-width="120"
+              show-overflow-tooltip
+            />
+            <el-table-column prop="pilotName" label="执行飞手" min-width="100" align="center" />
+            <el-table-column prop="scheduledAt" label="计划执行时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.scheduledAt) }}</template>
+            </el-table-column>
+            <el-table-column label="开始时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.startedAt) }}</template>
+            </el-table-column>
+            <el-table-column label="结束时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.finishedAt) }}</template>
+            </el-table-column>
+            <el-table-column label="任务状态" width="100" align="center">
+              <template #default="{ row }">
+                {{ formatStatus(row.status) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="创建时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+            </el-table-column>
+            <el-table-column label="更新时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
+            </el-table-column>
+            <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
+          </el-table>
+        </template>
+      </div>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="closeDetailDialog">关闭</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -271,15 +326,15 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { useWindowSize } from "@vueuse/core";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { useRouter } from "vue-router";
-import type { TaskPageQuery, TaskVO, TaskForm } from "@/api/flight/task";
+import type { TaskPageQuery, TaskVO, TaskForm, RouteOption, MemberOption } from "@/api/flight/task";
+import TaskAPI from "@/api/flight/task";
+import DroneAPI from "@/api/resource/drone";
 
 defineOptions({
   name: "FlightTask",
   inheritAttrs: false,
 });
 
-const router = useRouter();
 const { width } = useWindowSize();
 
 // 表单引用
@@ -298,7 +353,8 @@ const filteredTaskList = ref<TaskVO[]>([]);
 const total = ref(0);
 const loading = ref(false);
 const submitLoading = ref(false);
-const ids = ref<string[]>([]);
+const ids = ref<number[]>([]);
+const liveUrlMap = ref<Record<number, string>>({});
 
 const dialogWidth = computed(() => (width.value < 768 ? "92%" : "600px"));
 const hasActiveFilters = computed(() =>
@@ -308,10 +364,10 @@ const activeTaskCount = computed(
   () => filteredTaskList.value.filter((item) => item.status === 1).length
 );
 const completedTaskCount = computed(
-  () => filteredTaskList.value.filter((item) => item.status === 3).length
+  () => filteredTaskList.value.filter((item) => item.status === 2).length
 );
 const attentionTaskCount = computed(
-  () => filteredTaskList.value.filter((item) => item.status === 2 || item.status === 5).length
+  () => filteredTaskList.value.filter((item) => item.status === 0).length
 );
 
 // 弹窗状态
@@ -320,7 +376,18 @@ const dialogState = reactive({
   visible: false,
 });
 
-// 表单数据
+// 下拉选项数据
+const routeOptions = ref<RouteOption[]>([]);
+const droneOptions = ref<{ id: number; name: string }[]>([]);
+const pilotOptions = ref<MemberOption[]>([]);
+
+const detailDialog = reactive({
+  visible: false,
+  loading: false,
+  data: null as TaskVO | null,
+});
+
+// 表单数据（只保留对接需要的字段）
 const formData = reactive<TaskForm>({
   name: "",
   routeId: undefined,
@@ -328,102 +395,34 @@ const formData = reactive<TaskForm>({
   pilotId: undefined,
   scheduledAt: "",
   remark: "",
-  algorithm: "",
-  strategy: "",
-  department: "",
-  airportName: "",
 });
 
 // 验证规则
 const rules: FormRules = {
   name: [{ required: true, message: "请输入任务名称", trigger: "blur" }],
-  routeId: [{ required: true, message: "请选择任务航线", trigger: "change" }],
 };
 
 /**
- * 加载任务列表数据 (Mock由于没有真实后端)
+ * 加载任务列表数据（调用 API 层并消费已映射的 camelCase 数据）
  */
-function fetchData(): void {
+async function fetchData(): Promise<void> {
   loading.value = true;
-
-  // TODO: 后续接入真实接口
-  // TaskAPI.getPage(queryParams).then(...);
-
-  // 这里使用前端Mock以实现原型页面效果
-  setTimeout(() => {
-    let mockData: TaskVO[] = [
-      {
-        id: 1,
-        name: "前山河汛前岸线勘察",
-        routeId: 1,
-        routeName: "珠海岸线巡查航线",
-        department: "市应急局",
-        airportName: "市应急基地主舱",
-        droneId: 1,
-        droneName: "应急测绘-01 (CW-15)",
-        pilotId: 1,
-        pilotName: "孙工",
-        algorithm: "岸线变化分析、三维建模",
-        strategy: "周期定时",
-        status: 3,
-        creatorName: "孙工",
-        createdAt: "2025-11-14 08:43:35",
-      },
-      {
-        id: 2,
-        name: "秦淮河河道日常巡检",
-        routeId: 2,
-        routeName: "秦淮河东段航线",
-        department: "市水务局",
-        airportName: "城西河道机巢-A1",
-        droneId: 2,
-        droneName: "河道巡检-03 (M3E)",
-        pilotId: 2,
-        pilotName: "李主任",
-        algorithm: "水面漂浮物检测、排污口识别",
-        strategy: "定时执行",
-        status: 0,
-        creatorName: "李主任",
-        createdAt: "2025-11-14 09:30:55",
-      },
-      {
-        id: 3,
-        name: "紫金山林火预警巡飞",
-        routeId: 3,
-        routeName: "紫金山核心区航线",
-        department: "市林业局",
-        airportName: "紫金山顶停机坪",
-        droneId: 3,
-        droneName: "林火监测-02 (M3T)",
-        pilotId: 1,
-        pilotName: "王伟",
-        algorithm: "热成像火点识别",
-        strategy: "手动执行",
-        status: 1,
-        creatorName: "王工",
-        createdAt: "2025-11-14 10:15:20",
-      },
-    ];
-
-    // 本地过滤
-    if (queryParams.name) {
-      mockData = mockData.filter((m) => m.name.includes(queryParams.name!));
-    }
-    if (queryParams.status !== undefined && queryParams.status !== null) {
-      mockData = mockData.filter((m) => m.status === queryParams.status);
-    }
-
-    filteredTaskList.value = mockData;
-    total.value = mockData.length;
+  try {
+    const res = await TaskAPI.getPage(queryParams);
+    const list = (res?.list ?? []) as TaskVO[];
+    filteredTaskList.value = list;
+    total.value = res?.total ?? list.length;
 
     const pageNum = queryParams.pageNum ?? 1;
     const pageSize = queryParams.pageSize ?? 10;
     const startIndex = (pageNum - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-
-    tableData.value = mockData.slice(startIndex, endIndex);
+    tableData.value = list.slice(startIndex, startIndex + pageSize);
+  } catch (err: any) {
+    console.error(err);
+    ElMessage.error(err?.message || "加载任务失败");
+  } finally {
     loading.value = false;
-  }, 500);
+  }
 }
 
 /**
@@ -444,11 +443,16 @@ function handleResetQuery(): void {
   fetchData();
 }
 
-/**
- * 表格选择变化事件
- */
-function handleSelectionChange(selection: TaskVO[]): void {
-  ids.value = selection.map((item) => String(item.id));
+function formatTime(value: string | undefined | null): string {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  const pad = (n: number) => `${n}`.padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function formatStatus(status: number | undefined): string {
+  return ["待执行", "执行中", "执行完成", "飞行中"][status ?? -1] ?? "-";
 }
 
 /**
@@ -458,6 +462,7 @@ function handleCreateClick(): void {
   resetForm();
   dialogState.visible = true;
   dialogState.title = "新增任务";
+  loadDropdownOptions();
 }
 
 /**
@@ -467,6 +472,7 @@ function handleEditClick(row: TaskVO): void {
   resetForm();
   dialogState.visible = true;
   dialogState.title = "修改任务";
+  loadDropdownOptions();
 
   // 表单回显
   formData.id = row.id;
@@ -474,36 +480,34 @@ function handleEditClick(row: TaskVO): void {
   formData.routeId = row.routeId;
   formData.droneId = row.droneId;
   formData.pilotId = row.pilotId;
-  formData.department = row.department;
-  formData.airportName = row.airportName;
-  formData.algorithm = row.algorithm;
-  formData.strategy = row.strategy;
+  formData.scheduledAt = row.scheduledAt ?? "";
+  formData.remark = row.remark ?? "";
 }
 
 /**
  * 详情按钮点击事件
  */
 function handleDetailClick(row: TaskVO): void {
-  ElMessageBox.alert(
-    `任务航线：${row.routeName}<br/>执行机场：${row.airportName}<br/>执行无人机：${row.droneName}<br/>执行飞手：${row.pilotName}<br/>任务策略：${row.strategy}<br/>应用算法：${row.algorithm}`,
-    `任务详情：${row.name}`,
-    {
-      dangerouslyUseHTMLString: true,
-      confirmButtonText: "确定",
-    }
-  );
+  detailDialog.loading = true;
+  detailDialog.data = null;
+  detailDialog.visible = true;
+  TaskAPI.getDetail(row.id)
+    .then((data) => {
+      detailDialog.data = data;
+    })
+    .catch((err) => {
+      console.error(err);
+      ElMessage.error("获取任务详情失败");
+      detailDialog.visible = false;
+    })
+    .finally(() => {
+      detailDialog.loading = false;
+    });
 }
 
-/**
- * 飞行记录按钮点击事件
- */
-function handleFlightRecords(row: TaskVO): void {
-  router.push({
-    path: "/flight/record",
-    query: {
-      taskName: row.name,
-    },
-  });
+function closeDetailDialog(): void {
+  detailDialog.visible = false;
+  detailDialog.data = null;
 }
 
 function resetForm(): void {
@@ -515,30 +519,42 @@ function resetForm(): void {
   formData.pilotId = undefined;
   formData.scheduledAt = "";
   formData.remark = "";
-  formData.algorithm = "";
-  formData.strategy = "";
-  formData.department = "";
-  formData.airportName = "";
+}
+
+async function loadDropdownOptions(): Promise<void> {
+  const [routes, drones, members] = await Promise.all([
+    TaskAPI.getRoutes(),
+    DroneAPI.getPage({ pageNum: 1, pageSize: 1000 }),
+    TaskAPI.getMembers(),
+  ]);
+  routeOptions.value = routes;
+  droneOptions.value = (drones.list ?? []).map((d: any) => ({ id: d.id, name: d.name }));
+  // 只保留有 pilot_operator 角色的成员
+  pilotOptions.value = members.filter((m: MemberOption) => m.roleCodes.includes("pilot_operator"));
 }
 
 /**
  * 提交表单
  */
 function handleSubmit(): void {
-  dataFormRef.value?.validate((isValid) => {
-    if (isValid) {
-      submitLoading.value = true;
-      // 模拟提交
-      setTimeout(() => {
-        if (formData.id) {
-          ElMessage.success("修改成功");
-        } else {
-          ElMessage.success("新增成功");
-        }
-        closeDialog();
-        handleQuery();
-        submitLoading.value = false;
-      }, 500);
+  dataFormRef.value?.validate(async (isValid) => {
+    if (!isValid) return;
+    submitLoading.value = true;
+    try {
+      if (formData.id) {
+        await TaskAPI.update(formData.id, formData as TaskForm);
+        ElMessage.success("修改成功");
+      } else {
+        await TaskAPI.add(formData as TaskForm);
+        ElMessage.success("新增成功");
+      }
+      closeDialog();
+      handleQuery();
+    } catch (err: any) {
+      console.error(err);
+      ElMessage.error(err?.message || "提交失败");
+    } finally {
+      submitLoading.value = false;
     }
   });
 }
@@ -553,37 +569,118 @@ function closeDialog(): void {
 }
 
 /**
- * 删除任务
- * @param id 任务ID
+ * 表格选择变化
  */
-function handleDelete(id?: number): void {
-  const taskIds = id ? [String(id)] : [...ids.value];
-  if (taskIds.length === 0) {
-    ElMessage.warning("请勾选删除项");
+function handleSelectionChange(selection: TaskVO[]): void {
+  ids.value = selection.map((item) => item.id);
+}
+
+/**
+ * 批量删除
+ */
+async function handleBatchDelete(): Promise<void> {
+  if (ids.value.length === 0) return;
+  try {
+    await ElMessageBox.confirm(`确认删除已选中的 ${ids.value.length} 个任务吗？`, "警告", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+    loading.value = true;
+    for (const id of ids.value) {
+      await TaskAPI.delete(id);
+    }
+    ElMessage.success("删除成功");
+    ids.value = [];
+    handleQuery();
+  } catch (err: any) {
+    if (err === "cancel") {
+      ElMessage.info("已取消删除");
+    } else {
+      console.error(err);
+      ElMessage.error(err?.message || "删除失败");
+    }
+  } finally {
+    loading.value = false;
+  }
+}
+
+/**
+ * 删除任务
+ */
+async function handleDelete(id: number): Promise<void> {
+  try {
+    await ElMessageBox.confirm("确认删除该任务吗？", "警告", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+    await TaskAPI.delete(id);
+    ElMessage.success("删除成功");
+    ids.value = ids.value.filter((i) => i !== id);
+    handleQuery();
+  } catch (err: any) {
+    if (err === "cancel") {
+      ElMessage.info("已取消删除");
+    } else {
+      console.error(err);
+      ElMessage.error(err?.message || "删除失败");
+    }
+  }
+}
+
+/**
+ * 推进任务
+ */
+async function handleAdvance(row: TaskVO): Promise<void> {
+  const oldStatus = row.status;
+  const waitingMsg = ElMessage({ type: "info", message: "等待响应...", duration: 0 });
+  try {
+    await TaskAPI.advance(row.id);
+    const updated = await TaskAPI.getDetail(row.id);
+    const newStatus = updated.status;
+
+    if (newStatus === 1 && oldStatus !== 1) {
+      // 待执行 → 执行中
+      waitingMsg.close();
+      ElMessage.success("任务开始");
+      const liveBody = {
+        url_type: 1,
+        video_id: "1581F7FVC252A00CJ5TT/88-0-0/normal-0",
+        video_quality: 1,
+      };
+      const res = await DroneAPI.liveStart(row.droneId!, liveBody);
+      liveUrlMap.value[row.id] = res?.hls_url ?? "";
+    } else if (newStatus === 2 && oldStatus !== 2) {
+      // 执行中 → 执行完成，需等 advance + liveStop 都完成
+      const liveBody = {
+        url_type: 1,
+        video_id: "1581F7FVC252A00CJ5TT/88-0-0/normal-0",
+        video_quality: 1,
+      };
+      await DroneAPI.liveStop(row.droneId!, liveBody);
+      waitingMsg.close();
+      ElMessage.success("任务结束");
+    }
+    handleQuery();
+  } catch (err: any) {
+    waitingMsg.close();
+    console.error(err);
+    ElMessage.error(err?.message || "推进失败");
+  }
+}
+
+/**
+ * 直播画面
+ */
+function handleLiveStream(url?: string): void {
+  if (!url) {
+    ElMessage.warning("暂无直播地址，请先推进任务");
     return;
   }
-
-  const message =
-    taskIds.length === 1 ? "确认删除当前任务吗？" : `确认删除已选中的 ${taskIds.length} 个任务吗？`;
-
-  ElMessageBox.confirm(message, "警告", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  }).then(
-    () => {
-      // 模拟调接口
-      loading.value = true;
-      setTimeout(() => {
-        ElMessage.success("删除成功");
-        handleResetQuery();
-        loading.value = false;
-      }, 500);
-    },
-    () => {
-      ElMessage.info("已取消删除");
-    }
-  );
+  // 拼接完整绝对路径，避免被 SPA 路由拦截
+  const base = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "");
+  window.open(`${base}/live.html?url=${encodeURIComponent(url)}`, "_blank");
 }
 
 onMounted(() => {
