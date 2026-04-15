@@ -55,6 +55,7 @@ import {
   mountDashboardScene,
   type DashboardSceneMountOptions,
   type DashboardSceneRuntime,
+  type DashboardSceneStatus,
 } from "../scene/runtime";
 import { buildSceneModel } from "../scene-model";
 import type { LowAltitudeSceneConfig, SceneMarker, SceneRouteLine } from "../types";
@@ -68,7 +69,18 @@ interface SceneDisplayModel {
 const props = defineProps<{
   model: SceneDisplayModel;
   sceneConfig: LowAltitudeSceneConfig;
+  sceneEnabled?: boolean;
   sceneOptions?: DashboardSceneMountOptions;
+}>();
+
+const emit = defineEmits<{
+  (
+    event: "scene-status-change",
+    payload: {
+      status: "loading" | DashboardSceneStatus;
+      errorMessage: string;
+    }
+  ): void;
 }>();
 
 const hostRef = ref<HTMLDivElement | null>(null);
@@ -77,8 +89,10 @@ const runtimeRef = shallowRef<DashboardSceneRuntime | null>(null);
 const selectedMarkerId = ref<string | null>(props.model.selectedMarkerId);
 const sceneStatus = ref<"loading" | DashboardSceneRuntime["status"]>("loading");
 const sceneErrorMessage = ref("正在初始化 Cesium 主场景并挂载 3DGS 覆盖层...");
+const DEFAULT_LOADING_MESSAGE = sceneErrorMessage.value;
 const handleResize = () => runtimeRef.value?.resize();
 let resizeObserver: ResizeObserver | undefined;
+let mountPromise: Promise<void> | null = null;
 
 const model = ref(buildSceneModel(props.model));
 
@@ -93,6 +107,46 @@ function syncModel() {
 function toggleMarker(markerId: string) {
   selectedMarkerId.value = selectedMarkerId.value === markerId ? null : markerId;
   syncModel();
+}
+
+function applySceneStatus(status: "loading" | DashboardSceneRuntime["status"], errorMessage = "") {
+  sceneStatus.value = status;
+  sceneErrorMessage.value = errorMessage;
+  emit("scene-status-change", {
+    status,
+    errorMessage,
+  });
+}
+
+function destroyRuntime() {
+  runtimeRef.value?.destroy();
+  runtimeRef.value = null;
+}
+
+async function ensureSceneMounted() {
+  if (!mapRef.value || props.sceneEnabled === false || runtimeRef.value || mountPromise) {
+    return;
+  }
+
+  applySceneStatus("loading", DEFAULT_LOADING_MESSAGE);
+  mountPromise = (async () => {
+    const runtime = await mountDashboardScene(
+      mapRef.value as HTMLElement,
+      props.sceneConfig,
+      props.sceneOptions
+    );
+    if (props.sceneEnabled === false) {
+      runtime.destroy();
+      return;
+    }
+
+    runtimeRef.value = runtime;
+    applySceneStatus(runtime.status, runtime.errorMessage);
+  })().finally(() => {
+    mountPromise = null;
+  });
+
+  await mountPromise;
 }
 
 watch(
@@ -112,16 +166,25 @@ watch(
   { deep: true }
 );
 
+watch(
+  () => props.sceneEnabled,
+  (enabled) => {
+    if (enabled === false) {
+      destroyRuntime();
+      applySceneStatus("loading", DEFAULT_LOADING_MESSAGE);
+      return;
+    }
+
+    void ensureSceneMounted();
+  }
+);
+
 onMounted(async () => {
   await nextTick();
-  if (mapRef.value) {
-    runtimeRef.value = await mountDashboardScene(
-      mapRef.value,
-      props.sceneConfig,
-      props.sceneOptions
-    );
-    sceneStatus.value = runtimeRef.value.status;
-    sceneErrorMessage.value = runtimeRef.value.errorMessage;
+  if (props.sceneEnabled !== false) {
+    await ensureSceneMounted();
+  } else {
+    applySceneStatus("loading", DEFAULT_LOADING_MESSAGE);
   }
   if (hostRef.value) {
     resizeObserver = new ResizeObserver(handleResize);
@@ -134,6 +197,6 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect();
   resizeObserver = undefined;
   window.removeEventListener("resize", handleResize);
-  runtimeRef.value?.destroy();
+  destroyRuntime();
 });
 </script>

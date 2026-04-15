@@ -14,16 +14,26 @@
               </p>
             </div>
           </div>
-          <div class="planner-page__type-switch">
+          <div class="planner-page__header-actions">
             <el-button
-              v-for="option in routeTypeOptions"
-              :key="option.value"
-              size="small"
-              :type="activeDraft.routeType === option.value ? 'primary' : 'default'"
-              @click="handleRouteTypeChange(option.value)"
+              type="primary"
+              plain
+              :disabled="!playbackEntryState.enabled"
+              @click="openPlaybackScreen"
             >
-              {{ option.label }}
+              模拟飞行
             </el-button>
+            <div class="planner-page__type-switch">
+              <el-button
+                v-for="option in routeTypeOptions"
+                :key="option.value"
+                size="small"
+                :type="activeDraft.routeType === option.value ? 'primary' : 'default'"
+                @click="handleRouteTypeChange(option.value)"
+              >
+                {{ option.label }}
+              </el-button>
+            </div>
           </div>
         </div>
 
@@ -146,6 +156,7 @@ import { useSettingsStore } from "@/store/modules/settings";
 import { downloadFile } from "@/utils";
 import RoutePlannerMap from "./components/RoutePlannerMap.vue";
 import RoutePlannerSidebar from "./components/RoutePlannerSidebar.vue";
+import { buildPlaybackLocation, getPlaybackEntryState } from "./playback-entry";
 import { buildRouteDraftKmzFile, formatApiDateTime, hydrateRouteRecord } from "./route-xml";
 import { getRouteDraftById, removeRouteDraft, saveRouteDraft } from "./storage";
 import type { BaseMapMode, PlannerPoint, RouteRecordModel } from "./types";
@@ -203,6 +214,9 @@ const hasUnsavedChanges = computed(() => {
 });
 const canPublishRoute = computed(
   () => Boolean(activeDraft.value?.persisted) && !isDraftRoute.value && !hasUnsavedChanges.value
+);
+const playbackEntryState = computed(() =>
+  getPlaybackEntryState(activeDraft.value, isDraftRoute.value, hasUnsavedChanges.value)
 );
 const dispatchStatusText = computed(() => {
   if (!activeDraft.value?.persisted || isDraftRoute.value) {
@@ -340,6 +354,17 @@ function clearCurrentGeometry() {
 
 function previewDraft() {
   plannerMapRef.value?.flyToRoute();
+}
+
+function openPlaybackScreen() {
+  if (!activeDraft.value) return;
+
+  if (!playbackEntryState.value.enabled) {
+    ElMessage.warning(playbackEntryState.value.reason);
+    return;
+  }
+
+  router.push(buildPlaybackLocation(activeDraft.value.id));
 }
 
 function openDispatchDialog() {
@@ -516,6 +541,12 @@ watch(
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.planner-page__header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
 .planner-page__body {
@@ -699,6 +730,11 @@ watch(
   }
 
   .planner-page__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .planner-page__header-actions {
     flex-direction: column;
     align-items: flex-start;
   }

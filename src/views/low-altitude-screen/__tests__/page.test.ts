@@ -1,19 +1,281 @@
 import { render, waitFor } from "@testing-library/vue";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { RouteType } from "@/api/flight/types";
 
-const { mountDashboardSceneMock } = vi.hoisted(() => ({
+const {
+  mountDashboardSceneMock,
+  getDetailMock,
+  getKmzMock,
+  hydrateRouteRecordMock,
+  loadPlaybackDroneModelRuntimeMock,
+} = vi.hoisted(() => ({
   mountDashboardSceneMock: vi.fn(),
+  getDetailMock: vi.fn(),
+  getKmzMock: vi.fn(),
+  hydrateRouteRecordMock: vi.fn(),
+  loadPlaybackDroneModelRuntimeMock: vi.fn(() =>
+    Promise.resolve({
+      dispose() {},
+      root: {},
+      setHeadingDegrees() {},
+      setPosition() {},
+      update() {},
+    })
+  ),
 }));
 
 vi.mock("../scene/runtime", () => ({
   mountDashboardScene: mountDashboardSceneMock,
 }));
 
+vi.mock("@/api/flight/route", () => ({
+  default: {
+    getDetail: getDetailMock,
+    getKmz: getKmzMock,
+  },
+}));
+
+vi.mock("@/views/route/route-xml", () => ({
+  hydrateRouteRecord: hydrateRouteRecordMock,
+}));
+
+vi.mock("../scene/playback-drone-model", () => ({
+  loadPlaybackDroneModelRuntime: loadPlaybackDroneModelRuntimeMock,
+}));
+
 import LowAltitudeScreenPage from "../index.vue";
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, resolve, reject };
+}
+
+function createSceneRuntime(status: "ready" | "error" | "unsupported", errorMessage = "") {
+  return {
+    destroy() {},
+    resize() {},
+    updateConfig() {},
+    status,
+    errorMessage,
+  };
+}
+
+function createPlaybackRouteRecord() {
+  return {
+    id: "42",
+    routeName: "港区巡检航线",
+    persisted: true,
+    routeType: RouteType.POINT,
+    points: [
+      {
+        id: "p1",
+        name: "航点1",
+        lng: 113.5285956152,
+        lat: 22.2551856026,
+        alt: 60,
+        hoverSeconds: 3,
+      },
+      {
+        id: "p2",
+        name: "航点2",
+        lng: 113.5263935271,
+        lat: 22.2501442839,
+        alt: 60,
+        hoverSeconds: 3,
+      },
+    ],
+    globalConfig: {
+      takeoffHeight: 30,
+      routeHeight: 60,
+      returnHeight: 80,
+      routeSpeed: 15,
+      signalLossAction: "returnHome",
+      finishAction: "returnHome",
+      cameraMode: "wide",
+      zoom: 2,
+    },
+    pointConfig: {
+      yawMode: "auto",
+      waypointType: "拍照",
+      hoverSeconds: 3,
+      photoIntervalSeconds: 30,
+      photoIntervalDistance: 200,
+      gimbalPitch: -45,
+      yaw: 0,
+      preflightAction: {
+        hoverSeconds: 3,
+        height: 30,
+        gimbalPitch: -45,
+      },
+    },
+    areaConfig: {
+      shootMode: "distance",
+      shootIntervalSeconds: 30,
+      shootIntervalDistance: 30,
+      gsd: 2,
+      flightHeight: 90,
+      overlapFront: 80,
+      overlapSide: 70,
+      routeDirection: 0,
+      takeoffPointMode: "system",
+    },
+    loopConfig: {
+      shootMode: "distance",
+      shootIntervalSeconds: 30,
+      shootIntervalDistance: 30,
+      targetResolution: 2,
+      flightHeight: 80,
+      direction: "clockwise",
+      startAngle: 0,
+      radius: 80,
+      totalAngle: 360,
+      yawMode: "track",
+      gimbalPitch: -45,
+      targetPoint: null,
+    },
+  };
+}
+
+function createAreaPlaybackRouteRecord() {
+  return {
+    id: "84",
+    routeName: "港区测绘范围",
+    persisted: true,
+    routeType: RouteType.AREA,
+    points: [
+      {
+        id: "a1",
+        name: "顶点1",
+        lng: 113.5282,
+        lat: 22.2558,
+        alt: 90,
+        hoverSeconds: 0,
+      },
+      {
+        id: "a2",
+        name: "顶点2",
+        lng: 113.5312,
+        lat: 22.2558,
+        alt: 90,
+        hoverSeconds: 0,
+      },
+      {
+        id: "a3",
+        name: "顶点3",
+        lng: 113.5312,
+        lat: 22.2521,
+        alt: 90,
+        hoverSeconds: 0,
+      },
+      {
+        id: "a4",
+        name: "顶点4",
+        lng: 113.5282,
+        lat: 22.2521,
+        alt: 90,
+        hoverSeconds: 0,
+      },
+    ],
+    globalConfig: {
+      takeoffHeight: 30,
+      routeHeight: 60,
+      returnHeight: 80,
+      routeSpeed: 15,
+      signalLossAction: "returnHome",
+      finishAction: "returnHome",
+      cameraMode: "wide",
+      zoom: 2,
+    },
+    pointConfig: {
+      yawMode: "auto",
+      waypointType: "拍照",
+      hoverSeconds: 3,
+      photoIntervalSeconds: 30,
+      photoIntervalDistance: 200,
+      gimbalPitch: -45,
+      yaw: 0,
+      preflightAction: {
+        hoverSeconds: 3,
+        height: 30,
+        gimbalPitch: -45,
+      },
+    },
+    areaConfig: {
+      shootMode: "distance",
+      shootIntervalSeconds: 30,
+      shootIntervalDistance: 30,
+      gsd: 2,
+      flightHeight: 90,
+      overlapFront: 80,
+      overlapSide: 70,
+      routeDirection: 0,
+      takeoffPointMode: "system",
+    },
+    loopConfig: {
+      shootMode: "distance",
+      shootIntervalSeconds: 30,
+      shootIntervalDistance: 30,
+      targetResolution: 2,
+      flightHeight: 80,
+      direction: "clockwise",
+      startAngle: 0,
+      radius: 80,
+      totalAngle: 360,
+      yawMode: "track",
+      gimbalPitch: -45,
+      targetPoint: null,
+    },
+  };
+}
+
+function createPlaybackExtensionContextStub() {
+  return {
+    sceneRoot: new (class {
+      add() {}
+    })(),
+    viewer: {
+      camera: {
+        setView() {},
+      },
+    },
+    geospatial: {
+      sceneOrigin: {
+        longitude: 113.52958706944445,
+        latitude: 22.252818819444443,
+        altitudeMeters: 86.885,
+      },
+      geodeticToEnu({
+        longitude,
+        latitude,
+        altitudeMeters,
+      }: {
+        longitude: number;
+        latitude: number;
+        altitudeMeters: number;
+      }) {
+        return {
+          east: longitude,
+          north: latitude,
+          up: altitudeMeters,
+        };
+      },
+      enuToRenderVector({ east, north, up }: { east: number; north: number; up: number }) {
+        return { x: east, y: north, z: up };
+      },
+    },
+  };
+}
 
 describe("low-altitude screen page", () => {
   afterEach(() => {
     window.location.hash = "";
+    window.location.search = "";
   });
 
   it("shows the scene failure state when the runtime returns an error", async () => {
@@ -216,5 +478,259 @@ describe("low-altitude screen page", () => {
         onCameraViewChange: expect.any(Function),
       })
     );
+  });
+
+  it("switches into focused playback mode and hides the dashboard duty panels", async () => {
+    window.location.hash = "#/low-altitude-screen?mode=playback&routeId=42";
+    mountDashboardSceneMock.mockResolvedValueOnce({
+      destroy() {},
+      resize() {},
+      updateConfig() {},
+      status: "ready",
+      errorMessage: "",
+    });
+    getDetailMock.mockResolvedValueOnce({
+      id: 42,
+      name: "港区巡检航线",
+      is_published: false,
+      created_at: "2026-04-15T10:00:00",
+      updated_at: "2026-04-15T10:00:00",
+    });
+    getKmzMock.mockResolvedValueOnce({ data: new Blob() });
+    hydrateRouteRecordMock.mockResolvedValueOnce({
+      id: "42",
+      routeName: "港区巡检航线",
+      persisted: true,
+      routeType: RouteType.POINT,
+      points: [
+        {
+          id: "p1",
+          name: "航点1",
+          lng: 113.5285956152,
+          lat: 22.2551856026,
+          alt: 60,
+          hoverSeconds: 3,
+        },
+        {
+          id: "p2",
+          name: "航点2",
+          lng: 113.5263935271,
+          lat: 22.2501442839,
+          alt: 60,
+          hoverSeconds: 3,
+        },
+      ],
+      globalConfig: {
+        takeoffHeight: 30,
+        routeHeight: 60,
+        returnHeight: 80,
+        routeSpeed: 15,
+        signalLossAction: "returnHome",
+        finishAction: "returnHome",
+        cameraMode: "wide",
+        zoom: 2,
+      },
+      pointConfig: {
+        yawMode: "auto",
+        waypointType: "拍照",
+        hoverSeconds: 3,
+        photoIntervalSeconds: 30,
+        photoIntervalDistance: 200,
+        gimbalPitch: -45,
+        yaw: 0,
+        preflightAction: {
+          hoverSeconds: 3,
+          height: 30,
+          gimbalPitch: -45,
+        },
+      },
+      areaConfig: {
+        shootMode: "distance",
+        shootIntervalSeconds: 30,
+        shootIntervalDistance: 30,
+        gsd: 2,
+        flightHeight: 90,
+        overlapFront: 80,
+        overlapSide: 70,
+        routeDirection: 0,
+        takeoffPointMode: "system",
+      },
+      loopConfig: {
+        shootMode: "distance",
+        shootIntervalSeconds: 30,
+        shootIntervalDistance: 30,
+        targetResolution: 2,
+        flightHeight: 80,
+        direction: "clockwise",
+        startAngle: 0,
+        radius: 80,
+        totalAngle: 360,
+        yawMode: "track",
+        gimbalPitch: -45,
+        targetPoint: null,
+      },
+    });
+
+    const { container, findByText } = render(LowAltitudeScreenPage);
+
+    expect(await findByText("专注回放")).toBeTruthy();
+    expect(container.querySelector(".playback-stage")).toBeTruthy();
+    expect(container.querySelector(".screen-content")).toBeNull();
+    expect(getDetailMock).toHaveBeenCalledWith("42");
+    expect(getKmzMock).toHaveBeenCalledWith("42");
+  });
+
+  it("renders a clear playback error state when route playback loading fails", async () => {
+    window.location.hash = "#/low-altitude-screen?mode=playback&routeId=404";
+    mountDashboardSceneMock.mockResolvedValueOnce({
+      destroy() {},
+      resize() {},
+      updateConfig() {},
+      status: "ready",
+      errorMessage: "",
+    });
+    getDetailMock.mockRejectedValueOnce(new Error("missing-route"));
+
+    const { findByText } = render(LowAltitudeScreenPage);
+
+    expect(await findByText("无法加载模拟飞行航线")).toBeTruthy();
+    expect(await findByText("missing-route")).toBeTruthy();
+  });
+
+  it("loads an area route in playback mode without falling back to the error state", async () => {
+    window.location.hash = "#/low-altitude-screen?mode=playback&routeId=84";
+    mountDashboardSceneMock.mockResolvedValueOnce({
+      destroy() {},
+      resize() {},
+      updateConfig() {},
+      status: "ready",
+      errorMessage: "",
+    });
+    getDetailMock.mockResolvedValueOnce({
+      id: 84,
+      name: "港区测绘范围",
+      is_published: false,
+      created_at: "2026-04-15T10:00:00",
+      updated_at: "2026-04-15T10:00:00",
+    });
+    getKmzMock.mockResolvedValueOnce({ data: new Blob() });
+    hydrateRouteRecordMock.mockResolvedValueOnce(createAreaPlaybackRouteRecord());
+
+    const { container, findByText, queryByText } = render(LowAltitudeScreenPage);
+
+    expect(await findByText("专注回放")).toBeTruthy();
+    await waitFor(() => {
+      expect(container.querySelector(".playback-stage")).toBeTruthy();
+    });
+    expect(queryByText("无法加载模拟飞行航线")).toBeNull();
+    expect(getDetailMock).toHaveBeenCalledWith("84");
+    expect(getKmzMock).toHaveBeenCalledWith("84");
+  });
+
+  it("waits for the 3DGS scene to become ready before starting focused playback", async () => {
+    window.location.hash = "#/low-altitude-screen?mode=playback&routeId=42";
+    mountDashboardSceneMock.mockReset();
+    getDetailMock.mockReset();
+    getKmzMock.mockReset();
+    hydrateRouteRecordMock.mockReset();
+    const runtimeDeferred = createDeferred<ReturnType<typeof createSceneRuntime>>();
+    mountDashboardSceneMock.mockImplementation((_container, _config, options) => {
+      options?.createExtension?.(createPlaybackExtensionContextStub() as any);
+      return runtimeDeferred.promise;
+    });
+    getDetailMock.mockResolvedValueOnce({
+      id: 42,
+      name: "港区巡检航线",
+      is_published: false,
+      created_at: "2026-04-15T10:00:00",
+      updated_at: "2026-04-15T10:00:00",
+    });
+    getKmzMock.mockResolvedValueOnce({ data: new Blob() });
+    hydrateRouteRecordMock.mockResolvedValueOnce(createPlaybackRouteRecord());
+
+    const { container, findByText } = render(LowAltitudeScreenPage);
+
+    expect(await findByText("专注回放")).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        container.querySelector('.playback-stage[data-playback-state="waitingScene"]')
+      ).toBeTruthy();
+    });
+
+    expect(mountDashboardSceneMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('[data-testid="playback-stats"]')).toBeNull();
+
+    runtimeDeferred.resolve(createSceneRuntime("ready"));
+  });
+
+  it("switches from scene waiting state into live playback stats after the 3DGS scene is ready", async () => {
+    window.location.hash = "#/low-altitude-screen?mode=playback&routeId=42";
+    mountDashboardSceneMock.mockReset();
+    getDetailMock.mockReset();
+    getKmzMock.mockReset();
+    hydrateRouteRecordMock.mockReset();
+    const runtimeDeferred = createDeferred<ReturnType<typeof createSceneRuntime>>();
+    mountDashboardSceneMock.mockImplementation((_container, _config, options) => {
+      options?.createExtension?.(createPlaybackExtensionContextStub() as any);
+      return runtimeDeferred.promise;
+    });
+    getDetailMock.mockResolvedValueOnce({
+      id: 42,
+      name: "港区巡检航线",
+      is_published: false,
+      created_at: "2026-04-15T10:00:00",
+      updated_at: "2026-04-15T10:00:00",
+    });
+    getKmzMock.mockResolvedValueOnce({ data: new Blob() });
+    hydrateRouteRecordMock.mockResolvedValueOnce(createPlaybackRouteRecord());
+
+    const { container, findByText } = render(LowAltitudeScreenPage);
+
+    expect(await findByText("专注回放")).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        container.querySelector('.playback-stage[data-playback-state="waitingScene"]')
+      ).toBeTruthy();
+    });
+
+    runtimeDeferred.resolve(createSceneRuntime("ready"));
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="playback-stats"]')).toBeTruthy();
+    });
+  });
+
+  it("keeps the playback drone marker visible without rendering the planned route overlay frame", async () => {
+    window.location.hash = "#/low-altitude-screen?mode=playback&routeId=42";
+    mountDashboardSceneMock.mockReset();
+    getDetailMock.mockReset();
+    getKmzMock.mockReset();
+    hydrateRouteRecordMock.mockReset();
+    const runtimeDeferred = createDeferred<ReturnType<typeof createSceneRuntime>>();
+    mountDashboardSceneMock.mockImplementation((_container, _config, options) => {
+      options?.createExtension?.(createPlaybackExtensionContextStub() as any);
+      return runtimeDeferred.promise;
+    });
+    getDetailMock.mockResolvedValueOnce({
+      id: 42,
+      name: "娓尯宸℃鑸嚎",
+      is_published: false,
+      created_at: "2026-04-15T10:00:00",
+      updated_at: "2026-04-15T10:00:00",
+    });
+    getKmzMock.mockResolvedValueOnce({ data: new Blob() });
+    hydrateRouteRecordMock.mockResolvedValueOnce(createPlaybackRouteRecord());
+
+    const { container, findByText } = render(LowAltitudeScreenPage);
+
+    expect(await findByText("专注回放")).toBeTruthy();
+    runtimeDeferred.resolve(createSceneRuntime("ready"));
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="playback-stats"]')).toBeTruthy();
+    });
+
+    expect(container.querySelector(".low-altitude-scene-host__overlay")).toBeNull();
+    expect(container.querySelector(".low-altitude-scene-host__marker")).toBeTruthy();
   });
 });

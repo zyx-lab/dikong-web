@@ -128,3 +128,49 @@ export interface LowAltitudeSceneConfig {
   splatPlacement: SceneSplatPlacement;
   showCalibrationPanel: boolean;
 }
+
+export type PlaybackPhase = "takeoff" | "cruise" | "hover" | "returnHome" | "completed";
+
+export interface PlaybackCoordinate {
+  lng: number;
+  lat: number;
+  alt: number;
+}
+
+export interface PlaybackSegment {
+  endCoordinate: PlaybackCoordinate;
+  durationSeconds: number;
+  phase: PlaybackPhase;
+  startCoordinate: PlaybackCoordinate;
+  waypointIndex: number | null;
+}
+
+export interface PlaybackMission {
+  cruiseHeight: number;
+  cruiseSpeed: number;
+  pathCoordinates: PlaybackCoordinate[];
+  returnHeight: number;
+  routeId: string;
+  routeName: string;
+  segments: PlaybackSegment[];
+  takeoffHeight: number;
+  totalDurationSeconds: number;
+  waypointCount: number;
+  waypointCoordinates: PlaybackCoordinate[];
+}
+
+export interface PlaybackState {
+  completed: boolean;
+  currentCoordinate: PlaybackCoordinate;
+  currentSegmentIndex: number;
+  currentWaypointIndex: number;
+  elapsedSeconds: number;
+  flownCoordinates: PlaybackCoordinate[];
+  headingDeg: number | null;
+  phase: PlaybackPhase;
+  progressRatio: number;
+  returning: boolean;
+  speedMetersPerSecond: number;
+  totalDurationSeconds: number;
+  totalWaypointCount: number;
+}

@@ -1,11 +1,105 @@
 <template>
-  <section ref="screenRef" class="low-altitude-screen-page">
+  <section
+    ref="screenRef"
+    class="low-altitude-screen-page"
+    :class="{ 'is-playback-mode': isPlaybackMode }"
+  >
     <LowAltitudeSceneHost
+      :key="sceneHostKey"
       :model="sceneModel"
       :scene-config="sceneConfig"
+      :scene-enabled="sceneEnabled"
       :scene-options="sceneOptions"
+      @scene-status-change="handleSceneStatusChange"
     >
-      <div class="dashboard-stage">
+      <div v-if="isPlaybackMode" class="playback-stage" :data-playback-state="playbackLoadState">
+        <header class="playback-stage__header">
+          <div class="playback-stage__title-block">
+            <span class="playback-stage__eyebrow">专注回放</span>
+            <h1 class="playback-stage__title">
+              {{ playbackMission?.routeName || "模拟飞行" }}
+            </h1>
+          </div>
+          <div class="screen-actions playback-stage__actions">
+            <div class="screen-actions">
+              <button type="button" class="screen-action" @click="returnToSystem">返回系统</button>
+              <button type="button" class="screen-action" @click="toggleFullscreen">
+                {{ isFullscreen ? "退出浏览器全屏" : "进入浏览器全屏" }}
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <section class="playback-stage__panel">
+          <div v-if="playbackLoadState === 'loading'" class="playback-stage__state-card">
+            <h2>专注回放</h2>
+            <p>正在加载已保存航线并生成飞行时间线...</p>
+          </div>
+          <div
+            v-else-if="playbackLoadState === 'waitingScene'"
+            data-testid="playback-waiting-scene"
+            class="playback-stage__state-card"
+          >
+            <h2>等待 3DGS 场景加载完成</h2>
+            <p>航线已准备完成，模拟飞行将在 3DGS 场景 ready 后自动开始。</p>
+          </div>
+          <div
+            v-else-if="playbackLoadState === 'error'"
+            class="playback-stage__state-card is-error"
+          >
+            <h2>无法加载模拟飞行航线</h2>
+            <p>{{ playbackErrorMessage }}</p>
+          </div>
+          <div
+            v-else-if="playbackMission && playbackState"
+            data-testid="playback-stats"
+            class="playback-stage__state-card playback-stage__state-card--stats"
+          >
+            <div class="playback-stage__stat-grid">
+              <article class="playback-stage__stat">
+                <span>当前阶段</span>
+                <strong>{{ playbackPhaseText }}</strong>
+              </article>
+              <article class="playback-stage__stat">
+                <span>当前航点</span>
+                <strong>
+                  {{ playbackState.currentWaypointIndex }}/{{ playbackState.totalWaypointCount }}
+                </strong>
+              </article>
+              <article class="playback-stage__stat">
+                <span>当前高度</span>
+                <strong>{{ playbackAltitudeText }}</strong>
+              </article>
+              <article class="playback-stage__stat">
+                <span>当前速度</span>
+                <strong>{{ playbackSpeedText }}</strong>
+              </article>
+              <article class="playback-stage__stat">
+                <span>返航状态</span>
+                <strong>{{ playbackReturnText }}</strong>
+              </article>
+              <article class="playback-stage__stat">
+                <span>完成状态</span>
+                <strong>{{ playbackCompletionText }}</strong>
+              </article>
+            </div>
+            <div class="playback-stage__progress">
+              <div class="playback-stage__progress-row">
+                <span>飞行进度</span>
+                <strong>{{ playbackProgressText }}</strong>
+              </div>
+              <div class="progress-card__bar">
+                <div
+                  class="progress-card__fill"
+                  :style="{ width: `${Math.round((playbackState.progressRatio || 0) * 100)}%` }"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div v-else class="dashboard-stage">
         <header class="screen-header">
           <div class="screen-header__meta screen-header__meta--left">
             <span class="screen-header__meta-label">当前时间</span>
@@ -50,7 +144,7 @@
                 >
                   <span>风场监测</span>
                   <span class="center-stage__wind-toggle-icon">
-                    {{ windPanelExpanded ? "▲" : "▼" }}
+                    {{ windPanelExpanded ? "−" : "+" }}
                   </span>
                 </button>
                 <WindFieldPanel
@@ -94,7 +188,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref, shallowRef } from "vue";
 import { useDateFormat, useFullscreen, useNow } from "@vueuse/core";
 import "./styles.scss";
 import LowAltitudeSceneHost from "./components/LowAltitudeSceneHost.vue";
@@ -104,6 +198,7 @@ import AlertBroadcastPanel from "./components/AlertBroadcastPanel.vue";
 import FlightClosurePanel from "./components/FlightClosurePanel.vue";
 import WindFieldPanel from "./components/WindFieldPanel.vue";
 import SceneCalibrationPanel from "./components/SceneCalibrationPanel.vue";
+import { shouldShowSceneCalibrationPanel } from "./query";
 import {
   LOW_ALTITUDE_ALERT_PANEL,
   LOW_ALTITUDE_DRONE_PANEL,
@@ -111,7 +206,9 @@ import {
   LOW_ALTITUDE_SCENE_CONFIG,
   LOW_ALTITUDE_TASK_PANEL,
 } from "./static-data";
+import { buildPlaybackSceneModel, createPlaybackMission } from "./playback";
 import { buildSceneModel } from "./scene-model";
+import { createPlaybackSceneExtension } from "./scene/playback-extension";
 import {
   buildWindLegendStops,
   createWindFieldSceneExtension,
@@ -120,23 +217,42 @@ import {
   type WindRenderMode,
 } from "./scene/wind-field";
 import { cloneSceneSplatPlacement } from "./scene/geospatial";
-import type { LowAltitudeSceneConfig, SceneHomeViewConfig } from "./types";
+import type {
+  LowAltitudeSceneConfig,
+  PlaybackMission,
+  PlaybackState,
+  SceneHomeViewConfig,
+} from "./types";
+import RouteAPI from "@/api/flight/route";
+import { hydrateRouteRecord } from "@/views/route/route-xml";
 import router from "@/router";
 
 defineOptions({ name: "LowAltitudeScreenPage" });
 
 function shouldEnableCalibrationPanel() {
-  return (
-    LOW_ALTITUDE_SCENE_CONFIG.showCalibrationPanel ||
-    window.location.hash.includes("calibrate=1") ||
-    window.location.search.includes("calibrate=1")
-  );
+  return shouldShowSceneCalibrationPanel(window.location);
 }
+
+function resolveLocationQuery() {
+  const hashQueryIndex = window.location.hash.indexOf("?");
+  const hashQuery = hashQueryIndex >= 0 ? window.location.hash.slice(hashQueryIndex + 1) : "";
+  const searchQuery = window.location.search.replace(/^\?/, "");
+  return new URLSearchParams(hashQuery || searchQuery);
+}
+
+type PlaybackLoadState = "idle" | "loading" | "waitingScene" | "ready" | "error";
+type SceneStatusChange = {
+  status: "loading" | "ready" | "error" | "unsupported";
+  errorMessage: string;
+};
 
 const screenRef = ref<HTMLElement | null>(null);
 const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(screenRef);
 const now = useNow({ interval: 1000 });
 const currentTimestamp = useDateFormat(now, "YYYY.MM.DD HH:mm:ss");
+const locationQuery = resolveLocationQuery();
+const isPlaybackMode = ref(locationQuery.get("mode") === "playback");
+const playbackRouteId = ref(locationQuery.get("routeId")?.trim() || "");
 
 const taskPanel = LOW_ALTITUDE_TASK_PANEL;
 const dronePanel = LOW_ALTITUDE_DRONE_PANEL;
@@ -157,48 +273,185 @@ const windCurrentTimeText = ref("--:--");
 const windLayerCount = ref(0);
 const windBeamElevationDeg = ref<number>();
 const windLegendStops = ref<WindLegendStop[]>([]);
-const sceneModel = buildSceneModel({
-  routes: [],
-  markers: [],
-  selectedMarkerId: null,
-});
+const playbackLoadState = ref<PlaybackLoadState>(isPlaybackMode.value ? "loading" : "idle");
+const playbackMission = shallowRef<PlaybackMission | null>(null);
+const playbackState = ref<PlaybackState | null>(null);
+const playbackErrorMessage = ref("");
 
 const sceneConfig = computed<LowAltitudeSceneConfig>(() => ({
   ...LOW_ALTITUDE_SCENE_CONFIG,
   splatPlacement: cloneSceneSplatPlacement(scenePlacement.value),
-  showCalibrationPanel: shouldEnableCalibrationPanel(),
+  showCalibrationPanel: isPlaybackMode.value ? false : shouldEnableCalibrationPanel(),
 }));
 
-const sceneOptions = {
-  createExtension: createWindFieldSceneExtension({
-    onFrameChange(event) {
-      windCurrentTimeText.value = event.timeText;
-      windLayerCount.value = event.layerCount;
+const sceneEnabled = computed(() => !isPlaybackMode.value || Boolean(playbackMission.value));
+
+const sceneModel = computed(() => {
+  if (isPlaybackMode.value && playbackMission.value && playbackState.value) {
+    return buildPlaybackSceneModel(playbackMission.value, playbackState.value);
+  }
+
+  return buildSceneModel({
+    routes: [],
+    markers: [],
+    selectedMarkerId: null,
+  });
+});
+
+const sceneHostKey = computed(() => {
+  if (!isPlaybackMode.value) {
+    return "dashboard";
+  }
+
+  return `playback-${playbackRouteId.value || playbackMission.value?.routeId || "pending"}`;
+});
+
+const sceneOptions = computed(() => {
+  if (isPlaybackMode.value) {
+    if (playbackMission.value) {
+      return {
+        createExtension: createPlaybackSceneExtension({
+          mission: playbackMission.value,
+          onStateChange(state) {
+            playbackState.value = state;
+          },
+        }),
+      };
+    }
+
+    return {};
+  }
+
+  return {
+    createExtension: createWindFieldSceneExtension({
+      onFrameChange(event) {
+        windCurrentTimeText.value = event.timeText;
+        windLayerCount.value = event.layerCount;
+      },
+      onStatusChange(event) {
+        windStatus.value = event.status;
+        windErrorMessage.value = event.errorMessage;
+        windBeamElevationDeg.value = event.data?.meta.beamElevationDeg;
+        windLegendStops.value = event.data
+          ? buildWindLegendStops(event.data.meta.maxHorizontalSpeed)
+          : [];
+        if (event.status !== "ready") {
+          windCurrentTimeText.value = "--:--";
+          windLayerCount.value = event.data?.meta.layerCount ?? 0;
+        }
+      },
+      renderMode: windRenderMode,
+      showVerticalAirflow: showWindVerticalAirflow,
+      visible: showWindField,
+    }),
+    onCameraViewChange(snapshot: SceneHomeViewConfig) {
+      currentCameraViewSnapshot.value = snapshot;
     },
-    onStatusChange(event) {
-      windStatus.value = event.status;
-      windErrorMessage.value = event.errorMessage;
-      windBeamElevationDeg.value = event.data?.meta.beamElevationDeg;
-      windLegendStops.value = event.data
-        ? buildWindLegendStops(event.data.meta.maxHorizontalSpeed)
-        : [];
-      if (event.status !== "ready") {
-        windCurrentTimeText.value = "--:--";
-        windLayerCount.value = event.data?.meta.layerCount ?? 0;
-      }
-    },
-    renderMode: windRenderMode,
-    showVerticalAirflow: showWindVerticalAirflow,
-    visible: showWindField,
-  }),
-  onCameraViewChange(snapshot: SceneHomeViewConfig) {
-    currentCameraViewSnapshot.value = snapshot;
-  },
-};
+  };
+});
+
+const playbackPhaseText = computed(() => {
+  switch (playbackState.value?.phase) {
+    case "takeoff":
+      return "起飞爬升";
+    case "cruise":
+      return "航线巡飞";
+    case "hover":
+      return "航点悬停";
+    case "returnHome":
+      return "返航中";
+    case "completed":
+      return "已完成";
+    default:
+      return "--";
+  }
+});
+const playbackAltitudeText = computed(() =>
+  playbackState.value ? `${Math.round(playbackState.value.currentCoordinate.alt)}m` : "--"
+);
+const playbackSpeedText = computed(() =>
+  playbackState.value ? `${playbackState.value.speedMetersPerSecond.toFixed(1)}m/s` : "--"
+);
+const playbackReturnText = computed(() =>
+  playbackState.value?.returning ? "返航中" : playbackState.value?.completed ? "已返航" : "未返航"
+);
+const playbackCompletionText = computed(() =>
+  playbackState.value?.completed ? "已完成" : "执行中"
+);
+const playbackProgressText = computed(() => {
+  if (!playbackState.value) {
+    return "--";
+  }
+
+  return `${Math.round(playbackState.value.progressRatio * 100)}%`;
+});
+
+function handleSceneStatusChange(event: SceneStatusChange) {
+  if (!isPlaybackMode.value || !playbackMission.value) {
+    return;
+  }
+
+  if (event.status === "ready") {
+    playbackLoadState.value = "ready";
+    return;
+  }
+
+  if (event.status === "error" || event.status === "unsupported") {
+    playbackLoadState.value = "error";
+    playbackErrorMessage.value = event.errorMessage;
+    return;
+  }
+
+  if (playbackLoadState.value !== "ready") {
+    playbackLoadState.value = "waitingScene";
+  }
+}
+
+async function loadPlaybackMission() {
+  if (!isPlaybackMode.value) {
+    return;
+  }
+
+  if (!playbackRouteId.value) {
+    playbackLoadState.value = "error";
+    playbackErrorMessage.value = "缺少 routeId，无法加载已保存航线。";
+    return;
+  }
+
+  playbackLoadState.value = "loading";
+  playbackErrorMessage.value = "";
+  playbackState.value = null;
+
+  try {
+    const routeDetail = await RouteAPI.getDetail(playbackRouteId.value);
+    const kmzResponse = await RouteAPI.getKmz(playbackRouteId.value).catch(() => null);
+    const routeRecord = await hydrateRouteRecord(routeDetail, kmzResponse?.data);
+    const mission = createPlaybackMission(routeRecord);
+    playbackMission.value = mission;
+    playbackLoadState.value = "waitingScene";
+  } catch (error) {
+    playbackMission.value = null;
+    playbackState.value = null;
+    playbackLoadState.value = "error";
+    playbackErrorMessage.value =
+      error instanceof Error ? error.message : "无法还原已保存航线，请稍后重试。";
+  }
+}
+
+onMounted(() => {
+  if (isPlaybackMode.value) {
+    void loadPlaybackMission();
+  }
+});
 
 function returnToSystem() {
   if (window.opener && !window.opener.closed) {
     window.close();
+    return;
+  }
+
+  if (isPlaybackMode.value && window.history.length > 1) {
+    router.back();
     return;
   }
 

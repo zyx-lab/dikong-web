@@ -21,7 +21,7 @@ import {
 } from "./cesium-base-layer";
 
 type SceneSplatMesh = SplatMesh & THREE.Object3D & { initialized: Promise<void> };
-type DashboardSceneStatus = "ready" | "error" | "unsupported";
+export type DashboardSceneStatus = "ready" | "error" | "unsupported";
 
 export interface DashboardSceneRuntime {
   destroy(): void;
@@ -353,6 +353,11 @@ export async function mountDashboardScene(
         currentConfig.splatPlacement,
         currentAnchorHeightMeters
       );
+      extension?.onFrame?.({
+        ...extensionContext,
+        deltaTime,
+        elapsedTime: clock.elapsedTime,
+      });
       syncThreeCameraFromCesiumViewer(viewer, camera, currentConfig.sceneOrigin);
       const cameraViewSnapshot = getSceneHomeViewSnapshot(viewer);
       const nextSnapshotJson = JSON.stringify(cameraViewSnapshot);
@@ -360,11 +365,6 @@ export async function mountDashboardScene(
         lastCameraViewSnapshotJson = nextSnapshotJson;
         options.onCameraViewChange?.(cameraViewSnapshot);
       }
-      extension?.onFrame?.({
-        ...extensionContext,
-        deltaTime,
-        elapsedTime: clock.elapsedTime,
-      });
     };
 
     postRenderHandler = () => {

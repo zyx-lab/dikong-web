@@ -178,5 +178,5 @@ export const LOW_ALTITUDE_SCENE_CONFIG: LowAltitudeSceneConfig = {
     rollDeg: 220,
     scale: 65,
   },
-  showCalibrationPanel: import.meta.env.MODE === "development",
+  showCalibrationPanel: false,
 };
