@@ -141,6 +141,12 @@ export const constantRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: "task/hls-player",
+        name: "HlsPlayer",
+        component: () => import("@/views/flight/task/hls-player.vue"),
+        meta: { title: "直播播放", hidden: true },
+      },
+      {
         path: "record",
         component: () => import("@/views/flight/record/index.vue"),
         name: "FlightRecord",
