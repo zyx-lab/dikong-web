@@ -150,7 +150,7 @@ export const LOW_ALTITUDE_SCENE_MARKERS: SceneMarker[] = [
 ];
 
 export const LOW_ALTITUDE_SCENE_CONFIG: LowAltitudeSceneConfig = {
-  splatUrl: "/model/JNUAerial-with_Park-y_up-lod.rad",
+  splatUrl: "/JNUAerial-with_Park-y_up-lod.rad",
   backgroundColor: "#09131d",
   baseMapMode: "satellite",
   sceneOrigin: {
@@ -167,13 +167,13 @@ export const LOW_ALTITUDE_SCENE_CONFIG: LowAltitudeSceneConfig = {
     rollDeg: 0,
   },
   splatPlacement: {
-    anchorLng: 113.52964,
-    anchorLat: 22.25333,
-    heightOffsetMeters: 80,
-    eastMeters: 20,
-    northMeters: 70,
+    anchorLng: 113.53005,
+    anchorLat: 22.25323,
+    heightOffsetMeters: 105,
+    eastMeters: 0,
+    northMeters: 0,
     upMeters: 0,
-    headingDeg: 290,
+    headingDeg: 287,
     pitchDeg: 90,
     rollDeg: 220,
     scale: 65,

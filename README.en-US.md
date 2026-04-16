@@ -118,6 +118,15 @@ pnpm install
 pnpm run dev
 ```
 
+## Spark Package Management
+
+This project uses option A for Spark customizations:
+
+- Application code imports `@sparkjsdev/spark`, but [`vite.config.ts`](/home/admin/xqk_files/dikong-web/vite.config.ts) aliases it to [`vendor/spark/dist/spark.module.js`](/home/admin/xqk_files/dikong-web/vendor/spark/dist/spark.module.js).
+- All Spark changes must be committed under [`vendor/spark`](/home/admin/xqk_files/dikong-web/vendor/spark). Do not modify `node_modules` directly.
+- No private npm publishing step is required. Other developers only need `git pull && pnpm install && pnpm dev` to get the same Spark behavior.
+- When syncing a newer upstream Spark build, update `vendor/spark/dist/*` and also refresh [`vendor/spark/dist/commit.txt`](/home/admin/xqk_files/dikong-web/vendor/spark/dist/commit.txt) with the upstream source commit.
+
 ## Project Deployment
 
 After executing the `pnpm run build` command, the project will be bundled and a `dist` directory will be generated. Next, upload the files from the `dist` directory to the `/usr/share/nginx/html` directory on your server and configure Nginx for reverse proxy.

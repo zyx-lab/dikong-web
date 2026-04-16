@@ -707,16 +707,16 @@ function updateWindVisualization(
     radarArrowDirection.copy(radarArrowVector).normalize();
     radarArrowQuaternion.setFromUnitVectors(radarArrowUp, radarArrowDirection);
 
-    const maxArrowLength = Math.max(0.18, Math.min(layerRadius * 0.48, 0.44)) * 0.3;
+    // Arrow meshes are rendered in world units, so keep them at meter-scale after geospatial transforms.
+    const maxArrowLength = Math.max(0.8, Math.min(layerRadius * 0.24, 6));
     const arrowLength =
-      Math.max(0.14, Math.min(maxArrowLength / 0.3, 0.16 + normalizedSpeed * 0.22)) *
-      0.3 *
+      Math.max(0.6, Math.min(maxArrowLength, 0.9 + normalizedSpeed * 2.2)) *
       state.worldToLocalScale;
     const shaftLength = arrowLength * 0.56;
     const headLength = arrowLength * 0.44;
     const shaftRadius =
-      Math.max(0.016, Math.min(layerRadius * 0.12, 0.04)) * 0.3 * state.worldToLocalScale;
-    const headRadius = Math.max(shaftRadius * 2.25, 0.05 * 0.3 * state.worldToLocalScale);
+      Math.max(0.06, Math.min(layerRadius * 0.035, 0.25)) * state.worldToLocalScale;
+    const headRadius = Math.max(shaftRadius * 2.2, 0.18 * state.worldToLocalScale);
 
     radarArrowCenter.copy(radarPosition).addScaledVector(radarArrowDirection, shaftLength * 0.5);
     radarArrowMatrixHelper.position.copy(radarArrowCenter);

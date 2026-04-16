@@ -114,6 +114,15 @@ pnpm install
 pnpm run dev
 ```
 
+## Spark 包管理
+
+本项目采用方案 A 管理 Spark 定制改动：
+
+- 业务代码虽然使用 `@sparkjsdev/spark` 导入，但在 [`vite.config.ts`](/home/admin/xqk_files/dikong-web/vite.config.ts) 中已经通过 alias 强制指向 [`vendor/spark/dist/spark.module.js`](/home/admin/xqk_files/dikong-web/vendor/spark/dist/spark.module.js)。
+- 任何 Spark 定制修改都必须提交到仓库内的 [`vendor/spark`](/home/admin/xqk_files/dikong-web/vendor/spark) 目录，不要直接修改 `node_modules`。
+- 部署和协作时不需要额外发布私有 npm 包，其他开发者只需执行 `git pull && pnpm install && pnpm dev` 即可拿到相同的 Spark 行为。
+- 如需同步上游 Spark 版本，更新 `vendor/spark/dist/*` 后，请同步更新 [`vendor/spark/dist/commit.txt`](/home/admin/xqk_files/dikong-web/vendor/spark/dist/commit.txt) 记录来源提交。
+
 ## 项目部署
 
 执行 `pnpm run build` 命令后，项目将被打包并生成 `dist` 目录。接下来，将 `dist` 目录下的文件上传到服务器 `/usr/share/nginx/html` 目录下，并配置 Nginx 进行反向代理。

@@ -22,6 +22,48 @@ import {
 
 type SceneSplatMesh = SplatMesh & THREE.Object3D & { initialized: Promise<void> };
 export type DashboardSceneStatus = "ready" | "error" | "unsupported";
+type SparkUniformValue<T> = { value: T };
+type TerrainExternalTexture = THREE.Texture & { sourceTexture?: unknown };
+type PagedSplatHandle = {
+  numSplats?: number;
+};
+
+interface SparkTerrainUniformMap {
+  terrainDepthBias?: SparkUniformValue<number>;
+  terrainDepthEnable?: SparkUniformValue<boolean>;
+  terrainDepthFar?: SparkUniformValue<number>;
+  terrainDepthKeepOutClipToView?: SparkUniformValue<THREE.Matrix4>;
+  terrainDepthKeepOutEnable?: SparkUniformValue<boolean>;
+  terrainDepthKeepOutFootprintMax?: SparkUniformValue<THREE.Vector2>;
+  terrainDepthKeepOutFootprintMin?: SparkUniformValue<THREE.Vector2>;
+  terrainDepthKeepOutMaskTexture?: SparkUniformValue<THREE.Texture | null>;
+  terrainDepthKeepOutViewToLocal?: SparkUniformValue<THREE.Matrix4>;
+  terrainDepthLog2FarDepthFromNearPlusOne?: SparkUniformValue<number>;
+  terrainDepthNear?: SparkUniformValue<number>;
+  terrainDepthTexture?: SparkUniformValue<THREE.Texture | null>;
+  terrainDepthViewport?: SparkUniformValue<THREE.Vector2>;
+}
+
+interface TerrainOcclusionState {
+  active: boolean;
+  biasMeters: number;
+  enabled: boolean;
+  externalTexture: TerrainExternalTexture | null;
+  keepOutActive: boolean;
+  keepOutBoundsMax: THREE.Vector3 | null;
+  keepOutBoundsMin: THREE.Vector3 | null;
+  keepOutEnabled: boolean;
+  keepOutFootprintMax: THREE.Vector2 | null;
+  keepOutFootprintMin: THREE.Vector2 | null;
+  keepOutMaskCoverage: number;
+  keepOutMaskHeight: number;
+  keepOutMaskSplats: number;
+  keepOutMaskTexture: THREE.DataTexture | null;
+  keepOutMaskWidth: number;
+  keepOutUniformsAvailable: boolean;
+  lastFar: number | null;
+  lastNear: number | null;
+}
 
 export interface DashboardSceneRuntime {
   destroy(): void;
@@ -172,6 +214,490 @@ function syncSharedRendererSize(renderer: THREE.WebGLRenderer, canvas: HTMLCanva
   renderer.setViewport(0, 0, width, height);
 }
 
+function getSparkTerrainUniforms(
+  sparkRenderer: SparkRenderer
+): SparkTerrainUniformMap | undefined {
+  return (sparkRenderer as SparkRenderer & { uniforms?: SparkTerrainUniformMap }).uniforms;
+}
+
+function createTerrainDepthTextureBridge(): TerrainExternalTexture | null {
+  const ExternalTextureCtor = (
+    THREE as typeof THREE & {
+      ExternalTexture?: new () => THREE.Texture;
+    }
+  ).ExternalTexture;
+  if (typeof ExternalTextureCtor !== "function") {
+    return null;
+  }
+
+  const externalTexture = new ExternalTextureCtor() as TerrainExternalTexture;
+  externalTexture.generateMipmaps = false;
+  externalTexture.flipY = false;
+  externalTexture.minFilter = THREE.NearestFilter;
+  externalTexture.magFilter = THREE.NearestFilter;
+  return externalTexture;
+}
+
+function computeKeepOutMaskDimensions(spanX: number, spanZ: number) {
+  const maxDimension = 384;
+  const minDimension = 96;
+  if (!(spanX > 0) || !(spanZ > 0)) {
+    return { height: minDimension, width: minDimension };
+  }
+  if (spanX >= spanZ) {
+    return {
+      height: Math.max(minDimension, Math.round((maxDimension * spanZ) / spanX)),
+      width: maxDimension,
+    };
+  }
+  return {
+    height: maxDimension,
+    width: Math.max(minDimension, Math.round((maxDimension * spanX) / spanZ)),
+  };
+}
+
+function dilateBinaryMask(source: Uint8Array, width: number, height: number, radius: number) {
+  if (!(radius > 0)) {
+    return source.slice();
+  }
+
+  const result = new Uint8Array(source.length);
+  for (let y = 0; y < height; y += 1) {
+    const minY = Math.max(0, y - radius);
+    const maxY = Math.min(height - 1, y + radius);
+    for (let x = 0; x < width; x += 1) {
+      const minX = Math.max(0, x - radius);
+      const maxX = Math.min(width - 1, x + radius);
+      let filled = 0;
+      for (let yy = minY; yy <= maxY && filled === 0; yy += 1) {
+        const rowOffset = yy * width;
+        for (let xx = minX; xx <= maxX; xx += 1) {
+          if (source[rowOffset + xx] !== 0) {
+            filled = 255;
+            break;
+          }
+        }
+      }
+      result[y * width + x] = filled;
+    }
+  }
+  return result;
+}
+
+function erodeBinaryMask(source: Uint8Array, width: number, height: number, radius: number) {
+  if (!(radius > 0)) {
+    return source.slice();
+  }
+
+  const result = new Uint8Array(source.length);
+  for (let y = 0; y < height; y += 1) {
+    const minY = y - radius;
+    const maxY = y + radius;
+    for (let x = 0; x < width; x += 1) {
+      const minX = x - radius;
+      const maxX = x + radius;
+      let filled = 255;
+      for (let yy = minY; yy <= maxY && filled !== 0; yy += 1) {
+        if (yy < 0 || yy >= height) {
+          filled = 0;
+          break;
+        }
+        const rowOffset = yy * width;
+        for (let xx = minX; xx <= maxX; xx += 1) {
+          if (xx < 0 || xx >= width || source[rowOffset + xx] === 0) {
+            filled = 0;
+            break;
+          }
+        }
+      }
+      result[y * width + x] = filled;
+    }
+  }
+  return result;
+}
+
+function buildKeepOutMaskTexture(
+  splat: SceneSplatMesh,
+  boundsMin: THREE.Vector3,
+  boundsMax: THREE.Vector3
+) {
+  const spanX = Math.max(1e-3, boundsMax.x - boundsMin.x);
+  const spanZ = Math.max(1e-3, boundsMax.z - boundsMin.z);
+  const { height, width } = computeKeepOutMaskDimensions(spanX, spanZ);
+  const worldToMaskX = width / spanX;
+  const worldToMaskZ = height / spanZ;
+  const raster = new Uint8Array(width * height);
+  const axisX = new THREE.Vector3();
+  const axisY = new THREE.Vector3();
+  const axisZ = new THREE.Vector3();
+  let contributingSplats = 0;
+
+  splat.forEachSplat((_index, center, scales, quaternion, opacity) => {
+    if (!(opacity >= 1 / 255)) {
+      return;
+    }
+
+    const sigmaX = 3 * Math.max(0, scales.x);
+    const sigmaY = 3 * Math.max(0, scales.y);
+    const sigmaZ = 3 * Math.max(0, scales.z);
+    if (sigmaX <= 0 && sigmaY <= 0 && sigmaZ <= 0) {
+      return;
+    }
+
+    axisX.set(sigmaX, 0, 0).applyQuaternion(quaternion);
+    axisY.set(0, sigmaY, 0).applyQuaternion(quaternion);
+    axisZ.set(0, 0, sigmaZ).applyQuaternion(quaternion);
+
+    const covXX = axisX.x * axisX.x + axisY.x * axisY.x + axisZ.x * axisZ.x;
+    const covXZ = axisX.x * axisX.z + axisY.x * axisY.z + axisZ.x * axisZ.z;
+    const covZZ = axisX.z * axisX.z + axisY.z * axisY.z + axisZ.z * axisZ.z;
+
+    const centerPx = (center.x - boundsMin.x) * worldToMaskX;
+    const centerPz = (center.z - boundsMin.z) * worldToMaskZ;
+    const covPxXX = covXX * worldToMaskX * worldToMaskX;
+    const covPxXZ = covXZ * worldToMaskX * worldToMaskZ;
+    const covPxZZ = covZZ * worldToMaskZ * worldToMaskZ;
+    const extentX = Math.sqrt(Math.max(covPxXX, 0.25));
+    const extentZ = Math.sqrt(Math.max(covPxZZ, 0.25));
+    const minPx = Math.max(0, Math.floor(centerPx - extentX - 1));
+    const maxPx = Math.min(width - 1, Math.ceil(centerPx + extentX + 1));
+    const minPz = Math.max(0, Math.floor(centerPz - extentZ - 1));
+    const maxPz = Math.min(height - 1, Math.ceil(centerPz + extentZ + 1));
+    if (minPx > maxPx || minPz > maxPz) {
+      return;
+    }
+
+    const det = covPxXX * covPxZZ - covPxXZ * covPxXZ;
+    contributingSplats += 1;
+
+    if (!(det > 1e-6)) {
+      const stampRadius = Math.max(0.75, Math.sqrt(Math.max(covPxXX, covPxZZ, 0.75)));
+      const stampRadiusSq = stampRadius * stampRadius;
+      for (let py = minPz; py <= maxPz; py += 1) {
+        const dz = py + 0.5 - centerPz;
+        const rowOffset = py * width;
+        for (let px = minPx; px <= maxPx; px += 1) {
+          const dx = px + 0.5 - centerPx;
+          if (dx * dx + dz * dz <= stampRadiusSq) {
+            raster[rowOffset + px] = 255;
+          }
+        }
+      }
+      return;
+    }
+
+    const invXX = covPxZZ / det;
+    const invXZ = -covPxXZ / det;
+    const invZZ = covPxXX / det;
+    for (let py = minPz; py <= maxPz; py += 1) {
+      const dz = py + 0.5 - centerPz;
+      const rowOffset = py * width;
+      for (let px = minPx; px <= maxPx; px += 1) {
+        const dx = px + 0.5 - centerPx;
+        const distSq = dx * dx * invXX + 2 * dx * dz * invXZ + dz * dz * invZZ;
+        if (distSq <= 1) {
+          raster[rowOffset + px] = 255;
+        }
+      }
+    }
+  });
+
+  const closedMask = erodeBinaryMask(dilateBinaryMask(raster, width, height, 1), width, height, 1);
+  const expandedMask = dilateBinaryMask(closedMask, width, height, 1);
+  let coveredPixels = 0;
+  for (let index = 0; index < expandedMask.length; index += 1) {
+    if (expandedMask[index] !== 0) {
+      coveredPixels += 1;
+    }
+  }
+
+  const texture = new THREE.DataTexture(
+    expandedMask,
+    width,
+    height,
+    THREE.RedFormat,
+    THREE.UnsignedByteType
+  );
+  texture.generateMipmaps = false;
+  texture.flipY = false;
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.unpackAlignment = 1;
+  texture.needsUpdate = true;
+
+  return {
+    coverage: coveredPixels / expandedMask.length,
+    height,
+    splats: contributingSplats,
+    texture,
+    width,
+  };
+}
+
+function getPagedActiveSplatCount(splat: SceneSplatMesh) {
+  return ((splat as SceneSplatMesh & { paged?: PagedSplatHandle }).paged?.numSplats ?? 0);
+}
+
+function createTerrainOcclusionState(
+  sparkRenderer: SparkRenderer,
+  splat: SceneSplatMesh
+): TerrainOcclusionState {
+  const uniforms = getSparkTerrainUniforms(sparkRenderer);
+  const externalTexture = createTerrainDepthTextureBridge();
+  if (!externalTexture) {
+    console.warn(
+      "[low-altitude-screen] Terrain occlusion bridge disabled: THREE.ExternalTexture is unavailable."
+    );
+  }
+
+  const state: TerrainOcclusionState = {
+    active: false,
+    biasMeters: 0.75,
+    enabled: Boolean(externalTexture),
+    externalTexture,
+    keepOutActive: false,
+    keepOutBoundsMax: null,
+    keepOutBoundsMin: null,
+    keepOutEnabled: true,
+    keepOutFootprintMax: null,
+    keepOutFootprintMin: null,
+    keepOutMaskCoverage: 0,
+    keepOutMaskHeight: 0,
+    keepOutMaskSplats: 0,
+    keepOutMaskTexture: null,
+    keepOutMaskWidth: 0,
+    keepOutUniformsAvailable: false,
+    lastFar: null,
+    lastNear: null,
+  };
+
+  if (!uniforms?.terrainDepthBias) {
+    state.enabled = false;
+    return state;
+  }
+
+  uniforms.terrainDepthBias.value = state.biasMeters;
+  state.keepOutUniformsAvailable = Boolean(
+    uniforms.terrainDepthKeepOutEnable &&
+      uniforms.terrainDepthKeepOutFootprintMin &&
+      uniforms.terrainDepthKeepOutFootprintMax &&
+      uniforms.terrainDepthKeepOutMaskTexture &&
+      uniforms.terrainDepthKeepOutClipToView &&
+      uniforms.terrainDepthKeepOutViewToLocal
+  );
+
+  if (!state.keepOutUniformsAvailable) {
+    state.keepOutEnabled = false;
+    console.warn(
+      "[low-altitude-screen] Terrain footprint keep-out uniforms are unavailable in the loaded Spark module."
+    );
+    return state;
+  }
+
+  let splatLocalBounds: THREE.Box3;
+  try {
+    splatLocalBounds = splat.getBoundingBox(false);
+  } catch (error) {
+    state.keepOutEnabled = false;
+    console.warn(
+      "[low-altitude-screen] Terrain keep-out bounds are unavailable for the current splat source.",
+      error
+    );
+    return state;
+  }
+
+  state.keepOutBoundsMin = splatLocalBounds.min.clone();
+  state.keepOutBoundsMax = splatLocalBounds.max.clone();
+  state.keepOutFootprintMin = new THREE.Vector2(
+    state.keepOutBoundsMin.x,
+    state.keepOutBoundsMin.z
+  );
+  state.keepOutFootprintMax = new THREE.Vector2(
+    state.keepOutBoundsMax.x,
+    state.keepOutBoundsMax.z
+  );
+
+  const keepOutMask = buildKeepOutMaskTexture(splat, state.keepOutBoundsMin, state.keepOutBoundsMax);
+  if (!keepOutMask || keepOutMask.coverage <= 0) {
+    state.keepOutEnabled = false;
+    console.warn(
+      "[low-altitude-screen] Terrain keep-out mask generation produced an empty mask."
+    );
+    return state;
+  }
+
+  state.keepOutMaskTexture = keepOutMask.texture;
+  state.keepOutMaskWidth = keepOutMask.width;
+  state.keepOutMaskHeight = keepOutMask.height;
+  state.keepOutMaskCoverage = keepOutMask.coverage;
+  state.keepOutMaskSplats = keepOutMask.splats;
+  return state;
+}
+
+function disposeTerrainOcclusionState(state: TerrainOcclusionState | null) {
+  state?.keepOutMaskTexture?.dispose();
+}
+
+function getCesiumTerrainFrustumInfo(viewer: Cesium.Viewer): {
+  far: number;
+  near: number;
+  uniformState?: {
+    currentFrustum?: { x?: number; y?: number } | number[];
+    globeDepthTexture?: { _texture?: unknown };
+  };
+} | null {
+  const uniformState = (
+    viewer.scene as Cesium.Scene & {
+      context?: {
+        uniformState?: {
+          currentFrustum?: { x?: number; y?: number } | number[];
+          globeDepthTexture?: { _texture?: unknown };
+        };
+      };
+    }
+  ).context?.uniformState;
+  const frustum = uniformState?.currentFrustum;
+  const near = typeof (frustum as { x?: number } | undefined)?.x === "number"
+    ? (frustum as { x: number }).x
+    : Array.isArray(frustum)
+      ? frustum[0]
+      : undefined;
+  const far = typeof (frustum as { y?: number } | undefined)?.y === "number"
+    ? (frustum as { y: number }).y
+    : Array.isArray(frustum)
+      ? frustum[1]
+      : undefined;
+
+  if (
+    typeof near !== "number" ||
+    typeof far !== "number" ||
+    !Number.isFinite(near) ||
+    !Number.isFinite(far) ||
+    far <= near
+  ) {
+    return null;
+  }
+
+  return { far, near, uniformState };
+}
+
+function syncTerrainOcclusionUniforms(
+  state: TerrainOcclusionState,
+  sparkRenderer: SparkRenderer,
+  viewer: Cesium.Viewer,
+  camera: THREE.PerspectiveCamera,
+  canvas: HTMLCanvasElement,
+  splat: SceneSplatMesh
+) {
+  const uniforms = getSparkTerrainUniforms(sparkRenderer);
+  if (!uniforms) {
+    return false;
+  }
+
+  const terrainDepthEnable = uniforms.terrainDepthEnable;
+  const terrainDepthBias = uniforms.terrainDepthBias;
+  const terrainDepthTexture = uniforms.terrainDepthTexture;
+  const terrainDepthViewport = uniforms.terrainDepthViewport;
+  const terrainDepthNear = uniforms.terrainDepthNear;
+  const terrainDepthFar = uniforms.terrainDepthFar;
+  const terrainDepthLog2FarDepthFromNearPlusOne = uniforms.terrainDepthLog2FarDepthFromNearPlusOne;
+  const terrainDepthKeepOutEnable = uniforms.terrainDepthKeepOutEnable;
+  const terrainDepthKeepOutFootprintMin = uniforms.terrainDepthKeepOutFootprintMin;
+  const terrainDepthKeepOutFootprintMax = uniforms.terrainDepthKeepOutFootprintMax;
+  const terrainDepthKeepOutMaskTexture = uniforms.terrainDepthKeepOutMaskTexture;
+  const terrainDepthKeepOutClipToView = uniforms.terrainDepthKeepOutClipToView;
+  const terrainDepthKeepOutViewToLocal = uniforms.terrainDepthKeepOutViewToLocal;
+
+  if (
+    !terrainDepthEnable ||
+    !terrainDepthBias ||
+    !terrainDepthTexture ||
+    !terrainDepthViewport ||
+    !terrainDepthNear ||
+    !terrainDepthFar ||
+    !terrainDepthLog2FarDepthFromNearPlusOne
+  ) {
+    return false;
+  }
+
+  terrainDepthEnable.value = false;
+  if (terrainDepthKeepOutEnable) {
+    terrainDepthKeepOutEnable.value = false;
+  }
+  state.active = false;
+  state.keepOutActive = false;
+  state.lastNear = null;
+  state.lastFar = null;
+
+  if (!state.enabled || !state.externalTexture) {
+    return false;
+  }
+
+  const frustumInfo = getCesiumTerrainFrustumInfo(viewer);
+  const globeGlTexture = frustumInfo?.uniformState?.globeDepthTexture?._texture;
+  if (!globeGlTexture || canvas.width <= 0 || canvas.height <= 0) {
+    return false;
+  }
+
+  state.externalTexture.sourceTexture = globeGlTexture;
+  terrainDepthTexture.value = state.externalTexture;
+  terrainDepthViewport.value.set(canvas.width, canvas.height);
+  terrainDepthNear.value = frustumInfo.near;
+  terrainDepthFar.value = frustumInfo.far;
+  terrainDepthLog2FarDepthFromNearPlusOne.value = Math.log2(
+    frustumInfo.far - frustumInfo.near + 1
+  );
+  terrainDepthBias.value = state.biasMeters;
+  terrainDepthEnable.value = true;
+
+  const keepOutMaskTexture = state.keepOutMaskTexture;
+  const keepOutFootprintMin = state.keepOutFootprintMin;
+  const keepOutFootprintMax = state.keepOutFootprintMax;
+  const keepOutReady =
+    state.keepOutUniformsAvailable &&
+    state.keepOutEnabled &&
+    Boolean(keepOutMaskTexture) &&
+    Boolean(keepOutFootprintMin) &&
+    Boolean(keepOutFootprintMax) &&
+    Boolean(terrainDepthKeepOutFootprintMin) &&
+    Boolean(terrainDepthKeepOutFootprintMax) &&
+    Boolean(terrainDepthKeepOutMaskTexture) &&
+    Boolean(terrainDepthKeepOutClipToView) &&
+    Boolean(terrainDepthKeepOutViewToLocal) &&
+    Boolean(terrainDepthKeepOutEnable);
+
+  if (
+    keepOutReady &&
+    keepOutMaskTexture &&
+    keepOutFootprintMin &&
+    keepOutFootprintMax &&
+    terrainDepthKeepOutFootprintMin &&
+    terrainDepthKeepOutFootprintMax &&
+    terrainDepthKeepOutMaskTexture &&
+    terrainDepthKeepOutClipToView &&
+    terrainDepthKeepOutViewToLocal &&
+    terrainDepthKeepOutEnable
+  ) {
+    terrainDepthKeepOutFootprintMin.value.copy(keepOutFootprintMin);
+    terrainDepthKeepOutFootprintMax.value.copy(keepOutFootprintMax);
+    terrainDepthKeepOutMaskTexture.value = keepOutMaskTexture;
+    terrainDepthKeepOutClipToView.value.copy(camera.projectionMatrixInverse);
+    terrainDepthKeepOutViewToLocal.value
+      .copy(splat.matrixWorld)
+      .invert()
+      .multiply(camera.matrixWorld);
+    terrainDepthKeepOutEnable.value = true;
+    state.keepOutActive = true;
+  }
+
+  state.active = true;
+  state.lastNear = frustumInfo.near;
+  state.lastFar = frustumInfo.far;
+  return true;
+}
+
 function resolveSplatAnchorHeight(
   viewer: Cesium.Viewer,
   config: LowAltitudeSceneConfig,
@@ -216,6 +742,7 @@ export async function mountDashboardScene(
   let extensionContext: DashboardSceneExtensionContext | null = null;
   let preRenderHandler: (() => void) | null = null;
   let postRenderHandler: (() => void) | null = null;
+  let terrainOcclusionState: TerrainOcclusionState | null = null;
   let lastCameraViewSnapshotJson = "";
   let currentAnchorHeightMeters =
     currentConfig.sceneOrigin.altitudeMeters + currentConfig.splatPlacement.heightOffsetMeters;
@@ -368,8 +895,25 @@ export async function mountDashboardScene(
     };
 
     postRenderHandler = () => {
-      if (!renderer) return;
+      if (!renderer || !viewer || !sparkRenderer || !splat) return;
       syncSharedRendererSize(renderer, canvas);
+      scene.updateMatrixWorld(true);
+      const shouldRetryTerrainOcclusion =
+        terrainOcclusionState &&
+        !terrainOcclusionState.keepOutMaskTexture &&
+        getPagedActiveSplatCount(splat) > 0;
+      if (!terrainOcclusionState || shouldRetryTerrainOcclusion) {
+        disposeTerrainOcclusionState(terrainOcclusionState);
+        terrainOcclusionState = createTerrainOcclusionState(sparkRenderer, splat);
+      }
+      syncTerrainOcclusionUniforms(
+        terrainOcclusionState,
+        sparkRenderer,
+        viewer,
+        camera,
+        canvas,
+        splat
+      );
       resetRendererState(renderer);
       renderer.render(scene, camera);
       resetRendererState(renderer);
@@ -383,6 +927,7 @@ export async function mountDashboardScene(
     const destroy = () => {
       cleanupRenderHooks();
       extension?.dispose?.();
+      disposeTerrainOcclusionState(terrainOcclusionState);
       splat?.removeFromParent();
       splat?.dispose?.();
       sparkRenderer?.dispose?.();
@@ -395,6 +940,7 @@ export async function mountDashboardScene(
       splat = null;
       sparkRenderer = null;
       renderer = null;
+      terrainOcclusionState = null;
       viewer = null;
     };
 
@@ -422,6 +968,7 @@ export async function mountDashboardScene(
   } catch (error) {
     cleanupRenderHooks();
     extension?.dispose?.();
+    disposeTerrainOcclusionState(terrainOcclusionState);
     splat?.removeFromParent();
     splat?.dispose?.();
     sparkRenderer?.dispose?.();

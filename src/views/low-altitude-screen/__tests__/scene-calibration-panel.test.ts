@@ -12,7 +12,7 @@ function createPlacement(): SceneSplatPlacement {
   return {
     anchorLng: 113.52964,
     anchorLat: 22.25333,
-    heightOffsetMeters: 80,
+    heightOffsetMeters: 90,
     eastMeters: 0,
     northMeters: 0,
     upMeters: 0,
