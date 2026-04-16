@@ -157,9 +157,19 @@
                 <div>
                   <h3>{{ route.routeName }}</h3>
                 </div>
-                <el-tag size="small" effect="plain" class="route-type-tag">
-                  {{ getRouteTypeLabel(route.routeType) }}
-                </el-tag>
+                <div class="route-card__head-tags">
+                  <el-tag
+                    size="small"
+                    effect="plain"
+                    class="route-status-tag"
+                    :type="getRouteUsageStatus(route).tagType"
+                  >
+                    {{ getRouteUsageStatus(route).label }}
+                  </el-tag>
+                  <el-tag size="small" effect="plain" class="route-type-tag">
+                    {{ getRouteTypeLabel(route.routeType) }}
+                  </el-tag>
+                </div>
               </div>
 
               <div class="route-card__meta">
@@ -167,6 +177,11 @@
                 <span>创建人：{{ route.creatorName || "-" }}</span>
                 <span>创建时间：{{ route.createdAt }}</span>
                 <span>更新时间：{{ route.updatedAt }}</span>
+              </div>
+
+              <div class="route-card__status" :class="`is-${getRouteUsageStatus(route).state}`">
+                <span class="route-card__status-label">当前状态</span>
+                <span class="route-card__status-hint">{{ getRouteUsageStatus(route).hint }}</span>
               </div>
 
               <div class="route-card__stats">
@@ -184,18 +199,42 @@
                 <el-button link type="primary" size="small" @click="openPreviewFromList(route)">
                   规划
                 </el-button>
-                <el-button link type="primary" icon="edit" size="small" @click="editRoute(route)">
-                  编辑
-                </el-button>
-                <el-button
-                  link
-                  type="danger"
-                  icon="delete"
-                  size="small"
-                  @click="handleDeleteRoute(route)"
+                <el-tooltip
+                  :disabled="!getRouteUsageStatus(route).locked"
+                  :content="getRouteUsageStatus(route).lockReason"
+                  placement="top"
                 >
-                  删除
-                </el-button>
+                  <span class="route-card__action-wrap">
+                    <el-button
+                      link
+                      type="primary"
+                      icon="edit"
+                      size="small"
+                      :disabled="getRouteUsageStatus(route).locked"
+                      @click="editRoute(route)"
+                    >
+                      编辑
+                    </el-button>
+                  </span>
+                </el-tooltip>
+                <el-tooltip
+                  :disabled="!getRouteUsageStatus(route).locked"
+                  :content="getRouteUsageStatus(route).lockReason"
+                  placement="top"
+                >
+                  <span class="route-card__action-wrap">
+                    <el-button
+                      link
+                      type="danger"
+                      icon="delete"
+                      size="small"
+                      :disabled="getRouteUsageStatus(route).locked"
+                      @click="handleDeleteRoute(route)"
+                    >
+                      删除
+                    </el-button>
+                  </span>
+                </el-tooltip>
               </div>
             </div>
           </article>
@@ -260,6 +299,7 @@ import { useWindowSize } from "@vueuse/core";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useRouter } from "vue-router";
+import MissionAPI, { type MissionPageResult, type MissionRead } from "@/api/flight/mission";
 import RouteAPI, { type RouteRead } from "@/api/flight/route";
 import { RouteType } from "@/api/flight/types";
 import { saveRouteDraft } from "./storage";
@@ -300,6 +340,7 @@ const routeTypeOptions = [
 const queryFormRef = ref<FormInstance>();
 const createFormRef = ref<FormInstance>();
 const routeRecords = ref<RouteRecordModel[]>([]);
+const routeUsageMap = ref<Record<string, RouteUsageStatus>>({});
 const createDialogVisible = ref(false);
 const listLoading = ref(false);
 
@@ -380,8 +421,100 @@ const hasActiveFilters = computed(() =>
 );
 const dialogWidth = computed(() => (width.value < 768 ? "92%" : "600px"));
 
+type RouteStatusTagType = "success" | "warning" | "danger" | "info" | "primary";
+type RouteUsageState = "idle" | "occupied" | "executing";
+
+interface RouteUsageStatus {
+  state: RouteUsageState;
+  label: string;
+  tagType: RouteStatusTagType;
+  hint: string;
+  lockReason: string;
+  locked: boolean;
+}
+
+const EXECUTING_MISSION_STATUS = 1;
+const COMPLETED_MISSION_STATUS = 2;
+const FLYING_MISSION_STATUS = 3;
+const EXECUTION_STATUS_BUSY_SET = new Set(["EXECUTING", "RUNNING", "IN_PROGRESS", "FLYING"]);
+const IDLE_ROUTE_USAGE_STATUS: RouteUsageStatus = Object.freeze({
+  state: "idle",
+  label: "空闲",
+  tagType: "success",
+  hint: "当前未被执行任务占用，可继续编辑和维护。",
+  lockReason: "",
+  locked: false,
+});
+
 function getRouteCardStats(route: RouteRecordModel) {
   return getRouteStatItems(route);
+}
+
+function getRouteUsageStatus(route: RouteRecordModel) {
+  return routeUsageMap.value[route.id] ?? IDLE_ROUTE_USAGE_STATUS;
+}
+
+function createRouteUsageStatus(occupiedMissionCount: number, executingMissionCount: number) {
+  if (executingMissionCount > 0) {
+    const missionText = executingMissionCount > 1 ? `${executingMissionCount} 个任务` : "1 个任务";
+
+    return {
+      state: "executing",
+      label: "执行中",
+      tagType: "danger",
+      hint: `当前有 ${missionText} 正在执行，暂不可编辑或删除。`,
+      lockReason: "该航线当前有执行中的任务，暂不可编辑或删除。",
+      locked: true,
+    } satisfies RouteUsageStatus;
+  }
+
+  if (occupiedMissionCount > 0) {
+    const missionText = occupiedMissionCount > 1 ? `${occupiedMissionCount} 个任务` : "1 个任务";
+
+    return {
+      state: "occupied",
+      label: "任务占用",
+      tagType: "warning",
+      hint: `当前有 ${missionText} 已绑定该航线，暂不可编辑或删除。`,
+      lockReason: "该航线已被已绑定无人机的任务占用，暂不可编辑或删除。",
+      locked: true,
+    } satisfies RouteUsageStatus;
+  }
+
+  return IDLE_ROUTE_USAGE_STATUS;
+}
+
+function getMissionPageItems(pageResult: MissionPageResult) {
+  return pageResult.list ?? pageResult.results ?? [];
+}
+
+function getMissionPageTotal(pageResult: MissionPageResult, currentCount: number) {
+  return pageResult.total ?? pageResult.count ?? currentCount;
+}
+
+function normalizeMissionStatusText(value?: string | null) {
+  return value?.trim().toUpperCase() ?? "";
+}
+
+function isMissionCompleted(mission: MissionRead) {
+  return mission.status === COMPLETED_MISSION_STATUS;
+}
+
+function isMissionExecuting(mission: MissionRead) {
+  if (mission.status === EXECUTING_MISSION_STATUS || mission.status === FLYING_MISSION_STATUS) {
+    return true;
+  }
+
+  const executionStatus = normalizeMissionStatusText(mission.execution_status);
+  const syncStatus = normalizeMissionStatusText(mission.sync_status);
+
+  return (
+    EXECUTION_STATUS_BUSY_SET.has(executionStatus) || EXECUTION_STATUS_BUSY_SET.has(syncStatus)
+  );
+}
+
+function isMissionOccupyingRoute(mission: MissionRead) {
+  return mission.route != null && mission.drone != null && !isMissionCompleted(mission);
 }
 
 function ensureCurrentPage() {
@@ -418,6 +551,80 @@ async function fetchAllRouteSummaries(name?: string) {
   return allRoutes;
 }
 
+async function fetchAllMissionSummaries() {
+  const pageSize = 100;
+  const allMissions: MissionRead[] = [];
+  let pageNum = 1;
+  let total = Number.POSITIVE_INFINITY;
+
+  while (allMissions.length < total) {
+    const pageResult = await MissionAPI.getPage({
+      pageNum,
+      pageSize,
+    });
+
+    const currentMissions = getMissionPageItems(pageResult);
+    total = getMissionPageTotal(pageResult, currentMissions.length);
+
+    if (currentMissions.length === 0) {
+      break;
+    }
+
+    allMissions.push(...currentMissions);
+    pageNum += 1;
+  }
+
+  return allMissions;
+}
+
+async function buildRouteUsageMap(routes: RouteRead[]) {
+  if (routes.length === 0) {
+    return {};
+  }
+
+  const routeIds = new Set(routes.map((route) => route.id));
+  const missions = await fetchAllMissionSummaries();
+  const routeMissionSummary = new Map<
+    number,
+    {
+      occupiedMissionCount: number;
+      executingMissionCount: number;
+    }
+  >();
+
+  missions.forEach((mission) => {
+    if (
+      !isMissionOccupyingRoute(mission) ||
+      mission.route == null ||
+      !routeIds.has(mission.route)
+    ) {
+      return;
+    }
+
+    const currentSummary = routeMissionSummary.get(mission.route) ?? {
+      occupiedMissionCount: 0,
+      executingMissionCount: 0,
+    };
+
+    currentSummary.occupiedMissionCount += 1;
+
+    if (isMissionExecuting(mission)) {
+      currentSummary.executingMissionCount += 1;
+    }
+
+    routeMissionSummary.set(mission.route, currentSummary);
+  });
+
+  return routes.reduce<Record<string, RouteUsageStatus>>((statusMap, route) => {
+    const summary = routeMissionSummary.get(route.id);
+    statusMap[String(route.id)] = createRouteUsageStatus(
+      summary?.occupiedMissionCount ?? 0,
+      summary?.executingMissionCount ?? 0
+    );
+    return statusMap;
+  }, {});
+}
+
 async function hydrateRouteRecords(routes: RouteRead[]) {
   return Promise.all(
     routes.map(async (route) => {
@@ -437,10 +644,23 @@ async function loadRouteList() {
   try {
     const routeName = filterForm.routeName.trim();
     const summaries = await fetchAllRouteSummaries(routeName || undefined);
-    routeRecords.value = await hydrateRouteRecords(summaries);
+    const [hydratedRoutes, usageMap] = await Promise.all([
+      hydrateRouteRecords(summaries),
+      buildRouteUsageMap(summaries).catch(() => {
+        ElMessage.warning("任务占用状态加载失败，当前按可编辑状态展示航线。");
+        return summaries.reduce<Record<string, RouteUsageStatus>>((statusMap, route) => {
+          statusMap[String(route.id)] = IDLE_ROUTE_USAGE_STATUS;
+          return statusMap;
+        }, {});
+      }),
+    ]);
+
+    routeRecords.value = hydratedRoutes;
+    routeUsageMap.value = usageMap;
     ensureCurrentPage();
   } catch {
     routeRecords.value = [];
+    routeUsageMap.value = {};
   } finally {
     listLoading.value = false;
   }
@@ -510,6 +730,12 @@ async function startCreate() {
 }
 
 function editRoute(route: RouteRecordModel) {
+  const usageStatus = getRouteUsageStatus(route);
+  if (usageStatus.locked) {
+    ElMessage.warning(usageStatus.lockReason);
+    return;
+  }
+
   router.push({
     name: "FlightRouteDetail",
     params: { id: route.id },
@@ -525,6 +751,12 @@ function openPreviewFromList(route: RouteRecordModel) {
 }
 
 async function handleDeleteRoute(route: RouteRecordModel) {
+  const usageStatus = getRouteUsageStatus(route);
+  if (usageStatus.locked) {
+    ElMessage.warning(usageStatus.lockReason);
+    return;
+  }
+
   try {
     await ElMessageBox.confirm(`确认删除航线【${route.routeName}】吗？`, "提示", {
       confirmButtonText: "确定",
