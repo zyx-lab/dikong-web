@@ -36,7 +36,11 @@
       :key="marker.id"
       type="button"
       class="low-altitude-scene-host__marker"
-      :class="[`is-${marker.kind}`, `is-${marker.tone}`, { 'is-expanded': marker.expanded }]"
+      :class="[
+        `is-${marker.kind}`,
+        `is-${marker.tone}`,
+        { 'is-expanded': marker.expanded, 'is-dot-hidden': marker.hideDot },
+      ]"
       :style="{ left: `${marker.x * 100}%`, top: `${marker.y * 100}%` }"
       @click="toggleMarker(marker.id)"
     >

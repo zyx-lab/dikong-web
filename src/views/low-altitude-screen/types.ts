@@ -87,6 +87,7 @@ export interface SceneMarker {
   y: number;
   tone: "primary" | "success" | "danger";
   label: string;
+  hideDot?: boolean;
 }
 
 export type SceneBaseMapMode = "satellite" | "terrain" | "vector";
@@ -129,7 +130,14 @@ export interface LowAltitudeSceneConfig {
   showCalibrationPanel: boolean;
 }
 
-export type PlaybackPhase = "takeoff" | "cruise" | "hover" | "returnHome" | "completed";
+export type PlaybackPhase =
+  | "takeoff"
+  | "cruise"
+  | "hover"
+  | "turn"
+  | "landing"
+  | "returnHome"
+  | "completed";
 
 export interface PlaybackCoordinate {
   lng: number;
@@ -141,6 +149,8 @@ export interface PlaybackSegment {
   endCoordinate: PlaybackCoordinate;
   durationSeconds: number;
   phase: PlaybackPhase;
+  endHeadingDeg: number | null;
+  startHeadingDeg: number | null;
   startCoordinate: PlaybackCoordinate;
   waypointIndex: number | null;
 }
@@ -148,6 +158,7 @@ export interface PlaybackSegment {
 export interface PlaybackMission {
   cruiseHeight: number;
   cruiseSpeed: number;
+  displayAltitudeBaselineMeters: number;
   pathCoordinates: PlaybackCoordinate[];
   returnHeight: number;
   routeId: string;
@@ -164,6 +175,7 @@ export interface PlaybackState {
   currentCoordinate: PlaybackCoordinate;
   currentSegmentIndex: number;
   currentWaypointIndex: number;
+  displayAltitudeMeters: number;
   elapsedSeconds: number;
   flownCoordinates: PlaybackCoordinate[];
   headingDeg: number | null;

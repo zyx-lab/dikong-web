@@ -115,6 +115,14 @@
   transform: translate(-50%, -50%);
 }
 
+.low-altitude-scene-host__marker.is-dot-hidden {
+  width: auto;
+  height: auto;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .low-altitude-scene-host__map {
   :deep(.cesium-viewer),
   :deep(.cesium-viewer-cesiumWidgetContainer),
@@ -143,6 +151,11 @@
   border: 1px solid rgba(115, 203, 255, 0.18);
   border-radius: 999px;
   transform: translateX(-50%);
+}
+
+.low-altitude-scene-host__marker.is-dot-hidden .low-altitude-scene-host__label {
+  position: static;
+  transform: translateX(0);
 }
 
 .dashboard-stage::before,

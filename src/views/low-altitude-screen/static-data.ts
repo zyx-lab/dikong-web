@@ -169,7 +169,7 @@ export const LOW_ALTITUDE_SCENE_CONFIG: LowAltitudeSceneConfig = {
   splatPlacement: {
     anchorLng: 113.52964,
     anchorLat: 22.25333,
-    heightOffsetMeters: 80,
+    heightOffsetMeters: 0,
     eastMeters: 20,
     northMeters: 70,
     upMeters: 0,
