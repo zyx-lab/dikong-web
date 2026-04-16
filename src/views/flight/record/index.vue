@@ -19,7 +19,7 @@
         <div class="command-page__metrics">
           <div class="command-page__metric command-page__metric--accent">
             <div class="command-page__metric-label">飞行记录</div>
-            <div class="command-page__metric-value">{{ total }}</div>
+            <div class="command-page__metric-value">{{ totalCount }}</div>
             <div class="command-page__metric-note">当前筛选范围内的架次总数</div>
           </div>
           <div class="command-page__metric command-page__metric--warning">
@@ -76,7 +76,7 @@
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--right">
           <div class="table-toolbar-summary">
-            <el-tag type="info">共 {{ total }} 条飞行记录</el-tag>
+            <el-tag type="info">共 {{ totalCount }} 条飞行记录</el-tag>
             <el-tag v-if="ids.length > 0" type="primary">已选 {{ ids.length }} 项</el-tag>
           </div>
         </div>
@@ -138,7 +138,7 @@
             <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
               删除
             </el-button>
-            <el-button type="primary" link size="small" @click.stop="handleVideo">
+            <el-button type="primary" link size="small" @click.stop="handleVideo(scope.row)">
               视频回放
             </el-button>
           </template>
@@ -304,6 +304,10 @@ const total = ref(0);
 const loading = ref(false);
 const submitLoading = ref(false);
 const ids = ref<number[]>([]);
+const deletedIds = ref(new Set<number>());
+
+/** 飞行记录总量：API total 减去已删除的 */
+const totalCount = computed(() => Math.max(0, total.value - deletedIds.value.size));
 
 const dialogWidth = computed(() => (width.value < 768 ? "92%" : "800px"));
 const hasActiveFilters = computed(() =>
@@ -453,6 +457,7 @@ async function handleDelete(id: number): Promise<void> {
     await FlightRecordAPI.delete(id);
     ElMessage.success("删除成功");
     ids.value = ids.value.filter((i) => i !== id);
+    deletedIds.value.add(id);
     fetchData();
   } catch (err: any) {
     if (err !== "cancel") {
@@ -463,8 +468,37 @@ async function handleDelete(id: number): Promise<void> {
 }
 
 /** 视频回放 */
-function handleVideo(): void {
-  ElMessage.info("视频回放功能待接入");
+async function handleVideo(row: FlightRecordInfo): Promise<void> {
+  try {
+    // 第一步：获取飞行记录详情，从中取 media_files 里视频的 id
+    const detail = await FlightRecordAPI.getDetail(row.id);
+    const mediaFiles: Array<{ id: number; media_type: number }> = (detail as any).media_files ?? [];
+
+    // 找视频类型（media_type=2）的第一条
+    const video = mediaFiles.find((m: { media_type: number }) => m.media_type === 2);
+
+    if (!video) {
+      ElMessage.warning("暂无视频文件");
+      return;
+    }
+
+    // 第二步：用 media id 调用 playback-url 接口获取可播放 URL
+    const res = await FlightRecordAPI.getPlaybackUrl(video.id);
+    console.log("[handleVideo] playback-url response:", res);
+
+    // 提取 playback_url：响应可能是 { playback_url: "..." } 或 { data: { playback_url: "..." } }
+    const url =
+      (res as any)?.playback_url ?? (res as any)?.data?.playback_url ?? (res as any)?.data ?? null;
+
+    if (!url) {
+      ElMessage.warning("暂无视频回放地址");
+      return;
+    }
+
+    window.location.href = url;
+  } catch {
+    // 接口调用失败，错误已在拦截器里处理
+  }
 }
 
 onMounted(() => {

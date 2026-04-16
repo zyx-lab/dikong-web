@@ -19,7 +19,7 @@
         <div class="command-page__metrics">
           <div class="command-page__metric command-page__metric--accent">
             <div class="command-page__metric-label">任务总量</div>
-            <div class="command-page__metric-value">{{ total }}</div>
+            <div class="command-page__metric-value">{{ totalCount }}</div>
             <div class="command-page__metric-note">当前筛选条件下的任务池规模</div>
           </div>
           <div class="command-page__metric">
@@ -349,9 +349,13 @@ const queryParams = reactive<TaskPageQuery>({
 
 // 列表数据
 const tableData = ref<TaskVO[]>([]);
-const filteredTaskList = ref<TaskVO[]>([]);
 const total = ref(0);
 const loading = ref(false);
+// 已删除的 ID 集合（用于修正统计）
+const deletedIds = ref(new Set<number>());
+
+/** 任务总量：API total 减去已删除的 */
+const totalCount = computed(() => Math.max(0, total.value - deletedIds.value.size));
 const submitLoading = ref(false);
 const ids = ref<number[]>([]);
 const liveUrlMap = ref<Record<number, string>>({});
@@ -360,14 +364,12 @@ const dialogWidth = computed(() => (width.value < 768 ? "92%" : "600px"));
 const hasActiveFilters = computed(() =>
   Boolean(queryParams.name || queryParams.status !== undefined)
 );
-const activeTaskCount = computed(
-  () => filteredTaskList.value.filter((item) => item.status === 1).length
-);
+const activeTaskCount = computed(() => tableData.value.filter((item) => item.status === 1).length);
 const completedTaskCount = computed(
-  () => filteredTaskList.value.filter((item) => item.status === 2).length
+  () => tableData.value.filter((item) => item.status === 2).length
 );
 const attentionTaskCount = computed(
-  () => filteredTaskList.value.filter((item) => item.status === 0).length
+  () => tableData.value.filter((item) => item.status === 0).length
 );
 
 // 弹窗状态
@@ -410,13 +412,8 @@ async function fetchData(): Promise<void> {
   try {
     const res = await TaskAPI.getPage(queryParams);
     const list = (res?.list ?? []) as TaskVO[];
-    filteredTaskList.value = list;
+    tableData.value = list;
     total.value = res?.total ?? list.length;
-
-    const pageNum = queryParams.pageNum ?? 1;
-    const pageSize = queryParams.pageSize ?? 10;
-    const startIndex = (pageNum - 1) * pageSize;
-    tableData.value = list.slice(startIndex, startIndex + pageSize);
   } catch (err: any) {
     console.error(err);
     ElMessage.error(err?.message || "加载任务失败");
@@ -591,6 +588,7 @@ async function handleBatchDelete(): Promise<void> {
       await TaskAPI.delete(id);
     }
     ElMessage.success("删除成功");
+    ids.value.forEach((id) => deletedIds.value.add(id));
     ids.value = [];
     handleQuery();
   } catch (err: any) {
@@ -618,6 +616,7 @@ async function handleDelete(id: number): Promise<void> {
     await TaskAPI.delete(id);
     ElMessage.success("删除成功");
     ids.value = ids.value.filter((i) => i !== id);
+    deletedIds.value.add(id);
     handleQuery();
   } catch (err: any) {
     if (err === "cancel") {

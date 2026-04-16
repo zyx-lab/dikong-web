@@ -20,6 +20,7 @@ function normalize(flightrecord: FlightRecordWire): FlightRecordInfo {
     photoCount: flightrecord.photo_count,
     videoCount: flightrecord.video_count,
     status: flightrecord.status,
+    replayUrl: flightrecord.replay_url,
     createdAt: flightrecord.created_at,
     updatedAt: flightrecord.updated_at,
   };
@@ -74,8 +75,10 @@ const FlightRecordAPI = {
       url: `${BASE_URL}/${id}`,
       method: "get",
     });
-    // request 已解包 data，故 raw = FlightRecordWire
-    return normalize(raw as FlightRecordWire);
+    // 返回原始数据（含 media_files），normalize 只处理顶级字段
+    const base = normalize(raw as FlightRecordWire);
+    // media_files 直接透传
+    return { ...base, media_files: (raw as any).media_files ?? [] };
   },
 
   update(id: number, data: Record<string, any>) {
@@ -98,6 +101,22 @@ const FlightRecordAPI = {
     return request({
       url: `${BASE_URL}/${id}`,
       method: "delete",
+    });
+  },
+
+  /** 获取视频回放地址（返回带签名的原始文件 URL） */
+  getReplayUrl(id: number) {
+    return request<any, any>({
+      url: `${BASE_URL}/${id}/replay`,
+      method: "get",
+    });
+  },
+
+  /** 获取视频播放地址（后端返回 S3 签名 URL） */
+  getPlaybackUrl(mediaId: number) {
+    return request<any, any>({
+      url: `/api/v1/media-files/${mediaId}/playback-url`,
+      method: "get",
     });
   },
 };

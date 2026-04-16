@@ -101,6 +101,7 @@ export interface FlightRecordWire {
   photo_count: number;
   video_count: number;
   status: number;
+  replay_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -120,6 +121,7 @@ export interface FlightRecordInfo {
   photoCount: number;
   videoCount: number;
   status: number;
+  replayUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
