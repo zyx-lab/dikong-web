@@ -25,6 +25,27 @@ const TDT_MAXIMUM_LEVEL = 18;
 
 type TdtLayer = "vec" | "cva" | "img" | "cia" | "ter" | "cta";
 
+function readIonAssetId(rawValue: string | number | undefined): number | undefined {
+  if (typeof rawValue === "number" && Number.isFinite(rawValue) && rawValue > 0) {
+    return Math.trunc(rawValue);
+  }
+  if (typeof rawValue === "string") {
+    const parsed = Number(rawValue.trim());
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return Math.trunc(parsed);
+    }
+  }
+  return undefined;
+}
+
+function readTerrainUrl(rawValue: string | undefined): string | undefined {
+  if (typeof rawValue !== "string") {
+    return undefined;
+  }
+  const normalized = rawValue.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 function getMapPalette(mode: SceneBaseMapMode, backgroundColor: string): MapPalette {
   if (mode === "terrain") {
     return {
@@ -136,6 +157,24 @@ async function createBaseLayer(mode: SceneBaseMapMode, hasIonToken: boolean) {
   }
 }
 
+function createTerrain(): Cesium.Terrain | undefined {
+  if (import.meta.env.VITE_CESIUM_ION_TOKEN) {
+    return Cesium.Terrain.fromWorldTerrain();
+  }
+
+  const terrainUrl = readTerrainUrl(import.meta.env.VITE_CESIUM_TERRAIN_URL);
+  if (terrainUrl) {
+    return new Cesium.Terrain(Cesium.CesiumTerrainProvider.fromUrl(terrainUrl));
+  }
+
+  const terrainAssetId = readIonAssetId(import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID);
+  if (terrainAssetId !== undefined) {
+    return new Cesium.Terrain(Cesium.CesiumTerrainProvider.fromIonAssetId(terrainAssetId));
+  }
+
+  return undefined;
+}
+
 function applySceneTheme(viewer: Cesium.Viewer, mode: SceneBaseMapMode, backgroundColor: string) {
   const palette = getMapPalette(mode, backgroundColor);
   viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString(palette.globe);
@@ -199,8 +238,7 @@ export async function createLowAltitudeCesiumViewer(
   }
 
   const baseLayer = await createBaseLayer(config.baseMapMode, Boolean(ionToken));
-  const terrain =
-    config.baseMapMode === "terrain" && ionToken ? Cesium.Terrain.fromWorldTerrain() : undefined;
+  const terrain = createTerrain();
   const viewer = new Cesium.Viewer(container, {
     animation: false,
     baseLayer,

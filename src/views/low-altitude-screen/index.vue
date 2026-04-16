@@ -163,14 +163,6 @@
                   @toggle-visible="showWindField = !showWindField"
                   @toggle-vertical-airflow="showWindVerticalAirflow = !showWindVerticalAirflow"
                 />
-
-                <SceneCalibrationPanel
-                  v-if="sceneConfig.showCalibrationPanel"
-                  v-model="scenePlacement"
-                  :camera-view-snapshot="currentCameraViewSnapshot"
-                  class="center-stage__calibration-panel"
-                  :default-placement="defaultPlacement"
-                />
               </div>
             </div>
           </section>
@@ -198,7 +190,6 @@ import AlertBroadcastPanel from "./components/AlertBroadcastPanel.vue";
 import FlightClosurePanel from "./components/FlightClosurePanel.vue";
 import WindFieldPanel from "./components/WindFieldPanel.vue";
 import SceneCalibrationPanel from "./components/SceneCalibrationPanel.vue";
-import { shouldShowSceneCalibrationPanel } from "./query";
 import {
   LOW_ALTITUDE_ALERT_PANEL,
   LOW_ALTITUDE_DRONE_PANEL,
@@ -229,10 +220,6 @@ import router from "@/router";
 
 defineOptions({ name: "LowAltitudeScreenPage" });
 
-function shouldEnableCalibrationPanel() {
-  return shouldShowSceneCalibrationPanel(window.location);
-}
-
 function resolveLocationQuery() {
   const hashQueryIndex = window.location.hash.indexOf("?");
   const hashQuery = hashQueryIndex >= 0 ? window.location.hash.slice(hashQueryIndex + 1) : "";
@@ -245,7 +232,6 @@ type SceneStatusChange = {
   status: "loading" | "ready" | "error" | "unsupported";
   errorMessage: string;
 };
-
 const screenRef = ref<HTMLElement | null>(null);
 const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(screenRef);
 const now = useNow({ interval: 1000 });
@@ -281,7 +267,7 @@ const playbackErrorMessage = ref("");
 const sceneConfig = computed<LowAltitudeSceneConfig>(() => ({
   ...LOW_ALTITUDE_SCENE_CONFIG,
   splatPlacement: cloneSceneSplatPlacement(scenePlacement.value),
-  showCalibrationPanel: isPlaybackMode.value ? false : shouldEnableCalibrationPanel(),
+  showCalibrationPanel: false,
 }));
 
 const sceneEnabled = computed(() => !isPlaybackMode.value || Boolean(playbackMission.value));

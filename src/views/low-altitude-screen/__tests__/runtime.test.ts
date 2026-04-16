@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const TEST_SPLAT_URL = "/model/JNUAerial-with_Park-y_up-lod.rad";
+const TEST_SPLAT_URL = "/JNUAerial-with_Park-y_up-lod.rad";
 
 const rendererCtor = vi.fn();
 const rendererSetPixelRatio = vi.fn();
@@ -127,7 +127,7 @@ function createSceneConfig() {
     splatPlacement: {
       anchorLng: 113.52964,
       anchorLat: 22.25333,
-      heightOffsetMeters: 80,
+      heightOffsetMeters: 90,
       eastMeters: 0,
       northMeters: 0,
       upMeters: 0,

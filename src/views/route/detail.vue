@@ -78,10 +78,10 @@
                 />
                 <div class="planner-overlay planner-overlay--hint">{{ mapInstruction }}</div>
                 <div
-                  v-if="baseMapMode === 'terrain' && !hasTerrainToken"
+                  v-if="baseMapMode === 'terrain' && !hasTerrainSource"
                   class="planner-overlay planner-overlay--warn"
                 >
-                  未配置 `VITE_CESIUM_ION_TOKEN`，当前显示地形底图，但未启用真实地形高程。
+                  未配置 `VITE_CESIUM_TERRAIN_URL` 或 `VITE_CESIUM_ION_TOKEN`，当前显示地形底图，但未启用真实地形高程。
                 </div>
               </div>
             </el-card>
@@ -204,7 +204,11 @@ const saveLoading = ref(false);
 
 const routeId = computed(() => String(route.params.id ?? ""));
 const isDraftRoute = computed(() => route.query.draft === "1");
-const hasTerrainToken = computed(() => Boolean(import.meta.env.VITE_CESIUM_ION_TOKEN));
+const hasTerrainSource = computed(
+  () =>
+    Boolean(import.meta.env.VITE_CESIUM_TERRAIN_URL?.trim()) ||
+    Boolean(import.meta.env.VITE_CESIUM_ION_TOKEN)
+);
 const isDarkMode = computed(() => settingsStore.theme === ThemeMode.DARK);
 const hasUnsavedChanges = computed(() => {
   if (!activeDraft.value || !draftSnapshot.value) {
@@ -273,8 +277,10 @@ function returnToList() {
 
 function handleBaseMapChange(mode: BaseMapMode) {
   baseMapMode.value = mode;
-  if (mode === "terrain" && !hasTerrainToken.value) {
-    ElMessage.info("未配置 VITE_CESIUM_ION_TOKEN，当前显示地形底图，但未启用真实地形高程。");
+  if (mode === "terrain" && !hasTerrainSource.value) {
+    ElMessage.info(
+      "未配置 VITE_CESIUM_TERRAIN_URL 或 VITE_CESIUM_ION_TOKEN，当前显示地形底图，但未启用真实地形高程。"
+    );
   }
 }
 

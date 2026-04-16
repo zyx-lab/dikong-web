@@ -12,6 +12,8 @@ interface ImportMetaEnv {
   readonly VITE_APP_TENANT_ENABLED?: string;
   readonly VITE_MOCK_DEV_SERVER: boolean;
   readonly VITE_CESIUM_ION_TOKEN?: string;
+  readonly VITE_CESIUM_ION_TERRAIN_ASSET_ID?: string;
+  readonly VITE_CESIUM_TERRAIN_URL?: string;
   readonly VITE_RADAR_START_LATITUDE?: string;
   readonly VITE_RADAR_START_LONGITUDE?: string;
   readonly VITE_RADAR_START_ALTITUDE_METERS?: string;
