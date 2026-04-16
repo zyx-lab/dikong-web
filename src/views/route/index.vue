@@ -434,6 +434,8 @@ interface RouteUsageStatus {
 }
 
 const EXECUTING_MISSION_STATUS = 1;
+const COMPLETED_MISSION_STATUS = 2;
+const FLYING_MISSION_STATUS = 3;
 const EXECUTION_STATUS_BUSY_SET = new Set(["EXECUTING", "RUNNING", "IN_PROGRESS", "FLYING"]);
 const IDLE_ROUTE_USAGE_STATUS: RouteUsageStatus = Object.freeze({
   state: "idle",
@@ -494,8 +496,12 @@ function normalizeMissionStatusText(value?: string | null) {
   return value?.trim().toUpperCase() ?? "";
 }
 
+function isMissionCompleted(mission: MissionRead) {
+  return mission.status === COMPLETED_MISSION_STATUS;
+}
+
 function isMissionExecuting(mission: MissionRead) {
-  if (mission.status === EXECUTING_MISSION_STATUS) {
+  if (mission.status === EXECUTING_MISSION_STATUS || mission.status === FLYING_MISSION_STATUS) {
     return true;
   }
 
@@ -508,7 +514,7 @@ function isMissionExecuting(mission: MissionRead) {
 }
 
 function isMissionOccupyingRoute(mission: MissionRead) {
-  return mission.route != null && mission.drone != null;
+  return mission.route != null && mission.drone != null && !isMissionCompleted(mission);
 }
 
 function ensureCurrentPage() {
