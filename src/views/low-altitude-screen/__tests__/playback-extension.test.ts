@@ -89,6 +89,75 @@ async function flushPromises() {
   await Promise.resolve();
 }
 
+function createTurnMission(): ReturnType<typeof createPlaybackMission> {
+  const startCoordinate = {
+    lng: 113.5285956152,
+    lat: 22.2551856026,
+    alt: 60,
+  };
+  const turnCoordinate = {
+    lng: 113.5263935271,
+    lat: 22.2501442839,
+    alt: 60,
+  };
+  const endCoordinate = {
+    lng: 113.5270290622,
+    lat: 22.2499299869,
+    alt: 60,
+  };
+
+  return {
+    cruiseHeight: 60,
+    cruiseSpeed: 15,
+    pathCoordinates: [startCoordinate, turnCoordinate, endCoordinate],
+    returnHeight: 80,
+    routeId: "turn-mission",
+    routeName: "转向阶段镜头验证",
+    segments: [
+      {
+        startCoordinate,
+        endCoordinate: turnCoordinate,
+        durationSeconds: 1,
+        phase: "cruise",
+        waypointIndex: 1,
+        startHeadingDeg: 350,
+        endHeadingDeg: 350,
+      },
+      {
+        startCoordinate: turnCoordinate,
+        endCoordinate: turnCoordinate,
+        durationSeconds: 1,
+        phase: "turn",
+        waypointIndex: 1,
+        startHeadingDeg: 350,
+        endHeadingDeg: 10,
+      },
+      {
+        startCoordinate: turnCoordinate,
+        endCoordinate,
+        durationSeconds: 1,
+        phase: "cruise",
+        waypointIndex: 2,
+        startHeadingDeg: 10,
+        endHeadingDeg: 10,
+      },
+      {
+        startCoordinate: endCoordinate,
+        endCoordinate,
+        durationSeconds: 0,
+        phase: "completed",
+        waypointIndex: 2,
+        startHeadingDeg: 10,
+        endHeadingDeg: 10,
+      },
+    ],
+    takeoffHeight: 30,
+    totalDurationSeconds: 3,
+    waypointCoordinates: [startCoordinate, turnCoordinate, endCoordinate],
+    waypointCount: 3,
+  } as ReturnType<typeof createPlaybackMission>;
+}
+
 describe("playback scene extension", () => {
   let originalConsoleWarn: typeof console.warn;
 
@@ -145,7 +214,10 @@ describe("playback scene extension", () => {
   });
 
   it("adds the loaded drone model root to the scene without creating a sphere placeholder", async () => {
-    const mission = createPlaybackMission(createPointRoute());
+    const mission = (createPlaybackMission as any)(createPointRoute(), {
+      baseGroundAltitudeMeters: 150,
+      landingGroundAltitudeMeters: 150,
+    });
     const sceneRoot = new THREE.Group();
     const camera = {
       setView: vi.fn(),
@@ -193,6 +265,7 @@ describe("playback scene extension", () => {
     } as any);
 
     const expectedState = getPlaybackState(mission, 0.5);
+    expect(expectedState.currentCoordinate.alt).toBeGreaterThan(150);
     const droneRoot = sceneRoot.children[1] as THREE.Group;
     expect(droneRoot.position.x).toBeCloseTo(expectedState.currentCoordinate.lng, 6);
     expect(droneRoot.position.y).toBeCloseTo(expectedState.currentCoordinate.lat, 6);
@@ -275,5 +348,44 @@ describe("playback scene extension", () => {
 
     expect(onStateChange).toHaveBeenCalledTimes(2);
     expect(camera.setView).toHaveBeenCalled();
+  });
+
+  it("feeds a continuously interpolated heading to the follow camera during turn segments", async () => {
+    gltfLoadAsyncMock.mockResolvedValue({
+      animations: [],
+      scene: new THREE.Group(),
+    });
+    const mission = createTurnMission();
+    const onStateChange = vi.fn();
+    const sceneRoot = new THREE.Group();
+    const camera = {
+      setView: vi.fn(),
+    };
+    const geospatial = createGeospatialStub();
+
+    const extension = createPlaybackSceneExtension({
+      mission,
+      onStateChange,
+    })({
+      sceneRoot,
+      viewer: { camera },
+      geospatial,
+    } as any);
+
+    extension.onFrame?.({
+      deltaTime: 1.5,
+      elapsedTime: 1.5,
+      sceneRoot,
+      viewer: { camera },
+      geospatial,
+    } as any);
+
+    const turnState = onStateChange.mock.calls.at(-1)?.[0];
+    const latestCameraView = camera.setView.mock.calls.at(-1)?.[0];
+
+    expect(onStateChange).toHaveBeenCalledTimes(2);
+    expect(turnState.phase).toBe("turn");
+    expect(turnState.headingDeg).toBeCloseTo(0, 6);
+    expect(latestCameraView.orientation.heading).toBeCloseTo(0, 6);
   });
 });

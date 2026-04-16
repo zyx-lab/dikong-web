@@ -189,7 +189,7 @@ import DroneOnlinePanel from "./components/DroneOnlinePanel.vue";
 import AlertBroadcastPanel from "./components/AlertBroadcastPanel.vue";
 import FlightClosurePanel from "./components/FlightClosurePanel.vue";
 import WindFieldPanel from "./components/WindFieldPanel.vue";
-import SceneCalibrationPanel from "./components/SceneCalibrationPanel.vue";
+import { resolvePlaybackAltitudeContext } from "./playback-altitude";
 import {
   LOW_ALTITUDE_ALERT_PANEL,
   LOW_ALTITUDE_DRONE_PANEL,
@@ -344,6 +344,10 @@ const playbackPhaseText = computed(() => {
       return "航线巡飞";
     case "hover":
       return "航点悬停";
+    case "turn":
+      return "航点转向";
+    case "landing":
+      return "降落中";
     case "returnHome":
       return "返航中";
     case "completed":
@@ -353,7 +357,7 @@ const playbackPhaseText = computed(() => {
   }
 });
 const playbackAltitudeText = computed(() =>
-  playbackState.value ? `${Math.round(playbackState.value.currentCoordinate.alt)}m` : "--"
+  playbackState.value ? `${Math.round(playbackState.value.displayAltitudeMeters)}m` : "--"
 );
 const playbackSpeedText = computed(() =>
   playbackState.value ? `${playbackState.value.speedMetersPerSecond.toFixed(1)}m/s` : "--"
@@ -412,7 +416,11 @@ async function loadPlaybackMission() {
     const routeDetail = await RouteAPI.getDetail(playbackRouteId.value);
     const kmzResponse = await RouteAPI.getKmz(playbackRouteId.value).catch(() => null);
     const routeRecord = await hydrateRouteRecord(routeDetail, kmzResponse?.data);
-    const mission = createPlaybackMission(routeRecord);
+    const altitudeContext = await resolvePlaybackAltitudeContext(
+      routeRecord,
+      sceneConfig.value.sceneOrigin
+    );
+    const mission = createPlaybackMission(routeRecord, altitudeContext);
     playbackMission.value = mission;
     playbackLoadState.value = "waitingScene";
   } catch (error) {

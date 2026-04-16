@@ -8,6 +8,7 @@ const {
   getKmzMock,
   hydrateRouteRecordMock,
   loadPlaybackDroneModelRuntimeMock,
+  resolvePlaybackAltitudeContextMock,
 } = vi.hoisted(() => ({
   mountDashboardSceneMock: vi.fn(),
   getDetailMock: vi.fn(),
@@ -20,6 +21,12 @@ const {
       setHeadingDegrees() {},
       setPosition() {},
       update() {},
+    })
+  ),
+  resolvePlaybackAltitudeContextMock: vi.fn(() =>
+    Promise.resolve({
+      baseGroundAltitudeMeters: 86.885,
+      landingGroundAltitudeMeters: 86.885,
     })
   ),
 }));
@@ -37,6 +44,10 @@ vi.mock("@/api/flight/route", () => ({
 
 vi.mock("@/views/route/route-xml", () => ({
   hydrateRouteRecord: hydrateRouteRecordMock,
+}));
+
+vi.mock("../playback-altitude", () => ({
+  resolvePlaybackAltitudeContext: resolvePlaybackAltitudeContextMock,
 }));
 
 vi.mock("../scene/playback-drone-model", () => ({
@@ -276,6 +287,7 @@ describe("low-altitude screen page", () => {
   afterEach(() => {
     window.location.hash = "";
     window.location.search = "";
+    resolvePlaybackAltitudeContextMock.mockClear();
   });
 
   it("shows the scene failure state when the runtime returns an error", async () => {
@@ -580,6 +592,65 @@ describe("low-altitude screen page", () => {
     expect(getKmzMock).toHaveBeenCalledWith("42");
   });
 
+  it("resolves playback altitude context before building the focused playback mission", async () => {
+    window.location.hash = "#/low-altitude-screen?mode=playback&routeId=42";
+    mountDashboardSceneMock.mockResolvedValueOnce(createSceneRuntime("ready"));
+    getDetailMock.mockResolvedValueOnce({
+      id: 42,
+      name: "港区巡检航线",
+      is_published: false,
+      created_at: "2026-04-15T10:00:00",
+      updated_at: "2026-04-15T10:00:00",
+    });
+    getKmzMock.mockResolvedValueOnce({ data: new Blob() });
+    hydrateRouteRecordMock.mockResolvedValueOnce(createPlaybackRouteRecord());
+
+    render(LowAltitudeScreenPage);
+
+    await waitFor(() => {
+      expect(resolvePlaybackAltitudeContextMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "42",
+          routeType: RouteType.POINT,
+        }),
+        expect.objectContaining({
+          altitudeMeters: 86.885,
+          latitude: 22.252818819444443,
+          longitude: 113.52958706944445,
+        })
+      );
+    });
+  });
+
+  it("keeps the playback altitude readout in relative meters after absolute-height mission preparation", async () => {
+    window.location.hash = "#/low-altitude-screen?mode=playback&routeId=42";
+    resolvePlaybackAltitudeContextMock.mockResolvedValueOnce({
+      baseGroundAltitudeMeters: 150,
+      landingGroundAltitudeMeters: 150,
+    });
+    mountDashboardSceneMock.mockImplementationOnce((_container, _config, options) => {
+      options?.createExtension?.(createPlaybackExtensionContextStub() as any);
+      return Promise.resolve(createSceneRuntime("ready"));
+    });
+    getDetailMock.mockResolvedValueOnce({
+      id: 42,
+      name: "港区巡检航线",
+      is_published: false,
+      created_at: "2026-04-15T10:00:00",
+      updated_at: "2026-04-15T10:00:00",
+    });
+    getKmzMock.mockResolvedValueOnce({ data: new Blob() });
+    hydrateRouteRecordMock.mockResolvedValueOnce(createPlaybackRouteRecord());
+
+    const { container } = render(LowAltitudeScreenPage);
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="playback-stats"]')).toBeTruthy();
+    });
+
+    expect(container.textContent).toContain("0m");
+  });
+
   it("renders a clear playback error state when route playback loading fails", async () => {
     window.location.hash = "#/low-altitude-screen?mode=playback&routeId=404";
     mountDashboardSceneMock.mockResolvedValueOnce({
@@ -700,7 +771,7 @@ describe("low-altitude screen page", () => {
     });
   });
 
-  it("keeps the playback drone marker visible without rendering the planned route overlay frame", async () => {
+  it("hides playback map markers without rendering the planned route overlay frame", async () => {
     window.location.hash = "#/low-altitude-screen?mode=playback&routeId=42";
     mountDashboardSceneMock.mockReset();
     getDetailMock.mockReset();
@@ -731,6 +802,6 @@ describe("low-altitude screen page", () => {
     });
 
     expect(container.querySelector(".low-altitude-scene-host__overlay")).toBeNull();
-    expect(container.querySelector(".low-altitude-scene-host__marker")).toBeTruthy();
+    expect(container.querySelector(".low-altitude-scene-host__marker")).toBeNull();
   });
 });
