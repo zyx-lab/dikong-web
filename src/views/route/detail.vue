@@ -152,7 +152,6 @@ import type { BaseMapMode, PlannerPoint, RouteRecordModel } from "./types";
 import {
   buildAreaRectangle,
   cloneRouteRecord,
-  createLoopTargetPoint,
   createPlannerPoint,
   getRouteInstruction,
   getRouteTypeLabel,
@@ -269,10 +268,7 @@ function handleRouteTypeChange(type: RouteType) {
   activeDraft.value.routeType = type;
   activeDraft.value.points = [];
   areaSelectionStart.value = null;
-  activeDraft.value.loopConfig.targetPoint =
-    type === RouteType.LOOP
-      ? createLoopTargetPoint(activeDraft.value.loopConfig.flightHeight)
-      : null;
+  activeDraft.value.loopConfig.targetPoint = null;
   ElMessage.info("已切换航线类型，请重新绘制规划范围");
   window.setTimeout(() => plannerMapRef.value?.flyToRoute(), 120);
 }
