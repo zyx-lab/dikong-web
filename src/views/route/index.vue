@@ -307,7 +307,6 @@ import { hydrateRouteRecord } from "./route-xml";
 import type { CreateRouteForm, RouteFilterForm, RouteRecordModel } from "./types";
 import {
   createEmptyRoute,
-  createLoopTargetPoint,
   createRouteDraftId,
   getRouteStatItems,
   getRouteTypeLabel,
@@ -713,10 +712,7 @@ async function startCreate() {
     persisted: false,
     routeName: createForm.routeName.trim(),
     routeType: createForm.routeType,
-    loopConfig:
-      createForm.routeType === RouteType.LOOP
-        ? { ...loopTemplate, targetPoint: createLoopTargetPoint(loopTemplate.flightHeight) }
-        : { ...loopTemplate, targetPoint: null },
+    loopConfig: { ...loopTemplate, targetPoint: null },
   });
 
   saveRouteDraft(draft);

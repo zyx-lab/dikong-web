@@ -329,22 +329,15 @@ async function initViewer() {
 
   handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   handler.setInputAction((movement: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
-    const cartesian = viewer.camera.pickEllipsoid(movement.position, viewer.scene.globe.ellipsoid);
-    if (!cartesian) {
+    const ray = viewer.camera.getPickRay(movement.position);
+    if (!ray) {
       return;
     }
 
-    // handler.setInputAction((movement: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
-    //     // 1. 获取屏幕点击产生的射线
-    //     const ray = viewer.camera.getPickRay(movement.position);
-    //     if (!ray) return;
-
-    //     // 2. 拾取射线与当前地球表面（包含地形）的真实交点
-    //     const cartesian = viewer.scene.globe.pick(ray, viewer.scene);
-
-    //     if (!cartesian) {
-    //       return;
-    //     }
+    const cartesian = viewer.scene.globe.pick(ray, viewer.scene);
+    if (!cartesian) {
+      return;
+    }
 
     const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
     emit("mapClick", {
@@ -549,8 +542,11 @@ function addWaypointEntities(
   points: RouteRecordModel["points"]
 ) {
   points.forEach((point, index) => {
+    const pointPosition = Cesium.Cartesian3.fromDegrees(point.lng, point.lat, point.alt);
+    const groundPosition = Cesium.Cartesian3.fromDegrees(point.lng, point.lat, 0);
+
     entities.add({
-      position: Cesium.Cartesian3.fromDegrees(point.lng, point.lat, point.alt),
+      position: pointPosition,
       point: {
         pixelSize: 11,
         color: Cesium.Color.fromCssColorString("#0ABAFF"),
@@ -567,6 +563,17 @@ function addWaypointEntities(
         pixelOffset: new Cesium.Cartesian2(0, -22),
         verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+    });
+
+    entities.add({
+      polyline: {
+        positions: [pointPosition, groundPosition],
+        width: 1.5,
+        material: new Cesium.PolylineDashMaterialProperty({
+          color: Cesium.Color.fromCssColorString("#0ABAFF").withAlpha(0.5),
+          dashLength: 8.0,
+        }),
       },
     });
   });
