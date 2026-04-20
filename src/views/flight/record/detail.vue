@@ -80,19 +80,16 @@
           <InfoPanel title="无人机视频" body-class="detail-panel__body">
             <div class="video-stage">
               <div class="video-stage__media">
-                <div class="video-stage__overlay video-stage__overlay--top">
-                  <div class="video-stage__tag-group">
-                    <el-tag effect="dark">{{ record.droneName }}</el-tag>
-                    <el-tag effect="dark">{{ record.batteryPercent }}%</el-tag>
-                    <el-tag effect="dark">
-                      Frame {{ currentFrameIndex + 1 }} / {{ poseFrameCount }}
-                    </el-tag>
-                    <el-tag v-if="radarStatus === 'ready'" effect="dark">
-                      Wind {{ radarFrameIndex + 1 }} / {{ radarFrameCount }}
-                    </el-tag>
-                  </div>
-                  <el-tag effect="dark">FoV {{ projectorFov.toFixed(1) }}°</el-tag>
-                </div>
+                <RecordVideoStatusBar
+                  :drone-name="record.droneName"
+                  :battery-percent="record.batteryPercent"
+                  :current-frame-index="currentFrameIndex"
+                  :pose-frame-count="poseFrameCount"
+                  :radar-ready="radarStatus === 'ready'"
+                  :radar-frame-index="radarFrameIndex"
+                  :radar-frame-count="radarFrameCount"
+                  :projector-fov="projectorFov"
+                />
 
                 <div ref="splatHostRef" class="video-stage__viewer" />
                 <video
@@ -182,73 +179,17 @@
                   </svg>
                 </div>
 
-                <div class="telemetry-stats">
-                  <el-card shadow="never" class="metric-card">
-                    <el-statistic :value="currentAltitude">
-                      <template #title>距地高度</template>
-                      <template #suffix>m</template>
-                    </el-statistic>
-                  </el-card>
-
-                  <el-card shadow="never" class="metric-card">
-                    <el-statistic :value="currentSpeed">
-                      <template #title>速度</template>
-                      <template #suffix>m/s</template>
-                    </el-statistic>
-                  </el-card>
-
-                  <el-card shadow="never" class="metric-card metric-card--control">
-                    <div class="projection-control">
-                      <div class="projection-control__header">
-                        <span>视频 FoV</span>
-                        <span>{{ projectorFov.toFixed(1) }}°</span>
-                      </div>
-                      <el-slider
-                        v-model="projectorFov"
-                        :min="20"
-                        :max="80"
-                        :step="0.5"
-                        :show-tooltip="false"
-                      />
-                    </div>
-                  </el-card>
-
-                  <el-card shadow="never" class="metric-card metric-card--control">
-                    <div class="projection-control">
-                      <div class="projection-control__header">
-                        <span>投影混合</span>
-                        <span>{{ projectionOpacity.toFixed(2) }}</span>
-                      </div>
-                      <el-slider
-                        v-model="projectionOpacity"
-                        :min="0"
-                        :max="1"
-                        :step="0.01"
-                        :show-tooltip="false"
-                      />
-                      <div class="projection-control__switch">
-                        <span>显示 JNU.obj</span>
-                        <el-switch v-model="showProjectionMesh" />
-                      </div>
-                      <div class="projection-control__switch">
-                        <span>调试投影</span>
-                        <el-switch v-model="debugProjectionMode" />
-                      </div>
-                      <div class="projection-control__switch">
-                        <span>显示投影相机</span>
-                        <el-switch v-model="showProjectorHelper" />
-                      </div>
-                      <div class="projection-control__switch">
-                        <span>显示无人机</span>
-                        <el-switch v-model="showDroneModel" />
-                      </div>
-                      <div class="projection-control__switch">
-                        <span>无人机调试</span>
-                        <el-switch v-model="debugDroneModel" />
-                      </div>
-                    </div>
-                  </el-card>
-                </div>
+                <RecordTelemetryCards
+                  v-model:projector-fov="projectorFov"
+                  v-model:projection-opacity="projectionOpacity"
+                  v-model:show-projection-mesh="showProjectionMesh"
+                  v-model:debug-projection-mode="debugProjectionMode"
+                  v-model:show-projector-helper="showProjectorHelper"
+                  v-model:show-drone-model="showDroneModel"
+                  v-model:debug-drone-model="debugDroneModel"
+                  :current-altitude="currentAltitude"
+                  :current-speed="currentSpeed"
+                />
               </div>
             </div>
           </InfoPanel>
@@ -282,6 +223,8 @@ import FlightEmptyState from "@/components/flight/FlightEmptyState.vue";
 import InfoPanel from "@/components/InfoPanel.vue";
 import { getFlightRecordById } from "@/views/flight/record/data";
 import RecordDetailHeader from "@/views/flight/record/components/RecordDetailHeader.vue";
+import RecordTelemetryCards from "@/views/flight/record/components/RecordTelemetryCards.vue";
+import RecordVideoStatusBar from "@/views/flight/record/components/RecordVideoStatusBar.vue";
 
 defineOptions({
   name: "FlightRecordDetail",
