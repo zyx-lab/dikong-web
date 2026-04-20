@@ -30,9 +30,12 @@ vi.mock("@/api/flight/mission", () => ({
 import RoutePage from "@/views/route/index.vue";
 
 describe("RoutePage shadcn shell", () => {
-  it("renders the route page title as the primary h1 heading", async () => {
+  it("renders the route page title as the primary h1 heading with four metric cards", async () => {
     render(RoutePage);
 
     expect(await screen.findByRole("heading", { name: "航线管理", level: 1 })).not.toBeNull();
+    expect(screen.getAllByTestId("flight-metric-card")).toHaveLength(4);
+    expect(screen.getByTestId("route-filter-bar")).not.toBeNull();
+    expect(screen.getByTestId("flight-empty-state")).not.toBeNull();
   });
 });
