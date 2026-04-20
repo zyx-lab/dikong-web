@@ -42,57 +42,67 @@
           </div>
         </div>
 
-        <el-row :gutter="20" class="planner-page__body">
-          <el-col :xl="8" :lg="8" :xs="24" class="planner-page__side-col">
-            <el-card shadow="hover" class="planner-card planner-card--sidebar">
-              <RoutePlannerSidebar
-                :draft="activeDraft"
-                :pending-area-selection="Boolean(areaSelectionStart)"
-                :dispatching="dispatchLoading"
-                :saving="saveLoading"
-                @dispatch="openDispatchDialog"
-                @preview="previewDraft"
-                @save="saveDraft"
-                @reset="resetDraft"
-                @clear-geometry="clearCurrentGeometry"
-              />
-            </el-card>
-          </el-col>
-
-          <el-col :xl="16" :lg="16" :xs="24" class="planner-page__map-col">
-            <el-card shadow="hover" class="planner-card planner-card--map">
-              <div class="planner-card__map-toolbar">
-                <el-button
-                  v-for="option in baseMapOptions"
-                  :key="option.value"
-                  size="small"
-                  :type="baseMapMode === option.value ? 'primary' : 'default'"
-                  @click="handleBaseMapChange(option.value)"
-                >
-                  {{ option.label }}
-                </el-button>
-              </div>
-
-              <div class="planner-card__map-body">
-                <RoutePlannerMap
-                  ref="plannerMapRef"
+        <div class="planner-page__body" data-testid="route-detail-shell">
+          <div class="planner-page__side-col">
+            <Card
+              class="planner-card planner-card--sidebar border-border/70 shadow-none"
+              data-testid="route-detail-sidebar-card"
+            >
+              <CardContent class="planner-card__content planner-card__content--sidebar">
+                <RoutePlannerSidebar
                   :draft="activeDraft"
-                  :base-map-mode="baseMapMode"
-                  :dark-mode="isDarkMode"
-                  @map-click="handleMapClick"
+                  :pending-area-selection="Boolean(areaSelectionStart)"
+                  :dispatching="dispatchLoading"
+                  :saving="saveLoading"
+                  @dispatch="openDispatchDialog"
+                  @preview="previewDraft"
+                  @save="saveDraft"
+                  @reset="resetDraft"
+                  @clear-geometry="clearCurrentGeometry"
                 />
-                <div class="planner-overlay planner-overlay--hint">{{ mapInstruction }}</div>
-                <div
-                  v-if="baseMapMode === 'terrain' && !hasTerrainSource"
-                  class="planner-overlay planner-overlay--warn"
-                >
-                  未配置 `VITE_CESIUM_TERRAIN_URL` 或
-                  `VITE_CESIUM_ION_TOKEN`，当前显示地形底图，但未启用真实地形高程。
+              </CardContent>
+            </Card>
+          </div>
+
+          <div class="planner-page__map-col">
+            <Card
+              class="planner-card planner-card--map border-border/70 shadow-none"
+              data-testid="route-detail-map-card"
+            >
+              <CardContent class="planner-card__content planner-card__content--map">
+                <div class="planner-card__map-toolbar">
+                  <Button
+                    v-for="option in baseMapOptions"
+                    :key="option.value"
+                    size="sm"
+                    :variant="baseMapMode === option.value ? 'default' : 'outline'"
+                    @click="handleBaseMapChange(option.value)"
+                  >
+                    {{ option.label }}
+                  </Button>
                 </div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
+
+                <div class="planner-card__map-body">
+                  <RoutePlannerMap
+                    ref="plannerMapRef"
+                    :draft="activeDraft"
+                    :base-map-mode="baseMapMode"
+                    :dark-mode="isDarkMode"
+                    @map-click="handleMapClick"
+                  />
+                  <div class="planner-overlay planner-overlay--hint">{{ mapInstruction }}</div>
+                  <div
+                    v-if="baseMapMode === 'terrain' && !hasTerrainSource"
+                    class="planner-overlay planner-overlay--warn"
+                  >
+                    未配置 `VITE_CESIUM_TERRAIN_URL` 或
+                    `VITE_CESIUM_ION_TOKEN`，当前显示地形底图，但未启用真实地形高程。
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </section>
     </template>
 
@@ -129,6 +139,7 @@ import { downloadFile } from "@/utils";
 import FlightEmptyState from "@/components/flight/FlightEmptyState.vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import RouteDispatchDialog from "./components/RouteDispatchDialog.vue";
 import RoutePlannerMap from "./components/RoutePlannerMap.vue";
 import RoutePlannerSidebar from "./components/RoutePlannerSidebar.vue";
@@ -544,14 +555,13 @@ watch(
 }
 
 .planner-page__body {
+  display: grid;
   flex: 1;
-  align-items: stretch;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.4fr);
+  gap: 20px;
   width: 100%;
   height: 100%;
   min-height: 0;
-  margin: 0 !important;
-  margin-right: 0 !important;
-  margin-left: 0 !important;
   overflow: hidden;
 }
 
@@ -578,7 +588,7 @@ watch(
   min-height: 0;
 }
 
-.planner-card--sidebar :deep(.el-card__body) {
+.planner-card__content--sidebar {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -591,7 +601,7 @@ watch(
   overflow: hidden;
 }
 
-.planner-card--map :deep(.el-card__body) {
+.planner-card__content--map {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -738,6 +748,7 @@ watch(
   }
 
   .planner-page__body {
+    grid-template-columns: minmax(0, 1fr);
     height: auto !important;
   }
 }

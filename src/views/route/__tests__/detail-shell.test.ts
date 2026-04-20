@@ -90,6 +90,9 @@ describe("RouteDetailPage shell", () => {
     });
 
     expect(await screen.findByRole("heading", { name: "测试航线", level: 1 })).not.toBeNull();
+    expect(screen.getByTestId("route-detail-shell")).not.toBeNull();
+    expect(screen.getByTestId("route-detail-sidebar-card")).not.toBeNull();
+    expect(screen.getByTestId("route-detail-map-card")).not.toBeNull();
     expect(screen.getByTestId("route-planner-map")).not.toBeNull();
     expect(screen.getByTestId("route-planner-sidebar")).not.toBeNull();
   });
