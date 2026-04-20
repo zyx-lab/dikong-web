@@ -79,7 +79,7 @@ const transitionName = computed(() => {
 .app-main {
   position: relative;
   overflow-y: auto;
-  background-color: var(--el-bg-color-page);
+  background-color: var(--background, var(--el-bg-color-page));
 
   /* fade */
   .fade-enter-active,
