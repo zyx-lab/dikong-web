@@ -34,96 +34,18 @@
         </div>
 
         <div v-loading="loading" class="table-section__content">
-          <el-table
-            highlight-current-row
-            :data="tableData"
-            border
-            @selection-change="handleSelectionChange"
-          >
-            <el-table-column type="selection" width="55" align="center" />
-            <el-table-column label="ID" prop="id" width="80" align="center" />
-            <el-table-column label="任务名称" prop="name" min-width="150" show-overflow-tooltip />
-            <el-table-column
-              label="任务航线"
-              prop="routeName"
-              min-width="150"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              label="执行无人机"
-              prop="droneName"
-              min-width="120"
-              show-overflow-tooltip
-            />
-            <el-table-column label="计划执行时间" min-width="160">
-              <template #default="{ row }">{{ formatTime(row.scheduledAt) }}</template>
-            </el-table-column>
-            <el-table-column label="任务状态" align="center" width="100">
-              <template #default="{ row }">
-                {{ formatStatus(row.status) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="创建时间" min-width="160">
-              <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-            </el-table-column>
-            <el-table-column label="更新时间" min-width="160">
-              <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
-            </el-table-column>
-            <el-table-column label="开始时间" min-width="160">
-              <template #default="{ row }">{{ formatTime(row.startedAt) }}</template>
-            </el-table-column>
-            <el-table-column label="结束时间" min-width="160">
-              <template #default="{ row }">{{ formatTime(row.finishedAt) }}</template>
-            </el-table-column>
-            <el-table-column label="备注" prop="remark" min-width="120" show-overflow-tooltip />
-            <el-table-column fixed="right" label="操作" align="center" width="280">
-              <template #default="scope">
-                <el-button
-                  type="primary"
-                  link
-                  size="small"
-                  @click.stop="handleDetailClick(scope.row)"
-                >
-                  详情
-                </el-button>
-                <el-button
-                  type="primary"
-                  link
-                  size="small"
-                  icon="edit"
-                  @click.stop="handleEditClick(scope.row)"
-                >
-                  编辑
-                </el-button>
-                <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
-                  删除
-                </el-button>
-                <el-button type="primary" link size="small" @click.stop="handleAdvance(scope.row)">
-                  推进任务
-                </el-button>
-                <el-button
-                  type="primary"
-                  link
-                  size="small"
-                  @click.stop="handleLiveStream(liveUrlMap[scope.row.id])"
-                >
-                  直播画面
-                </el-button>
-              </template>
-            </el-table-column>
-            <template #empty>
-              <FlightEmptyState
-                title="暂无任务"
-                :description="
-                  hasActiveFilters
-                    ? '当前筛选条件下暂无任务，请调整筛选条件后重试。'
-                    : '任务数据还没有准备好，可以先创建一个新任务。'
-                "
-                :action-label="hasActiveFilters ? '清空筛选' : undefined"
-                @action="handleResetQuery"
-              />
-            </template>
-          </el-table>
+          <TaskDataTable
+            :rows="tableData"
+            :selected-ids="ids"
+            :has-active-filters="hasActiveFilters"
+            @update:selected-ids="handleSelectionIdsChange"
+            @detail="handleDetailClick"
+            @edit="handleEditClick"
+            @delete="handleDelete"
+            @advance="handleAdvance"
+            @live="handleLiveFromRow"
+            @clear-filters="handleResetQuery"
+          />
         </div>
 
         <pagination
@@ -163,13 +85,13 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { TaskPageQuery, TaskVO, TaskForm, RouteOption, MemberOption } from "@/api/flight/task";
-import FlightEmptyState from "@/components/flight/FlightEmptyState.vue";
 import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import TaskAPI from "@/api/flight/task";
 import DroneAPI from "@/api/resource/drone";
+import TaskDataTable from "@/views/flight/task/components/TaskDataTable.vue";
 import TaskDetailDialog from "@/views/flight/task/components/TaskDetailDialog.vue";
 import TaskEditorSheet from "@/views/flight/task/components/TaskEditorSheet.vue";
 import TaskFilterBar from "@/views/flight/task/components/TaskFilterBar.vue";
@@ -271,18 +193,6 @@ function handleResetQuery(): void {
   queryParams.status = undefined; // 强制重置
   queryParams.pageNum = 1;
   fetchData();
-}
-
-function formatTime(value: string | undefined | null): string {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return value;
-  const pad = (n: number) => `${n}`.padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-function formatStatus(status: number | undefined): string {
-  return ["待执行", "执行中", "执行完成", "飞行中"][status ?? -1] ?? "-";
 }
 
 /**
@@ -419,8 +329,8 @@ function handleDetailDialogOpenChange(open: boolean): void {
 /**
  * 表格选择变化
  */
-function handleSelectionChange(selection: TaskVO[]): void {
-  ids.value = selection.map((item) => item.id);
+function handleSelectionIdsChange(nextIds: number[]): void {
+  ids.value = nextIds;
 }
 
 /**
@@ -531,6 +441,10 @@ function handleLiveStream(url?: string): void {
   // 拼接完整绝对路径，避免被 SPA 路由拦截
   const base = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "");
   window.open(`${base}/live.html?url=${encodeURIComponent(url)}`, "_blank");
+}
+
+function handleLiveFromRow(row: TaskVO): void {
+  handleLiveStream(liveUrlMap.value[row.id]);
 }
 
 onMounted(() => {

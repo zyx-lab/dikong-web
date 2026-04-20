@@ -23,88 +23,17 @@
         </div>
 
         <div v-loading="loading" class="table-section__content">
-          <el-table
-            :data="tableData"
-            border
-            highlight-current-row
-            row-key="id"
-            @selection-change="handleSelectionChange"
-          >
-            <el-table-column type="selection" width="55" align="center" />
-            <el-table-column label="ID" prop="id" width="80" align="center" />
-            <el-table-column
-              label="飞行记录编号"
-              prop="flightNo"
-              min-width="170"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              label="任务名称"
-              prop="missionName"
-              min-width="170"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              label="航线名称"
-              prop="routeName"
-              min-width="160"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              label="无人机名称"
-              prop="droneName"
-              min-width="170"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              label="设备序列号"
-              prop="deviceSn"
-              min-width="180"
-              show-overflow-tooltip
-            />
-            <el-table-column label="飞手姓名" prop="pilotName" min-width="120" align="center" />
-            <el-table-column label="开始时间" min-width="170">
-              <template #default="{ row }">{{ formatTime(row.startTime) }}</template>
-            </el-table-column>
-            <el-table-column label="结束时间" min-width="170">
-              <template #default="{ row }">{{ formatTime(row.endTime) }}</template>
-            </el-table-column>
-            <el-table-column label="飞行时长" width="100" align="center">
-              <template #default="{ row }">
-                {{ formatDuration(row.flightDuration) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="照片数量" prop="photoCount" width="90" align="center" />
-            <el-table-column label="视频数量" prop="videoCount" width="90" align="center" />
-            <el-table-column fixed="right" label="操作" align="center" width="240">
-              <template #default="scope">
-                <el-button type="primary" link size="small" @click.stop="handleDetail(scope.row)">
-                  详情
-                </el-button>
-                <el-button type="primary" link size="small" @click.stop="handleEdit(scope.row)">
-                  编辑
-                </el-button>
-                <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
-                  删除
-                </el-button>
-                <el-button type="primary" link size="small" @click.stop="handleVideo(scope.row)">
-                  视频回放
-                </el-button>
-              </template>
-            </el-table-column>
-            <template #empty>
-              <FlightEmptyState
-                title="暂无飞行记录"
-                :description="
-                  hasActiveFilters
-                    ? '当前筛选条件下暂无飞行记录，请调整筛选条件后重试。'
-                    : '飞行记录还没有同步完成，稍后再来查看。'
-                "
-                :action-label="hasActiveFilters ? '清空筛选' : undefined"
-                @action="handleResetQuery"
-              />
-            </template>
-          </el-table>
+          <RecordDataTable
+            :rows="tableData"
+            :selected-ids="ids"
+            :has-active-filters="hasActiveFilters"
+            @update:selected-ids="handleSelectionIdsChange"
+            @detail="handleDetail"
+            @edit="handleEdit"
+            @delete="handleDelete"
+            @video="handleVideo"
+            @clear-filters="handleResetQuery"
+          />
         </div>
 
         <pagination
@@ -141,10 +70,10 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import FlightRecordAPI from "@/api/flight/record";
 import type { FlightRecordInfo, FlightRecordQuery } from "@/api/flight/types";
-import FlightEmptyState from "@/components/flight/FlightEmptyState.vue";
 import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import RecordDataTable from "@/views/flight/record/components/RecordDataTable.vue";
 import RecordDetailDialog from "@/views/flight/record/components/RecordDetailDialog.vue";
 import RecordEditSheet from "@/views/flight/record/components/RecordEditSheet.vue";
 import RecordFilterBar from "@/views/flight/record/components/RecordFilterBar.vue";
@@ -228,23 +157,8 @@ function handleResetQuery(): void {
   fetchData();
 }
 
-function handleSelectionChange(selection: FlightRecordInfo[]): void {
-  ids.value = selection.map((item) => item.id);
-}
-
-function formatTime(value: string | null | undefined): string {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return value;
-  const pad = (n: number) => `${n}`.padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return "-";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return m > 0 ? `${m}分${s}秒` : `${s}秒`;
+function handleSelectionIdsChange(nextIds: number[]): void {
+  ids.value = nextIds;
 }
 
 /** 详情 */

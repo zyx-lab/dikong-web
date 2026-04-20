@@ -50,5 +50,6 @@ describe("RecordPage shadcn shell", () => {
     expect(screen.getByTestId("record-filter-bar")).not.toBeNull();
     expect(screen.getByTestId("flight-empty-state")).not.toBeNull();
     expect(screen.getByTestId("record-table-shell")).not.toBeNull();
+    expect(screen.getByTestId("record-data-table")).not.toBeNull();
   });
 });
