@@ -60,46 +60,19 @@
       />
     </el-card>
 
-    <el-dialog
-      v-model="createDialogVisible"
-      title="新增航线"
-      :width="dialogWidth"
-      align-center
-      destroy-on-close
-      custom-class="dialog-form-decorated"
-      class="dialog-form-decorated"
+    <RouteEditorSheet
+      :open="createDialogVisible"
+      :form-data="createForm"
+      :route-type-options="routeTypeOptions"
+      @update:open="handleCreateDialogOpenChange"
       @close="closeCreateDialog"
-    >
-      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
-        <el-form-item label="航线名称" prop="routeName">
-          <el-input v-model="createForm.routeName" placeholder="请输入航线名称" />
-        </el-form-item>
-        <el-form-item label="航线类型" prop="routeType">
-          <el-select v-model="createForm.routeType" placeholder="请选择航线类型" class="w-full">
-            <el-option
-              v-for="option in routeTypeOptions"
-              :key="option.value"
-              :label="option.label"
-              :value="option.value"
-            />
-          </el-select>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="closeCreateDialog">取消</el-button>
-          <el-button type="primary" @click="startCreate">确定</el-button>
-        </div>
-      </template>
-    </el-dialog>
+      @save="startCreate"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onActivated, onMounted, reactive, ref } from "vue";
-import { useWindowSize } from "@vueuse/core";
-import type { FormInstance, FormRules } from "element-plus";
+import { computed, onActivated, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useRouter } from "vue-router";
 import MissionAPI, { type MissionPageResult, type MissionRead } from "@/api/flight/mission";
@@ -107,6 +80,7 @@ import RouteAPI, { type RouteRead } from "@/api/flight/route";
 import { RouteType } from "@/api/flight/types";
 import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
 import RouteCardList from "@/views/route/components/RouteCardList.vue";
+import RouteEditorSheet from "@/views/route/components/RouteEditorSheet.vue";
 import RouteFilterBar from "@/views/route/components/RouteFilterBar.vue";
 import RouteSummaryCards from "@/views/route/components/RouteSummaryCards.vue";
 import { saveRouteDraft } from "./storage";
@@ -122,7 +96,6 @@ import {
 defineOptions({ name: "RouteManagerListPage" });
 
 const router = useRouter();
-const { width } = useWindowSize();
 
 const routeTypeOptions = [
   {
@@ -142,7 +115,6 @@ const routeTypeOptions = [
   },
 ] as const;
 
-const createFormRef = ref<FormInstance>();
 const routeRecords = ref<RouteRecordModel[]>([]);
 const routeUsageMap = ref<Record<string, RouteUsageStatus>>({});
 const createDialogVisible = ref(false);
@@ -165,11 +137,6 @@ const queryParams = reactive({
   pageNum: 1,
   pageSize: 6,
 });
-
-const createRules: FormRules = {
-  routeName: [{ required: true, message: "请输入航线名称", trigger: "blur" }],
-  routeType: [{ required: true, message: "请选择航线类型", trigger: "change" }],
-};
 
 const filteredRoutes = computed(() =>
   routeRecords.value.filter((route) => {
@@ -223,8 +190,6 @@ const hasActiveFilters = computed(() =>
     filterForm.updatedRange.length
   )
 );
-const dialogWidth = computed(() => (width.value < 768 ? "92%" : "600px"));
-
 type RouteStatusTagType = "success" | "warning" | "danger" | "info" | "primary";
 type RouteUsageState = "idle" | "occupied" | "executing";
 
@@ -483,7 +448,6 @@ function resetCreateForm() {
 function openCreateDialog() {
   resetCreateForm();
   createDialogVisible.value = true;
-  nextTick(() => createFormRef.value?.clearValidate());
 }
 
 function resetFilterForm() {
@@ -502,13 +466,28 @@ function handleResetQuery() {
 
 function closeCreateDialog() {
   createDialogVisible.value = false;
-  createFormRef.value?.clearValidate();
   resetCreateForm();
 }
 
+function handleCreateDialogOpenChange(open: boolean) {
+  if (!open) {
+    closeCreateDialog();
+    return;
+  }
+
+  createDialogVisible.value = open;
+}
+
 async function startCreate() {
-  const isValid = await createFormRef.value?.validate().catch(() => false);
-  if (!isValid) return;
+  if (!createForm.routeName.trim()) {
+    ElMessage.warning("请输入航线名称");
+    return;
+  }
+
+  if (!createForm.routeType) {
+    ElMessage.warning("请选择航线类型");
+    return;
+  }
 
   const loopTemplate = createEmptyRoute({ routeType: RouteType.LOOP }).loopConfig;
   const draft = createEmptyRoute({
