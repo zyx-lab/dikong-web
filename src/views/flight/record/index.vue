@@ -15,7 +15,7 @@
 
     <RecordFilterBar :query-params="queryParams" @query="handleQuery" @reset="handleResetQuery" />
 
-    <Card class="border-border/70 shadow-none">
+    <Card data-testid="record-table-shell" class="border-border/70 shadow-none">
       <CardContent class="space-y-4 pt-6">
         <div class="flex flex-wrap items-center justify-end gap-2">
           <Badge variant="outline">共 {{ totalCount }} 条飞行记录</Badge>

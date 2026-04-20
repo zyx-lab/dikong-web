@@ -60,5 +60,6 @@ describe("TaskPage shadcn shell", () => {
     expect(screen.getAllByTestId("flight-metric-card")).toHaveLength(4);
     expect(screen.getByTestId("task-filter-bar")).not.toBeNull();
     expect(screen.getByTestId("flight-empty-state")).not.toBeNull();
+    expect(screen.getByTestId("task-table-shell")).not.toBeNull();
   });
 });

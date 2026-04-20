@@ -17,7 +17,7 @@
 
     <TaskFilterBar :query-params="queryParams" @query="handleQuery" @reset="handleResetQuery" />
 
-    <Card class="border-border/70 shadow-none">
+    <Card data-testid="task-table-shell" class="border-border/70 shadow-none">
       <CardContent class="space-y-4 pt-6">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div class="flex flex-wrap items-center gap-3">
