@@ -463,13 +463,13 @@ function alertLevelText(level: number) {
   box-shadow: 0 12px 30px rgba(15, 32, 56, 0.08);
 }
 
-.command-dashboard :deep(.info-panel .el-card__header) {
+.command-dashboard :deep(.info-panel__card-header) {
   padding: 18px 20px 14px;
   background: linear-gradient(180deg, rgba(11, 79, 109, 0.06), rgba(11, 79, 109, 0));
   border-bottom: 1px solid rgba(29, 78, 128, 0.12);
 }
 
-.command-dashboard :deep(.info-panel .el-card__body) {
+.command-dashboard :deep(.info-panel__card-body) {
   padding: 18px 20px 20px;
 }
 

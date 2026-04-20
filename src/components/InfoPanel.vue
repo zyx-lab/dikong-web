@@ -1,21 +1,25 @@
 <template>
-  <el-card :shadow="shadow" class="info-panel">
-    <template #header>
+  <Card class="info-panel" :class="{ 'info-panel--flat': shadow === 'never' }">
+    <CardHeader class="info-panel__card-header">
       <div class="info-panel__header">
         <span class="info-panel__title">{{ title }}</span>
         <div v-if="$slots['header-extra']" class="info-panel__extra">
           <slot name="header-extra" />
         </div>
       </div>
-    </template>
+    </CardHeader>
 
-    <div class="info-panel__body" :class="bodyClass">
-      <slot />
-    </div>
-  </el-card>
+    <CardContent class="info-panel__card-body">
+      <div class="info-panel__body" :class="bodyClass">
+        <slot />
+      </div>
+    </CardContent>
+  </Card>
 </template>
 
 <script setup lang="ts">
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+
 withDefaults(
   defineProps<{
     title: string;
@@ -31,6 +35,10 @@ withDefaults(
 
 <style scoped lang="scss">
 .info-panel {
+  &--flat {
+    box-shadow: none;
+  }
+
   &__header {
     display: flex;
     gap: 12px;
@@ -56,6 +64,14 @@ withDefaults(
 
   &__body {
     padding: 0;
+  }
+
+  &__card-header {
+    padding-bottom: 0.875rem;
+  }
+
+  &__card-body {
+    padding-top: 0;
   }
 }
 </style>
