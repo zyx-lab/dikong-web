@@ -1,75 +1,21 @@
 <template>
-  <div class="app-container command-page">
-    <section class="command-page__hero">
-      <div class="command-page__hero-inner">
-        <div class="command-page__hero-main">
-          <div class="command-page__heading">
-            <p class="command-page__eyebrow">Mission Command</p>
-            <h2 class="command-page__title">任务管理</h2>
-            <p class="command-page__description">
-              统一编排巡检任务、航线资源与执行窗口，让值守人员在进入表格前先看清任务节奏、执行压力和异常风险。
-            </p>
-          </div>
-          <div class="command-page__signals">
-            <span class="command-page__signal">任务编排中枢</span>
-            <span class="command-page__signal">航线与资源联动</span>
-            <span class="command-page__signal">执行态势优先</span>
-          </div>
-        </div>
-        <div class="command-page__metrics">
-          <div class="command-page__metric command-page__metric--accent">
-            <div class="command-page__metric-label">任务总量</div>
-            <div class="command-page__metric-value">{{ totalCount }}</div>
-            <div class="command-page__metric-note">当前筛选条件下的任务池规模</div>
-          </div>
-          <div class="command-page__metric">
-            <div class="command-page__metric-label">执行中</div>
-            <div class="command-page__metric-value">{{ activeTaskCount }}</div>
-            <div class="command-page__metric-note">需持续关注的实时任务</div>
-          </div>
-          <div class="command-page__metric">
-            <div class="command-page__metric-label">已完成</div>
-            <div class="command-page__metric-value">{{ completedTaskCount }}</div>
-            <div class="command-page__metric-note">完成闭环的巡检任务</div>
-          </div>
-          <div class="command-page__metric command-page__metric--warning">
-            <div class="command-page__metric-label">需关注</div>
-            <div class="command-page__metric-value">{{ attentionTaskCount }}</div>
-            <div class="command-page__metric-note">暂停或失败任务需要跟进</div>
-          </div>
-        </div>
-      </div>
-    </section>
+  <div class="app-container flex flex-col gap-6 py-6">
+    <FlightPageHeader
+      eyebrow="Mission Command"
+      title="任务管理"
+      description="统一编排巡检任务、航线资源与执行窗口，让值守人员在进入表格前先看清任务节奏、执行压力和异常风险。"
+      action-label="新增任务"
+      @action="handleCreateClick"
+    />
 
-    <div class="filter-section">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-        <el-form-item label="任务名称" prop="name">
-          <el-input
-            v-model="queryParams.name"
-            placeholder="请输入任务名称"
-            clearable
-            @keyup.enter="handleQuery"
-          />
-        </el-form-item>
-        <el-form-item label="执行状态" prop="status">
-          <el-select
-            v-model="queryParams.status"
-            placeholder="全部"
-            clearable
-            class="filter-field filter-field--md"
-          >
-            <el-option label="待执行" :value="0" />
-            <el-option label="执行中" :value="1" />
-            <el-option label="执行完成" :value="2" />
-            <el-option label="飞行中" :value="3" />
-          </el-select>
-        </el-form-item>
-        <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery">查询</el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </div>
+    <TaskSummaryCards
+      :total-count="totalCount"
+      :active-task-count="activeTaskCount"
+      :completed-task-count="completedTaskCount"
+      :attention-task-count="attentionTaskCount"
+    />
+
+    <TaskFilterBar :query-params="queryParams" @query="handleQuery" @reset="handleResetQuery" />
 
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
@@ -327,8 +273,11 @@ import { useWindowSize } from "@vueuse/core";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { TaskPageQuery, TaskVO, TaskForm, RouteOption, MemberOption } from "@/api/flight/task";
+import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
 import TaskAPI from "@/api/flight/task";
 import DroneAPI from "@/api/resource/drone";
+import TaskFilterBar from "@/views/flight/task/components/TaskFilterBar.vue";
+import TaskSummaryCards from "@/views/flight/task/components/TaskSummaryCards.vue";
 
 defineOptions({
   name: "FlightTask",
@@ -338,7 +287,6 @@ defineOptions({
 const { width } = useWindowSize();
 
 // 表单引用
-const queryFormRef = ref<FormInstance>();
 const dataFormRef = ref<FormInstance>();
 
 // 查询参数
@@ -434,7 +382,7 @@ function handleQuery(): void {
  * 重置查询
  */
 function handleResetQuery(): void {
-  queryFormRef.value?.resetFields();
+  queryParams.name = undefined;
   queryParams.status = undefined; // 强制重置
   queryParams.pageNum = 1;
   fetchData();
