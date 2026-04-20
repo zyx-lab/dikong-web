@@ -1,76 +1,19 @@
 <template>
-  <div class="app-container command-page">
-    <section class="command-page__hero">
-      <div class="command-page__hero-inner">
-        <div class="command-page__hero-main">
-          <div class="command-page__heading">
-            <p class="command-page__eyebrow">Flight Replay Desk</p>
-            <h2 class="command-page__title">飞行记录</h2>
-            <p class="command-page__description">
-              以复盘视角聚合架次、告警、媒体与核实进度，帮助值守人员快速定位需要复查的飞行任务和异常事件。
-            </p>
-          </div>
-          <div class="command-page__signals">
-            <span class="command-page__signal">飞行复盘台</span>
-            <span class="command-page__signal">告警核实链路</span>
-            <span class="command-page__signal">媒体证据关联</span>
-          </div>
-        </div>
-        <div class="command-page__metrics">
-          <div class="command-page__metric command-page__metric--accent">
-            <div class="command-page__metric-label">飞行记录</div>
-            <div class="command-page__metric-value">{{ totalCount }}</div>
-            <div class="command-page__metric-note">当前筛选范围内的架次总数</div>
-          </div>
-          <div class="command-page__metric command-page__metric--warning">
-            <div class="command-page__metric-label">待核实架次</div>
-            <div class="command-page__metric-value">{{ pendingRecordCount }}</div>
-            <div class="command-page__metric-note">仍需人工确认的异常飞行</div>
-          </div>
-          <div class="command-page__metric command-page__metric--danger">
-            <div class="command-page__metric-label">待核实告警</div>
-            <div class="command-page__metric-value">{{ pendingAlarmCount }}</div>
-            <div class="command-page__metric-note">需要尽快闭环的告警事件</div>
-          </div>
-          <div class="command-page__metric">
-            <div class="command-page__metric-label">媒体资产</div>
-            <div class="command-page__metric-value">{{ mediaAssetCount }}</div>
-            <div class="command-page__metric-note">图像与视频证据同步沉淀</div>
-          </div>
-        </div>
-      </div>
-    </section>
+  <div class="app-container flex flex-col gap-6 py-6">
+    <FlightPageHeader
+      eyebrow="Flight Replay Desk"
+      title="飞行记录"
+      description="以复盘视角聚合架次、告警、媒体与核实进度，帮助值守人员快速定位需要复查的飞行任务和异常事件。"
+    />
 
-    <div class="filter-section">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
-        <el-form-item label="架次编号" prop="flightNo">
-          <el-input
-            v-model="queryParams.flightNo"
-            placeholder="请输入架次编号"
-            clearable
-            @keyup.enter="handleQuery"
-          />
-        </el-form-item>
+    <RecordSummaryCards
+      :total-count="totalCount"
+      :pending-record-count="pendingRecordCount"
+      :pending-alarm-count="pendingAlarmCount"
+      :media-asset-count="mediaAssetCount"
+    />
 
-        <el-form-item label="飞行状态" prop="status">
-          <el-select
-            v-model="queryParams.status"
-            placeholder="请选择"
-            clearable
-            class="filter-field"
-          >
-            <el-option label="飞行中" :value="0" />
-            <el-option label="已完成" :value="1" />
-            <el-option label="异常终止" :value="2" />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item class="search-buttons">
-          <el-button type="primary" icon="Search" @click="handleQuery">查询</el-button>
-          <el-button icon="Refresh" @click="handleResetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </div>
+    <RecordFilterBar :query-params="queryParams" @query="handleQuery" @reset="handleResetQuery" />
 
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
@@ -284,12 +227,14 @@ import { useWindowSize } from "@vueuse/core";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import FlightRecordAPI from "@/api/flight/record";
 import type { FlightRecordInfo, FlightRecordQuery } from "@/api/flight/types";
+import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
+import RecordFilterBar from "@/views/flight/record/components/RecordFilterBar.vue";
+import RecordSummaryCards from "@/views/flight/record/components/RecordSummaryCards.vue";
 
 defineOptions({ name: "FlightRecord", inheritAttrs: false });
 
 const { width } = useWindowSize();
 
-const queryFormRef = ref<FormInstance>();
 const editFormRef = ref<FormInstance>();
 
 const queryParams = reactive<FlightRecordQuery>({
@@ -365,7 +310,8 @@ function handleQuery(): void {
 }
 
 function handleResetQuery(): void {
-  queryFormRef.value?.resetFields();
+  queryParams.flightNo = undefined;
+  queryParams.status = undefined;
   queryParams.pageNum = 1;
   fetchData();
 }
