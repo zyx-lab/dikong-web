@@ -1,4 +1,5 @@
 import vue from "@vitejs/plugin-vue";
+import tailwindcss from "@tailwindcss/vite";
 import { type ConfigEnv, type UserConfig, loadEnv, defineConfig, PluginOption } from "vite";
 
 import AutoImport from "unplugin-auto-import/vite";
@@ -106,6 +107,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
     },
     plugins: [
       vue(),
+      tailwindcss(),
       cesiumDevAssetPlugin(),
       ...(env.VITE_MOCK_DEV_SERVER === "true" ? [mockDevServerPlugin()] : []),
       viteStaticCopy({

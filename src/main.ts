@@ -12,6 +12,7 @@ import App from "./App.vue";
 import "element-plus/dist/index.css";
 import "element-plus/theme-chalk/dark/css-vars.css";
 import "vxe-table/lib/style.css";
+import "@/styles/shadcn.css";
 import "@/styles/index.scss";
 import "uno.css";
 import "animate.css";
