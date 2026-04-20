@@ -48,5 +48,6 @@ describe("RecordPage shadcn shell", () => {
     expect(await screen.findByRole("heading", { name: "飞行记录", level: 1 })).not.toBeNull();
     expect(screen.getAllByTestId("flight-metric-card")).toHaveLength(4);
     expect(screen.getByTestId("record-filter-bar")).not.toBeNull();
+    expect(screen.getByTestId("flight-empty-state")).not.toBeNull();
   });
 });

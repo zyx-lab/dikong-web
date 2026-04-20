@@ -15,97 +15,107 @@
 
     <RecordFilterBar :query-params="queryParams" @query="handleQuery" @reset="handleResetQuery" />
 
-    <el-card shadow="hover" class="table-section">
-      <div class="table-section__toolbar">
-        <div class="table-section__toolbar--right">
-          <div class="table-toolbar-summary">
-            <el-tag type="info">共 {{ totalCount }} 条飞行记录</el-tag>
-            <el-tag v-if="ids.length > 0" type="primary">已选 {{ ids.length }} 项</el-tag>
-          </div>
+    <Card class="border-border/70 shadow-none">
+      <CardContent class="space-y-4 pt-6">
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <Badge variant="outline">共 {{ totalCount }} 条飞行记录</Badge>
+          <Badge v-if="ids.length > 0" variant="secondary">已选 {{ ids.length }} 项</Badge>
         </div>
-      </div>
 
-      <el-table
-        v-loading="loading"
-        :data="tableData"
-        border
-        highlight-current-row
-        class="table-section__content"
-        row-key="id"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="ID" prop="id" width="80" align="center" />
-        <el-table-column
-          label="飞行记录编号"
-          prop="flightNo"
-          min-width="170"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          label="任务名称"
-          prop="missionName"
-          min-width="170"
-          show-overflow-tooltip
-        />
-        <el-table-column label="航线名称" prop="routeName" min-width="160" show-overflow-tooltip />
-        <el-table-column
-          label="无人机名称"
-          prop="droneName"
-          min-width="170"
-          show-overflow-tooltip
-        />
-        <el-table-column label="设备序列号" prop="deviceSn" min-width="180" show-overflow-tooltip />
-        <el-table-column label="飞手姓名" prop="pilotName" min-width="120" align="center" />
-        <el-table-column label="开始时间" min-width="170">
-          <template #default="{ row }">{{ formatTime(row.startTime) }}</template>
-        </el-table-column>
-        <el-table-column label="结束时间" min-width="170">
-          <template #default="{ row }">{{ formatTime(row.endTime) }}</template>
-        </el-table-column>
-        <el-table-column label="飞行时长" width="100" align="center">
-          <template #default="{ row }">
-            {{ formatDuration(row.flightDuration) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="照片数量" prop="photoCount" width="90" align="center" />
-        <el-table-column label="视频数量" prop="videoCount" width="90" align="center" />
-        <el-table-column fixed="right" label="操作" align="center" width="240">
-          <template #default="scope">
-            <el-button type="primary" link size="small" @click.stop="handleDetail(scope.row)">
-              详情
-            </el-button>
-            <el-button type="primary" link size="small" @click.stop="handleEdit(scope.row)">
-              编辑
-            </el-button>
-            <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
-              删除
-            </el-button>
-            <el-button type="primary" link size="small" @click.stop="handleVideo(scope.row)">
-              视频回放
-            </el-button>
-          </template>
-        </el-table-column>
-        <template #empty>
-          <div class="table-empty-state">
-            <el-empty
-              :description="hasActiveFilters ? '当前筛选条件下暂无飞行记录' : '暂无飞行记录数据'"
+        <div v-loading="loading" class="table-section__content">
+          <el-table
+            :data="tableData"
+            border
+            highlight-current-row
+            row-key="id"
+            @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55" align="center" />
+            <el-table-column label="ID" prop="id" width="80" align="center" />
+            <el-table-column
+              label="飞行记录编号"
+              prop="flightNo"
+              min-width="170"
+              show-overflow-tooltip
             />
-            <div v-if="hasActiveFilters" class="table-empty-state__actions">
-              <el-button link type="primary" @click="handleResetQuery">清空筛选</el-button>
-            </div>
-          </div>
-        </template>
-      </el-table>
+            <el-table-column
+              label="任务名称"
+              prop="missionName"
+              min-width="170"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              label="航线名称"
+              prop="routeName"
+              min-width="160"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              label="无人机名称"
+              prop="droneName"
+              min-width="170"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              label="设备序列号"
+              prop="deviceSn"
+              min-width="180"
+              show-overflow-tooltip
+            />
+            <el-table-column label="飞手姓名" prop="pilotName" min-width="120" align="center" />
+            <el-table-column label="开始时间" min-width="170">
+              <template #default="{ row }">{{ formatTime(row.startTime) }}</template>
+            </el-table-column>
+            <el-table-column label="结束时间" min-width="170">
+              <template #default="{ row }">{{ formatTime(row.endTime) }}</template>
+            </el-table-column>
+            <el-table-column label="飞行时长" width="100" align="center">
+              <template #default="{ row }">
+                {{ formatDuration(row.flightDuration) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="照片数量" prop="photoCount" width="90" align="center" />
+            <el-table-column label="视频数量" prop="videoCount" width="90" align="center" />
+            <el-table-column fixed="right" label="操作" align="center" width="240">
+              <template #default="scope">
+                <el-button type="primary" link size="small" @click.stop="handleDetail(scope.row)">
+                  详情
+                </el-button>
+                <el-button type="primary" link size="small" @click.stop="handleEdit(scope.row)">
+                  编辑
+                </el-button>
+                <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
+                  删除
+                </el-button>
+                <el-button type="primary" link size="small" @click.stop="handleVideo(scope.row)">
+                  视频回放
+                </el-button>
+              </template>
+            </el-table-column>
+            <template #empty>
+              <FlightEmptyState
+                title="暂无飞行记录"
+                :description="
+                  hasActiveFilters
+                    ? '当前筛选条件下暂无飞行记录，请调整筛选条件后重试。'
+                    : '飞行记录还没有同步完成，稍后再来查看。'
+                "
+                :action-label="hasActiveFilters ? '清空筛选' : undefined"
+                @action="handleResetQuery"
+              />
+            </template>
+          </el-table>
+        </div>
 
-      <pagination
-        v-if="total > 0"
-        v-model:total="total"
-        v-model:page="queryParams.pageNum"
-        v-model:limit="queryParams.pageSize"
-        @pagination="fetchData"
-      />
-    </el-card>
+        <pagination
+          v-if="total > 0"
+          v-model:total="total"
+          v-model:page="queryParams.pageNum"
+          v-model:limit="queryParams.pageSize"
+          @pagination="fetchData"
+        />
+      </CardContent>
+    </Card>
 
     <RecordDetailDialog
       :open="detailDialog.visible"
@@ -131,7 +141,10 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import FlightRecordAPI from "@/api/flight/record";
 import type { FlightRecordInfo, FlightRecordQuery } from "@/api/flight/types";
+import FlightEmptyState from "@/components/flight/FlightEmptyState.vue";
 import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import RecordDetailDialog from "@/views/flight/record/components/RecordDetailDialog.vue";
 import RecordEditSheet from "@/views/flight/record/components/RecordEditSheet.vue";
 import RecordFilterBar from "@/views/flight/record/components/RecordFilterBar.vue";

@@ -17,115 +17,124 @@
 
     <TaskFilterBar :query-params="queryParams" @query="handleQuery" @reset="handleResetQuery" />
 
-    <el-card shadow="hover" class="table-section">
-      <div class="table-section__toolbar">
-        <div class="table-section__toolbar--actions">
-          <el-button type="primary" icon="plus" @click="handleCreateClick">新增任务</el-button>
-          <el-button
-            type="danger"
-            icon="delete"
-            :disabled="ids.length === 0"
-            @click="handleBatchDelete"
+    <Card class="border-border/70 shadow-none">
+      <CardContent class="space-y-4 pt-6">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex flex-wrap items-center gap-3">
+            <Button @click="handleCreateClick">新增任务</Button>
+            <Button variant="outline" :disabled="ids.length === 0" @click="handleBatchDelete">
+              批量删除
+            </Button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">共 {{ total }} 个任务</Badge>
+            <Badge variant="secondary">执行中 {{ activeTaskCount }} 个</Badge>
+            <Badge v-if="ids.length > 0" variant="outline">已选 {{ ids.length }} 项</Badge>
+          </div>
+        </div>
+
+        <div v-loading="loading" class="table-section__content">
+          <el-table
+            highlight-current-row
+            :data="tableData"
+            border
+            @selection-change="handleSelectionChange"
           >
-            批量删除
-          </el-button>
+            <el-table-column type="selection" width="55" align="center" />
+            <el-table-column label="ID" prop="id" width="80" align="center" />
+            <el-table-column label="任务名称" prop="name" min-width="150" show-overflow-tooltip />
+            <el-table-column
+              label="任务航线"
+              prop="routeName"
+              min-width="150"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              label="执行无人机"
+              prop="droneName"
+              min-width="120"
+              show-overflow-tooltip
+            />
+            <el-table-column label="计划执行时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.scheduledAt) }}</template>
+            </el-table-column>
+            <el-table-column label="任务状态" align="center" width="100">
+              <template #default="{ row }">
+                {{ formatStatus(row.status) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="创建时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+            </el-table-column>
+            <el-table-column label="更新时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
+            </el-table-column>
+            <el-table-column label="开始时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.startedAt) }}</template>
+            </el-table-column>
+            <el-table-column label="结束时间" min-width="160">
+              <template #default="{ row }">{{ formatTime(row.finishedAt) }}</template>
+            </el-table-column>
+            <el-table-column label="备注" prop="remark" min-width="120" show-overflow-tooltip />
+            <el-table-column fixed="right" label="操作" align="center" width="280">
+              <template #default="scope">
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="handleDetailClick(scope.row)"
+                >
+                  详情
+                </el-button>
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  icon="edit"
+                  @click.stop="handleEditClick(scope.row)"
+                >
+                  编辑
+                </el-button>
+                <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
+                  删除
+                </el-button>
+                <el-button type="primary" link size="small" @click.stop="handleAdvance(scope.row)">
+                  推进任务
+                </el-button>
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  @click.stop="handleLiveStream(liveUrlMap[scope.row.id])"
+                >
+                  直播画面
+                </el-button>
+              </template>
+            </el-table-column>
+            <template #empty>
+              <FlightEmptyState
+                title="暂无任务"
+                :description="
+                  hasActiveFilters
+                    ? '当前筛选条件下暂无任务，请调整筛选条件后重试。'
+                    : '任务数据还没有准备好，可以先创建一个新任务。'
+                "
+                :action-label="hasActiveFilters ? '清空筛选' : undefined"
+                @action="handleResetQuery"
+              />
+            </template>
+          </el-table>
         </div>
-        <div class="table-section__toolbar--right">
-          <div class="table-toolbar-summary">
-            <el-tag type="info">共 {{ total }} 个任务</el-tag>
-            <el-tag type="success">执行中 {{ activeTaskCount }} 个</el-tag>
-            <el-tag v-if="ids.length > 0" type="warning">已选 {{ ids.length }} 项</el-tag>
-          </div>
-        </div>
-      </div>
 
-      <el-table
-        v-loading="loading"
-        highlight-current-row
-        :data="tableData"
-        border
-        class="table-section__content"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="ID" prop="id" width="80" align="center" />
-        <el-table-column label="任务名称" prop="name" min-width="150" show-overflow-tooltip />
-        <el-table-column label="任务航线" prop="routeName" min-width="150" show-overflow-tooltip />
-        <el-table-column
-          label="执行无人机"
-          prop="droneName"
-          min-width="120"
-          show-overflow-tooltip
+        <pagination
+          v-if="total > 0"
+          v-model:total="total"
+          v-model:page="queryParams.pageNum"
+          v-model:limit="queryParams.pageSize"
+          @pagination="fetchData"
         />
-        <el-table-column label="计划执行时间" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.scheduledAt) }}</template>
-        </el-table-column>
-        <el-table-column label="任务状态" align="center" width="100">
-          <template #default="{ row }">
-            {{ formatStatus(row.status) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="创建时间" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-        </el-table-column>
-        <el-table-column label="更新时间" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
-        </el-table-column>
-        <el-table-column label="开始时间" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.startedAt) }}</template>
-        </el-table-column>
-        <el-table-column label="结束时间" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.finishedAt) }}</template>
-        </el-table-column>
-        <el-table-column label="备注" prop="remark" min-width="120" show-overflow-tooltip />
-        <el-table-column fixed="right" label="操作" align="center" width="280">
-          <template #default="scope">
-            <el-button type="primary" link size="small" @click.stop="handleDetailClick(scope.row)">
-              详情
-            </el-button>
-            <el-button
-              type="primary"
-              link
-              size="small"
-              icon="edit"
-              @click.stop="handleEditClick(scope.row)"
-            >
-              编辑
-            </el-button>
-            <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
-              删除
-            </el-button>
-            <el-button type="primary" link size="small" @click.stop="handleAdvance(scope.row)">
-              推进任务
-            </el-button>
-            <el-button
-              type="primary"
-              link
-              size="small"
-              @click.stop="handleLiveStream(liveUrlMap[scope.row.id])"
-            >
-              直播画面
-            </el-button>
-          </template>
-        </el-table-column>
-        <template #empty>
-          <div class="table-empty-state">
-            <el-empty :description="hasActiveFilters ? '当前筛选条件下暂无任务' : '暂无任务数据'" />
-            <div v-if="hasActiveFilters" class="table-empty-state__actions">
-              <el-button link type="primary" @click="handleResetQuery">清空筛选</el-button>
-            </div>
-          </div>
-        </template>
-      </el-table>
-
-      <pagination
-        v-if="total > 0"
-        v-model:total="total"
-        v-model:page="queryParams.pageNum"
-        v-model:limit="queryParams.pageSize"
-        @pagination="fetchData"
-      />
-    </el-card>
+      </CardContent>
+    </Card>
 
     <TaskEditorSheet
       :open="dialogState.visible"
@@ -154,7 +163,11 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { TaskPageQuery, TaskVO, TaskForm, RouteOption, MemberOption } from "@/api/flight/task";
+import FlightEmptyState from "@/components/flight/FlightEmptyState.vue";
 import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import TaskAPI from "@/api/flight/task";
 import DroneAPI from "@/api/resource/drone";
 import TaskDetailDialog from "@/views/flight/task/components/TaskDetailDialog.vue";
