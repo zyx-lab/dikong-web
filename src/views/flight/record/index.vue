@@ -107,135 +107,37 @@
       />
     </el-card>
 
-    <!-- Detail dialog -->
-    <el-dialog
-      v-model="detailDialog.visible"
-      title="飞行记录详情"
-      :width="dialogWidth"
-      align-center
-      destroy-on-close
-      class="dialog-form-decorated"
-    >
-      <div v-loading="detailDialog.loading" style="min-height: 200px">
-        <template v-if="detailDialog.data">
-          <el-table :data="[detailDialog.data]" border size="small">
-            <el-table-column prop="id" label="ID" min-width="80" align="center" />
-            <el-table-column
-              prop="flightNo"
-              label="飞行记录编号"
-              min-width="160"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              prop="missionName"
-              label="任务名称"
-              min-width="160"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              prop="routeName"
-              label="航线名称"
-              min-width="150"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              prop="airportName"
-              label="执行机场"
-              min-width="140"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              prop="deviceSn"
-              label="设备序列号"
-              min-width="180"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              prop="droneName"
-              label="无人机名称"
-              min-width="150"
-              show-overflow-tooltip
-            />
-            <el-table-column prop="pilotName" label="飞手姓名" min-width="100" align="center" />
-            <el-table-column label="开始时间" min-width="170">
-              <template #default="{ row }">{{ formatTime(row.startTime) }}</template>
-            </el-table-column>
-            <el-table-column label="结束时间" min-width="170">
-              <template #default="{ row }">{{ formatTime(row.endTime) }}</template>
-            </el-table-column>
-            <el-table-column label="飞行时长" width="100" align="center">
-              <template #default="{ row }">
-                {{ formatDuration(row.flightDuration) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="photoCount" label="照片数量" width="90" align="center" />
-            <el-table-column prop="videoCount" label="视频数量" width="90" align="center" />
-          </el-table>
-        </template>
-      </div>
-      <template #footer>
-        <el-button @click="detailDialog.visible = false">关闭</el-button>
-      </template>
-    </el-dialog>
+    <RecordDetailDialog
+      :open="detailDialog.visible"
+      :loading="detailDialog.loading"
+      :data="detailDialog.data"
+      @update:open="handleDetailDialogOpenChange"
+      @close="closeDetailDialog"
+    />
 
-    <!-- Edit dialog -->
-    <el-dialog
-      v-model="editDialog.visible"
-      title="编辑飞行记录"
-      :width="dialogWidth"
-      align-center
-      destroy-on-close
-      class="dialog-form-decorated"
-    >
-      <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="120px">
-        <el-form-item label="任务名称" prop="missionName">
-          <el-input v-model="editForm.missionName" placeholder="请输入任务名称" />
-        </el-form-item>
-        <el-form-item label="航线名称" prop="routeName">
-          <el-input v-model="editForm.routeName" placeholder="请输入航线名称" />
-        </el-form-item>
-        <el-form-item label="执行机场" prop="airportName">
-          <el-input v-model="editForm.airportName" placeholder="请输入执行机场" />
-        </el-form-item>
-        <el-form-item label="无人机名称" prop="droneName">
-          <el-input v-model="editForm.droneName" placeholder="请输入无人机名称" />
-        </el-form-item>
-        <el-form-item label="飞手姓名" prop="pilotName">
-          <el-input v-model="editForm.pilotName" placeholder="请输入飞手姓名" />
-        </el-form-item>
-        <el-form-item label="飞行时长(秒)" prop="flightDuration">
-          <el-input-number v-model="editForm.flightDuration" :min="0" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="照片数量" prop="photoCount">
-          <el-input-number v-model="editForm.photoCount" :min="0" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="视频数量" prop="videoCount">
-          <el-input-number v-model="editForm.videoCount" :min="0" style="width: 100%" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="editDialog.visible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleUpdate">确定</el-button>
-      </template>
-    </el-dialog>
+    <RecordEditSheet
+      :open="editDialog.visible"
+      :form-data="editForm"
+      :submit-loading="submitLoading"
+      @update:open="handleEditDialogOpenChange"
+      @close="closeEditDialog"
+      @submit="handleUpdate"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
-import { useWindowSize } from "@vueuse/core";
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import FlightRecordAPI from "@/api/flight/record";
 import type { FlightRecordInfo, FlightRecordQuery } from "@/api/flight/types";
 import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
+import RecordDetailDialog from "@/views/flight/record/components/RecordDetailDialog.vue";
+import RecordEditSheet from "@/views/flight/record/components/RecordEditSheet.vue";
 import RecordFilterBar from "@/views/flight/record/components/RecordFilterBar.vue";
 import RecordSummaryCards from "@/views/flight/record/components/RecordSummaryCards.vue";
 
 defineOptions({ name: "FlightRecord", inheritAttrs: false });
-
-const { width } = useWindowSize();
-
-const editFormRef = ref<FormInstance>();
 
 const queryParams = reactive<FlightRecordQuery>({
   pageNum: 1,
@@ -254,7 +156,6 @@ const deletedIds = ref(new Set<number>());
 /** 飞行记录总量：API total 减去已删除的 */
 const totalCount = computed(() => Math.max(0, total.value - deletedIds.value.size));
 
-const dialogWidth = computed(() => (width.value < 768 ? "92%" : "800px"));
 const hasActiveFilters = computed(() =>
   Boolean(queryParams.flightNo || queryParams.status !== undefined)
 );
@@ -287,8 +188,6 @@ const editForm = reactive({
   photoCount: 0,
   videoCount: 1,
 });
-
-const editRules: FormRules = {};
 
 async function fetchData(): Promise<void> {
   loading.value = true;
@@ -351,6 +250,18 @@ async function handleDetail(row: FlightRecordInfo): Promise<void> {
   }
 }
 
+function closeDetailDialog(): void {
+  detailDialog.visible = false;
+  detailDialog.data = null;
+}
+
+function handleDetailDialogOpenChange(open: boolean): void {
+  detailDialog.visible = open;
+  if (!open) {
+    detailDialog.data = null;
+  }
+}
+
 /** 编辑 */
 function handleEdit(row: FlightRecordInfo): void {
   editForm.id = row.id;
@@ -365,10 +276,16 @@ function handleEdit(row: FlightRecordInfo): void {
   editDialog.visible = true;
 }
 
+function closeEditDialog(): void {
+  editDialog.visible = false;
+}
+
+function handleEditDialogOpenChange(open: boolean): void {
+  editDialog.visible = open;
+}
+
 /** 提交更新 */
 async function handleUpdate(): Promise<void> {
-  const valid = await editFormRef.value?.validate().catch(() => false);
-  if (!valid) return;
   submitLoading.value = true;
   try {
     await FlightRecordAPI.update(editForm.id, {
@@ -382,7 +299,7 @@ async function handleUpdate(): Promise<void> {
       video_count: editForm.videoCount,
     });
     ElMessage.success("修改成功");
-    editDialog.visible = false;
+    closeEditDialog();
     fetchData();
   } catch (err: any) {
     console.error(err);

@@ -127,155 +127,38 @@
       />
     </el-card>
 
-    <!-- 表单弹窗 -->
-    <el-dialog
-      v-model="dialogState.visible"
+    <TaskEditorSheet
+      :open="dialogState.visible"
       :title="dialogState.title"
-      :width="dialogWidth"
-      align-center
-      destroy-on-close
-      custom-class="dialog-form-decorated"
-      class="dialog-form-decorated"
+      :form-data="formData"
+      :route-options="routeOptions"
+      :drone-options="droneOptions"
+      :pilot-options="pilotOptions"
+      :submit-loading="submitLoading"
+      @update:open="handleDialogOpenChange"
       @close="closeDialog"
-    >
-      <el-form ref="dataFormRef" :model="formData" :rules="rules" label-width="100px">
-        <el-form-item label="任务名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入任务名称" />
-        </el-form-item>
-        <el-form-item label="任务航线" prop="routeId">
-          <el-select v-model="formData.routeId" placeholder="请选择航线" class="w-full">
-            <el-option
-              v-for="item in routeOptions"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="执行无人机" prop="droneId">
-          <el-select v-model="formData.droneId" placeholder="请选择无人机" class="w-full">
-            <el-option
-              v-for="item in droneOptions"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="执行飞手" prop="pilotId">
-          <el-select
-            v-model="formData.pilotId"
-            placeholder="请选择执行飞手"
-            class="w-full"
-            clearable
-          >
-            <el-option
-              v-for="item in pilotOptions"
-              :key="item.memberId"
-              :label="item.displayName"
-              :value="item.memberId"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="计划时间" prop="scheduledAt">
-          <el-date-picker
-            v-model="formData.scheduledAt"
-            type="datetime"
-            placeholder="选择计划执行时间"
-            format="YYYY-MM-DD HH:mm:ss"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            class="w-full"
-          />
-        </el-form-item>
-        <el-form-item label="任务备注">
-          <el-input
-            v-model="formData.remark"
-            type="textarea"
-            placeholder="请输入备注信息"
-            :rows="3"
-          />
-        </el-form-item>
-      </el-form>
+      @submit="handleSubmit"
+    />
 
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="closeDialog">取消</el-button>
-          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
-        </div>
-      </template>
-    </el-dialog>
-
-    <!-- Detail dialog -->
-    <el-dialog
-      v-model="detailDialog.visible"
-      title="任务详情"
-      :width="dialogWidth"
-      align-center
-      destroy-on-close
-      custom-class="dialog-form-decorated"
-      class="dialog-form-decorated"
+    <TaskDetailDialog
+      :open="detailDialog.visible"
+      :loading="detailDialog.loading"
+      :data="detailDialog.data"
+      @update:open="handleDetailDialogOpenChange"
       @close="closeDetailDialog"
-    >
-      <div v-loading="detailDialog.loading" style="min-height: 200px">
-        <template v-if="detailDialog.data">
-          <el-table :data="[detailDialog.data]" border size="small">
-            <el-table-column prop="id" label="任务ID" min-width="80" align="center" />
-            <el-table-column prop="name" label="任务名称" min-width="160" show-overflow-tooltip />
-            <el-table-column
-              prop="routeName"
-              label="任务航线"
-              min-width="150"
-              show-overflow-tooltip
-            />
-            <el-table-column
-              prop="droneName"
-              label="执行无人机"
-              min-width="120"
-              show-overflow-tooltip
-            />
-            <el-table-column prop="pilotName" label="执行飞手" min-width="100" align="center" />
-            <el-table-column prop="scheduledAt" label="计划执行时间" min-width="160">
-              <template #default="{ row }">{{ formatTime(row.scheduledAt) }}</template>
-            </el-table-column>
-            <el-table-column label="开始时间" min-width="160">
-              <template #default="{ row }">{{ formatTime(row.startedAt) }}</template>
-            </el-table-column>
-            <el-table-column label="结束时间" min-width="160">
-              <template #default="{ row }">{{ formatTime(row.finishedAt) }}</template>
-            </el-table-column>
-            <el-table-column label="任务状态" width="100" align="center">
-              <template #default="{ row }">
-                {{ formatStatus(row.status) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="创建时间" min-width="160">
-              <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-            </el-table-column>
-            <el-table-column label="更新时间" min-width="160">
-              <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
-            </el-table-column>
-            <el-table-column prop="remark" label="备注" min-width="120" show-overflow-tooltip />
-          </el-table>
-        </template>
-      </div>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="closeDetailDialog">关闭</el-button>
-        </div>
-      </template>
-    </el-dialog>
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
-import { useWindowSize } from "@vueuse/core";
-import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { TaskPageQuery, TaskVO, TaskForm, RouteOption, MemberOption } from "@/api/flight/task";
 import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
 import TaskAPI from "@/api/flight/task";
 import DroneAPI from "@/api/resource/drone";
+import TaskDetailDialog from "@/views/flight/task/components/TaskDetailDialog.vue";
+import TaskEditorSheet from "@/views/flight/task/components/TaskEditorSheet.vue";
 import TaskFilterBar from "@/views/flight/task/components/TaskFilterBar.vue";
 import TaskSummaryCards from "@/views/flight/task/components/TaskSummaryCards.vue";
 
@@ -283,11 +166,6 @@ defineOptions({
   name: "FlightTask",
   inheritAttrs: false,
 });
-
-const { width } = useWindowSize();
-
-// 表单引用
-const dataFormRef = ref<FormInstance>();
 
 // 查询参数
 const queryParams = reactive<TaskPageQuery>({
@@ -308,7 +186,6 @@ const submitLoading = ref(false);
 const ids = ref<number[]>([]);
 const liveUrlMap = ref<Record<number, string>>({});
 
-const dialogWidth = computed(() => (width.value < 768 ? "92%" : "600px"));
 const hasActiveFilters = computed(() =>
   Boolean(queryParams.name || queryParams.status !== undefined)
 );
@@ -346,11 +223,6 @@ const formData = reactive<TaskForm>({
   scheduledAt: "",
   remark: "",
 });
-
-// 验证规则
-const rules: FormRules = {
-  name: [{ required: true, message: "请输入任务名称", trigger: "blur" }],
-};
 
 /**
  * 加载任务列表数据（调用 API 层并消费已映射的 camelCase 数据）
@@ -456,7 +328,6 @@ function closeDetailDialog(): void {
 }
 
 function resetForm(): void {
-  dataFormRef.value?.clearValidate();
   formData.id = undefined;
   formData.name = "";
   formData.routeId = undefined;
@@ -482,9 +353,13 @@ async function loadDropdownOptions(): Promise<void> {
  * 提交表单
  */
 function handleSubmit(): void {
-  dataFormRef.value?.validate(async (isValid) => {
-    if (!isValid) return;
-    submitLoading.value = true;
+  if (!formData.name.trim()) {
+    ElMessage.warning("请输入任务名称");
+    return;
+  }
+
+  submitLoading.value = true;
+  (async () => {
     try {
       if (formData.id) {
         await TaskAPI.update(formData.id, formData as TaskForm);
@@ -501,7 +376,7 @@ function handleSubmit(): void {
     } finally {
       submitLoading.value = false;
     }
-  });
+  })();
 }
 
 /**
@@ -509,8 +384,23 @@ function handleSubmit(): void {
  */
 function closeDialog(): void {
   dialogState.visible = false;
-  dataFormRef.value?.resetFields();
   resetForm();
+}
+
+function handleDialogOpenChange(open: boolean): void {
+  if (!open) {
+    closeDialog();
+    return;
+  }
+
+  dialogState.visible = open;
+}
+
+function handleDetailDialogOpenChange(open: boolean): void {
+  detailDialog.visible = open;
+  if (!open) {
+    detailDialog.data = null;
+  }
 }
 
 /**
