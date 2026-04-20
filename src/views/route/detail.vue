@@ -4,35 +4,40 @@
       <section v-loading="plannerLoading" class="planner-page">
         <div class="planner-page__header">
           <div class="planner-page__header-main">
-            <el-button link type="primary" icon="ArrowLeft" @click="returnToList">
-              返回列表
-            </el-button>
+            <Button variant="ghost" @click="returnToList">返回列表</Button>
             <div>
-              <h2>{{ activeDraft.routeName }}</h2>
+              <div class="planner-page__header-tags">
+                <Badge variant="outline">
+                  {{ getRouteTypeLabel(activeDraft.routeType) }}
+                </Badge>
+                <Badge :variant="activeDraft.persisted ? 'secondary' : 'outline'">
+                  {{ activeDraft.persisted ? "已保存" : "草稿" }}
+                </Badge>
+              </div>
+              <h1>{{ activeDraft.routeName }}</h1>
               <p>
-                {{ getRouteTypeLabel(activeDraft.routeType) }}
+                {{ activeDraft.description || "统一维护航线规划、模拟飞行和下发状态。" }}
               </p>
             </div>
           </div>
           <div class="planner-page__header-actions">
-            <el-button
-              type="primary"
-              plain
+            <Button
+              variant="outline"
               :disabled="!playbackEntryState.enabled"
               @click="openPlaybackScreen"
             >
               模拟飞行
-            </el-button>
+            </Button>
             <div class="planner-page__type-switch">
-              <el-button
+              <Button
                 v-for="option in routeTypeOptions"
                 :key="option.value"
-                size="small"
-                :type="activeDraft.routeType === option.value ? 'primary' : 'default'"
+                size="sm"
+                :variant="activeDraft.routeType === option.value ? 'default' : 'outline'"
                 @click="handleRouteTypeChange(option.value)"
               >
                 {{ option.label }}
-              </el-button>
+              </Button>
             </div>
           </div>
         </div>
@@ -81,7 +86,8 @@
                   v-if="baseMapMode === 'terrain' && !hasTerrainSource"
                   class="planner-overlay planner-overlay--warn"
                 >
-                  未配置 `VITE_CESIUM_TERRAIN_URL` 或 `VITE_CESIUM_ION_TOKEN`，当前显示地形底图，但未启用真实地形高程。
+                  未配置 `VITE_CESIUM_TERRAIN_URL` 或
+                  `VITE_CESIUM_ION_TOKEN`，当前显示地形底图，但未启用真实地形高程。
                 </div>
               </div>
             </el-card>
@@ -90,58 +96,24 @@
       </section>
     </template>
 
-    <el-card v-else shadow="hover" class="detail-empty-card">
-      <el-empty description="未找到对应的航线详情" />
-      <div class="detail-empty-card__footer">
-        <el-button type="primary" @click="returnToList">返回列表</el-button>
-      </div>
-    </el-card>
+    <FlightEmptyState
+      v-else
+      title="未找到对应的航线详情"
+      description="当前没有可展示的航线详情，请返回列表重新选择。"
+      action-label="返回列表"
+      @action="returnToList"
+    />
 
-    <el-dialog
-      v-model="dispatchDialogVisible"
-      title="下发航线"
-      width="760px"
-      custom-class="dialog-form-decorated"
-      class="route-dispatch-dialog"
-    >
-      <div class="route-dispatch-dialog__content">
-        <div class="route-dispatch-dialog__summary">
-          <div class="route-dispatch-dialog__summary-item">
-            <span>航线名称</span>
-            <strong>{{ activeDraft?.routeName || "-" }}</strong>
-          </div>
-          <div class="route-dispatch-dialog__summary-item">
-            <span>航线类型</span>
-            <strong>{{ activeDraft ? getRouteTypeLabel(activeDraft.routeType) : "-" }}</strong>
-          </div>
-          <div class="route-dispatch-dialog__summary-item">
-            <span>当前状态</span>
-            <strong>{{ activeDraft?.isPublished ? "已发布" : "未发布" }}</strong>
-          </div>
-        </div>
-
-        <div class="route-dispatch-dialog__status" :class="{ 'is-error': !canPublishRoute }">
-          <span>{{ dispatchStatusText }}</span>
-          <el-tag :type="activeDraft?.isPublished ? 'success' : 'info'" effect="plain">
-            {{ activeDraft?.isPublished ? "已发布" : "待发布" }}
-          </el-tag>
-        </div>
-
-        <div class="route-dispatch-dialog__tip">
-          当前下发动作已切换为正式业务 API，会直接调用当前租户下的 `/api/v1/routes/{id}/kmz`
-          接口。旧的 Wayline 登录上传链路已废弃。
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="dispatchDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="dispatchLoading" @click="handleDispatchRoute">
-            确认下发
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
+    <RouteDispatchDialog
+      :open="dispatchDialogVisible"
+      :route-draft="activeDraft"
+      :can-publish-route="canPublishRoute"
+      :dispatch-status-text="dispatchStatusText"
+      :dispatching="dispatchLoading"
+      @update:open="handleDispatchDialogOpenChange"
+      @close="closeDispatchDialog"
+      @confirm="handleDispatchRoute"
+    />
   </div>
 </template>
 
@@ -154,6 +126,10 @@ import { RouteType } from "@/api/flight/types";
 import { ThemeMode } from "@/enums";
 import { useSettingsStore } from "@/store/modules/settings";
 import { downloadFile } from "@/utils";
+import FlightEmptyState from "@/components/flight/FlightEmptyState.vue";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import RouteDispatchDialog from "./components/RouteDispatchDialog.vue";
 import RoutePlannerMap from "./components/RoutePlannerMap.vue";
 import RoutePlannerSidebar from "./components/RoutePlannerSidebar.vue";
 import { buildPlaybackLocation, getPlaybackEntryState } from "./playback-entry";
@@ -384,6 +360,14 @@ function openDispatchDialog() {
   dispatchDialogVisible.value = true;
 }
 
+function closeDispatchDialog() {
+  dispatchDialogVisible.value = false;
+}
+
+function handleDispatchDialogOpenChange(open: boolean) {
+  dispatchDialogVisible.value = open;
+}
+
 function resetDraft() {
   if (!draftSnapshot.value) return;
   activeDraft.value = cloneRouteRecord(draftSnapshot.value);
@@ -528,10 +512,18 @@ watch(
   align-items: center;
 }
 
+.planner-page__header h1,
 .planner-page__header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
+}
+
+.planner-page__header-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .planner-page__header p {
