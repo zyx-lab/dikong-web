@@ -53,26 +53,15 @@
                   </div>
                 </div>
               </div>
-              <div class="map-panel__badge">{{ record.locationLabel }}</div>
-              <div class="map-panel__switches">
-                <el-tag size="small" effect="dark">Spark Snapshot</el-tag>
-                <el-tag size="small" effect="plain">Fixed Camera</el-tag>
-                <el-tag size="small" effect="plain">{{ trajectoryPointCount }} pts</el-tag>
-              </div>
+              <RecordMapMetaBadges
+                :location-label="record.locationLabel"
+                :trajectory-point-count="trajectoryPointCount"
+              />
             </div>
           </InfoPanel>
 
           <InfoPanel title="飞行日志" class="detail-log-panel" body-class="detail-panel__body">
-            <el-scrollbar max-height="360px">
-              <div class="flight-log-list">
-                <div v-for="item in record.flightLogs" :key="item.id" class="flight-log-list__item">
-                  <span class="flight-log-list__time" :class="`is-${item.level}`">
-                    {{ item.time }}
-                  </span>
-                  <span class="flight-log-list__content">{{ item.content }}</span>
-                </div>
-              </div>
-            </el-scrollbar>
+            <RecordFlightLogList :logs="record.flightLogs" />
           </InfoPanel>
         </div>
 
@@ -223,6 +212,8 @@ import FlightEmptyState from "@/components/flight/FlightEmptyState.vue";
 import InfoPanel from "@/components/InfoPanel.vue";
 import { getFlightRecordById } from "@/views/flight/record/data";
 import RecordDetailHeader from "@/views/flight/record/components/RecordDetailHeader.vue";
+import RecordFlightLogList from "@/views/flight/record/components/RecordFlightLogList.vue";
+import RecordMapMetaBadges from "@/views/flight/record/components/RecordMapMetaBadges.vue";
 import RecordTelemetryCards from "@/views/flight/record/components/RecordTelemetryCards.vue";
 import RecordVideoStatusBar from "@/views/flight/record/components/RecordVideoStatusBar.vue";
 
