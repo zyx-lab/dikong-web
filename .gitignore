@@ -44,6 +44,9 @@ skills-lock.json
 .tmp_route_schema.json
 tmp_live_schema.json
 tmp_live_schema_check.json
+.superpowers/
+.impeccable.md
+.vscode/
 
 # Local env files
 *.local
