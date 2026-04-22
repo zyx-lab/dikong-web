@@ -47,6 +47,7 @@ tmp_live_schema_check.json
 .superpowers/
 .impeccable.md
 .vscode/
+docs/superpowers/
 
 # Local env files
 *.local
