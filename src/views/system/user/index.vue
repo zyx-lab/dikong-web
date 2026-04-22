@@ -1,6 +1,6 @@
 <!-- 用户管理 -->
 <template>
-  <div class="app-container">
+  <div class="app-container system-user-page">
     <el-row :gutter="20">
       <!-- 部门树 -->
       <el-col :lg="4" :xs="24" class="mb-[12px]">
@@ -46,8 +46,8 @@
             </el-form-item>
 
             <el-form-item class="search-buttons">
-              <el-button type="primary" icon="search" @click="handleQuery">搜索</el-button>
-              <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+              <Button size="sm" @click="handleQuery">搜索</Button>
+              <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
             </el-form-item>
           </el-form>
         </div>
@@ -55,32 +55,34 @@
         <el-card shadow="hover" class="table-section">
           <div class="table-section__toolbar">
             <div class="table-section__toolbar--actions">
-              <el-button
-                v-hasPerm="['sys:user:create']"
-                type="success"
-                icon="plus"
-                @click="handleCreateClick"
-              >
-                新增
-              </el-button>
-              <el-button
+              <Button v-hasPerm="['sys:user:create']" @click="handleCreateClick">新增</Button>
+              <Button
                 v-hasPerm="'sys:user:delete'"
-                type="danger"
-                icon="delete"
+                variant="destructive"
                 :disabled="!hasSelection"
                 @click="handleDelete()"
               >
                 删除
-              </el-button>
+              </Button>
             </div>
             <div class="table-section__toolbar--tools">
-              <el-button v-hasPerm="'sys:user:import'" icon="upload" @click="openImportDialog">
+              <Button
+                v-hasPerm="'sys:user:import'"
+                size="sm"
+                variant="outline"
+                @click="openImportDialog"
+              >
                 导入
-              </el-button>
+              </Button>
 
-              <el-button v-hasPerm="'sys:user:export'" icon="download" @click="exportUsers">
+              <Button
+                v-hasPerm="'sys:user:export'"
+                size="sm"
+                variant="outline"
+                @click="exportUsers"
+              >
                 导出
-              </el-button>
+              </Button>
             </div>
           </div>
 
@@ -108,9 +110,11 @@
             <el-table-column label="邮箱" align="center" prop="email" width="160" />
             <el-table-column label="状态" align="center" prop="status" width="80">
               <template #default="scope">
-                <el-tag :type="scope.row.status === CommonStatus.ENABLED ? 'success' : 'info'">
+                <Badge
+                  :variant="scope.row.status === CommonStatus.ENABLED ? 'secondary' : 'outline'"
+                >
                   {{ scope.row.status === CommonStatus.ENABLED ? "正常" : "禁用" }}
-                </el-tag>
+                </Badge>
               </template>
             </el-table-column>
             <el-table-column label="创建时间" align="center" prop="createTime" width="180" />
@@ -118,19 +122,15 @@
               <template #default="scope">
                 <el-button
                   v-hasPerm="'sys:user:reset-password'"
-                  type="primary"
-                  icon="RefreshLeft"
+                  class="system-user-page__action"
                   size="small"
-                  link
                   @click="handleResetPassword(scope.row)"
                 >
                   重置密码
                 </el-button>
                 <el-button
                   v-hasPerm="'sys:user:update'"
-                  type="primary"
-                  icon="edit"
-                  link
+                  class="system-user-page__action"
                   size="small"
                   @click="handleEditClick(scope.row.id)"
                 >
@@ -138,9 +138,7 @@
                 </el-button>
                 <el-button
                   v-hasPerm="'sys:user:delete'"
-                  type="danger"
-                  icon="delete"
-                  link
+                  class="system-user-page__action system-user-page__action--danger"
                   size="small"
                   @click="handleDelete(scope.row.id)"
                 >
@@ -169,69 +167,85 @@
       :size="drawerSize"
       @close="closeDialog"
     >
-      <el-form ref="userFormRef" :model="formData" :rules="rules" label-width="80px">
-        <el-form-item label="用户名" prop="username">
-          <el-input
-            v-model="formData.username"
-            :readonly="!!formData.id"
-            placeholder="请输入用户名"
-          />
-        </el-form-item>
+      <el-form
+        ref="userFormRef"
+        :model="formData"
+        :rules="rules"
+        label-width="80px"
+        class="system-user-page__drawer-form"
+      >
+        <section class="system-user-page__form-section">
+          <div class="system-user-page__form-title">基础资料</div>
+          <div class="system-user-page__form-grid">
+            <el-form-item label="用户名" prop="username">
+              <el-input
+                v-model="formData.username"
+                :readonly="!!formData.id"
+                placeholder="请输入用户名"
+              />
+            </el-form-item>
 
-        <el-form-item label="用户昵称" prop="nickname">
-          <el-input v-model="formData.nickname" placeholder="请输入用户昵称" />
-        </el-form-item>
+            <el-form-item label="用户昵称" prop="nickname">
+              <el-input v-model="formData.nickname" placeholder="请输入用户昵称" />
+            </el-form-item>
 
-        <el-form-item label="所属部门" prop="deptId">
-          <el-tree-select
-            v-model="formData.deptId"
-            placeholder="请选择所属部门"
-            :data="deptOptions"
-            filterable
-            check-strictly
-            :render-after-expand="false"
-          />
-        </el-form-item>
+            <el-form-item label="所属部门" prop="deptId">
+              <el-tree-select
+                v-model="formData.deptId"
+                placeholder="请选择所属部门"
+                :data="deptOptions"
+                filterable
+                check-strictly
+                :render-after-expand="false"
+              />
+            </el-form-item>
 
-        <el-form-item label="性别" prop="gender">
-          <DictSelect v-model="formData.gender" code="gender" />
-        </el-form-item>
+            <el-form-item label="性别" prop="gender">
+              <DictSelect v-model="formData.gender" code="gender" />
+            </el-form-item>
+          </div>
+        </section>
 
-        <el-form-item label="角色" prop="roleIds">
-          <el-select v-model="formData.roleIds" multiple placeholder="请选择">
-            <el-option
-              v-for="item in roleOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
-        </el-form-item>
+        <section class="system-user-page__form-section">
+          <div class="system-user-page__form-title">权限与联系</div>
+          <div class="system-user-page__form-grid">
+            <el-form-item class="system-user-page__form-item--full" label="角色" prop="roleIds">
+              <el-select v-model="formData.roleIds" multiple placeholder="请选择">
+                <el-option
+                  v-for="item in roleOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
 
-        <el-form-item label="手机号码" prop="mobile">
-          <el-input v-model="formData.mobile" placeholder="请输入手机号码" maxlength="11" />
-        </el-form-item>
+            <el-form-item label="手机号码" prop="mobile">
+              <el-input v-model="formData.mobile" placeholder="请输入手机号码" maxlength="11" />
+            </el-form-item>
 
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="formData.email" placeholder="请输入邮箱" maxlength="50" />
-        </el-form-item>
+            <el-form-item label="邮箱" prop="email">
+              <el-input v-model="formData.email" placeholder="请输入邮箱" maxlength="50" />
+            </el-form-item>
 
-        <el-form-item label="状态" prop="status">
-          <el-switch
-            v-model="formData.status"
-            inline-prompt
-            active-text="正常"
-            inactive-text="禁用"
-            :active-value="CommonStatus.ENABLED"
-            :inactive-value="CommonStatus.DISABLED"
-          />
-        </el-form-item>
+            <el-form-item class="system-user-page__form-item--full" label="状态" prop="status">
+              <el-switch
+                v-model="formData.status"
+                inline-prompt
+                active-text="正常"
+                inactive-text="禁用"
+                :active-value="CommonStatus.ENABLED"
+                :inactive-value="CommonStatus.DISABLED"
+              />
+            </el-form-item>
+          </div>
+        </section>
       </el-form>
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleSubmit">确 定</el-button>
-          <el-button @click="closeDialog">取 消</el-button>
+          <Button @click="handleSubmit">确 定</Button>
+          <Button variant="outline" @click="closeDialog">取 消</Button>
         </div>
       </template>
     </el-drawer>
@@ -245,6 +259,8 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { useDebounceFn } from "@vueuse/core";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { UserForm, UserQueryParams, UserItem } from "@/types/api";
 import { downloadFile } from "@/utils";
 import UserAPI from "@/api/system/user";
@@ -530,4 +546,132 @@ onMounted(() => {
 });
 </script>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+.system-user-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.system-user-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.system-user-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.system-user-page :deep(.filter-section .el-input__wrapper),
+.system-user-page :deep(.filter-section .el-select__wrapper),
+.system-user-page :deep(.filter-section .el-range-editor.el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-user-page :deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.system-user-page :deep(.table-section__toolbar) {
+  align-items: flex-start;
+}
+
+.system-user-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.system-user-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.system-user-page :deep(.el-drawer__header) {
+  padding-bottom: 4px;
+}
+
+.system-user-page :deep(.el-drawer__body) {
+  padding-top: 10px;
+}
+
+.system-user-page :deep(.el-drawer__body .el-form-item__label) {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-user-page :deep(.el-drawer__body .el-input__wrapper),
+.system-user-page :deep(.el-drawer__body .el-select__wrapper),
+.system-user-page :deep(.el-drawer__body .el-tree-select__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-user-page :deep(.el-drawer__body .el-switch) {
+  --el-switch-on-color: var(--chart-3);
+}
+
+.system-user-page :deep(.el-drawer__body .el-form) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.system-user-page__action {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.system-user-page__action--danger {
+  color: var(--destructive);
+}
+
+.system-user-page__drawer-form {
+  gap: 16px;
+}
+
+.system-user-page__form-section {
+  padding: 16px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+}
+
+.system-user-page__form-title {
+  margin-bottom: 14px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-user-page__form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.system-user-page__form-grid :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.system-user-page__form-item--full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+  .system-user-page :deep(.table-section__toolbar--actions),
+  .system-user-page :deep(.table-section__toolbar--tools) {
+    width: 100%;
+  }
+
+  .system-user-page__form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

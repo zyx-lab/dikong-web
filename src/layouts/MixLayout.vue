@@ -274,8 +274,9 @@ watch(
           border-bottom: none;
 
           &.is-active {
-            background-color: rgba(255, 255, 255, 0.12);
-            border-bottom: 2px solid var(--el-color-primary);
+            color: var(--menu-active-text);
+            background-color: var(--menu-hover);
+            border-bottom: 2px solid transparent;
           }
         }
       }
@@ -300,6 +301,7 @@ watch(
       width: $sidebar-width;
       height: 100%;
       background-color: var(--menu-background);
+      border-right: 1px solid var(--sidebar-border-color);
       transition: width 0.28s;
 
       &.layout__sidebar--collapsed {
@@ -325,7 +327,8 @@ watch(
         height: 50px;
         line-height: 50px;
         background-color: var(--menu-background);
-        box-shadow: 0 0 6px -2px var(--el-color-primary);
+        border-top: 1px solid var(--sidebar-border-color);
+        box-shadow: none;
       }
     }
 

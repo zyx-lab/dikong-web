@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container system-config-page">
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
         <el-form-item label="关键字" prop="keywords">
@@ -12,8 +12,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery">搜索</el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+          <Button size="sm" @click="handleQuery">搜索</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -21,22 +21,10 @@
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button
-            v-hasPerm="['sys:config:create']"
-            type="success"
-            icon="plus"
-            @click="openDialog()"
-          >
-            新增
-          </el-button>
-          <el-button
-            v-hasPerm="['sys:config:refresh']"
-            color="#626aef"
-            icon="RefreshLeft"
-            @click="refreshCache"
-          >
+          <Button v-hasPerm="['sys:config:create']" @click="openDialog()">新增</Button>
+          <Button v-hasPerm="['sys:config:refresh']" variant="outline" @click="refreshCache">
             刷新缓存
-          </el-button>
+          </Button>
         </div>
       </div>
 
@@ -56,26 +44,24 @@
         <el-table-column key="remark" label="描述" prop="remark" min-width="100" />
         <el-table-column fixed="right" label="操作" width="220">
           <template #default="scope">
-            <el-button
+            <Button
               v-hasPerm="['sys:config:update']"
-              type="primary"
-              size="small"
-              link
-              icon="edit"
+              class="system-config-page__action"
+              variant="ghost"
+              size="sm"
               @click="openDialog(scope.row.id)"
             >
               编辑
-            </el-button>
-            <el-button
+            </Button>
+            <Button
               v-hasPerm="['sys:config:delete']"
-              type="danger"
-              size="small"
-              link
-              icon="delete"
+              class="system-config-page__action system-config-page__action--danger"
+              variant="ghost"
+              size="sm"
               @click="handleDelete(scope.row.id)"
             >
               删除
-            </el-button>
+            </Button>
           </template>
         </el-table-column>
       </el-table>
@@ -101,31 +87,55 @@
         :rules="rules"
         label-suffix=":"
         label-width="100px"
+        class="system-config-page__dialog-form"
       >
-        <el-form-item label="配置名称" prop="configName">
-          <el-input v-model="formData.configName" placeholder="请输入配置名称" :maxlength="50" />
-        </el-form-item>
-        <el-form-item label="配置项" prop="configKey">
-          <el-input v-model="formData.configKey" placeholder="请输入配置键" :maxlength="50" />
-        </el-form-item>
-        <el-form-item label="配置项" prop="configValue">
-          <el-input v-model="formData.configValue" placeholder="请输入配置项" :maxlength="100" />
-        </el-form-item>
-        <el-form-item label="描述" prop="remark">
-          <el-input
-            v-model="formData.remark"
-            :rows="4"
-            :maxlength="100"
-            show-word-limit
-            type="textarea"
-            placeholder="请输入描述"
-          />
-        </el-form-item>
+        <section class="system-config-page__form-section">
+          <div class="system-config-page__form-title">基础配置</div>
+          <div class="system-config-page__form-grid">
+            <el-form-item label="配置名称" prop="configName">
+              <el-input
+                v-model="formData.configName"
+                placeholder="请输入配置名称"
+                :maxlength="50"
+              />
+            </el-form-item>
+            <el-form-item label="配置项" prop="configKey">
+              <el-input v-model="formData.configKey" placeholder="请输入配置键" :maxlength="50" />
+            </el-form-item>
+            <el-form-item
+              class="system-config-page__form-item--full"
+              label="配置值"
+              prop="configValue"
+            >
+              <el-input
+                v-model="formData.configValue"
+                placeholder="请输入配置项"
+                :maxlength="100"
+              />
+            </el-form-item>
+          </div>
+        </section>
+
+        <section class="system-config-page__form-section">
+          <div class="system-config-page__form-title">补充说明</div>
+          <div class="system-config-page__form-grid">
+            <el-form-item class="system-config-page__form-item--full" label="描述" prop="remark">
+              <el-input
+                v-model="formData.remark"
+                :rows="4"
+                :maxlength="100"
+                show-word-limit
+                type="textarea"
+                placeholder="请输入描述"
+              />
+            </el-form-item>
+          </div>
+        </section>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-          <el-button @click="closeDialog">取消</el-button>
+          <Button @click="handleSubmit">确定</Button>
+          <Button variant="outline" @click="closeDialog">取消</Button>
         </div>
       </template>
     </el-dialog>
@@ -139,6 +149,7 @@ defineOptions({
 });
 
 import ConfigAPI from "@/api/system/config";
+import { Button } from "@/components/ui/button";
 import type { ConfigItem, ConfigForm, ConfigQueryParams } from "@/types/api";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import { useDebounceFn } from "@vueuse/core";
@@ -310,3 +321,113 @@ onMounted(() => {
   handleQuery();
 });
 </script>
+
+<style scoped lang="scss">
+.system-config-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.system-config-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.system-config-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.system-config-page :deep(.filter-section .el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-config-page :deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.system-config-page :deep(.table-section__toolbar) {
+  align-items: flex-start;
+}
+
+.system-config-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.system-config-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.system-config-page :deep(.el-dialog) {
+  border-radius: 24px;
+}
+
+.system-config-page :deep(.el-dialog .el-form-item__label) {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-config-page :deep(.el-dialog .el-input__wrapper),
+.system-config-page :deep(.el-dialog .el-textarea__inner) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-config-page__dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.system-config-page__form-section {
+  padding: 16px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+}
+
+.system-config-page__form-title {
+  margin-bottom: 14px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-config-page__form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.system-config-page__form-grid :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.system-config-page__form-item--full {
+  grid-column: 1 / -1;
+}
+
+.system-config-page__action {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.system-config-page__action--danger {
+  color: var(--destructive);
+}
+
+@media (max-width: 768px) {
+  .system-config-page__form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

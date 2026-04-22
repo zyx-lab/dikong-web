@@ -203,7 +203,7 @@ export const constantRoutes: RouteRecordRaw[] = [
         component: () => import("@/views/resource/payload/index.vue"),
         name: "ResourcePayload",
         meta: {
-          title: "载荷管理",
+          title: "负载管理",
           icon: "el-icon-Camera",
           keepAlive: true,
         },
@@ -235,7 +235,7 @@ export const constantRoutes: RouteRecordRaw[] = [
         component: () => import("@/views/alert/center/index.vue"),
         name: "AlertCenter",
         meta: {
-          title: "告警中心",
+          title: "预警中心",
           icon: "el-icon-AlarmClock",
           keepAlive: true,
         },
@@ -245,7 +245,7 @@ export const constantRoutes: RouteRecordRaw[] = [
         component: () => import("@/views/alert/verify/index.vue"),
         name: "AlertVerify",
         meta: {
-          title: "告警核实",
+          title: "预警核实",
           icon: "el-icon-CircleCheck",
           hidden: true,
         },

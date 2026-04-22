@@ -11,21 +11,24 @@
         </el-input>
       </el-form-item>
       <el-form-item>
-        <el-button type="warning" class="w-full" @click="submit">
+        <Button class="w-full" @click="submit">
           {{ t("login.resetPassword") }}
-        </el-button>
+        </Button>
       </el-form-item>
     </el-form>
 
-    <div flex-center gap-10px>
-      <el-text size="default">{{ t("login.thinkOfPasswd") }}</el-text>
-      <el-link type="primary" underline="never" @click="toLogin">{{ t("login.login") }}</el-link>
+    <div class="auth-reset__switch">
+      <span class="auth-reset__switch-text">{{ t("login.thinkOfPasswd") }}</span>
+      <Button variant="link" class="auth-reset__link p-0" @click="toLogin">
+        {{ t("login.login") }}
+      </Button>
     </div>
   </div>
 </template>
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import type { FormInstance } from "element-plus";
+import { Button } from "@/components/ui/button";
 
 const { t } = useI18n();
 
@@ -55,3 +58,21 @@ const submit = async () => {
   ElMessage.warning("开发中 ...");
 };
 </script>
+
+<style scoped lang="scss">
+.auth-reset__switch {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-reset__switch-text {
+  color: var(--el-text-color-regular);
+}
+
+.auth-reset__link {
+  height: auto;
+  font-size: 0.875rem;
+}
+</style>

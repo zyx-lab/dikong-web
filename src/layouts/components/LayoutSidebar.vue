@@ -29,7 +29,6 @@ import { useRoute } from "vue-router";
 import path from "path-browserify";
 import type { MenuInstance } from "element-plus";
 import type { RouteRecordRaw } from "vue-router";
-import { SidebarColor } from "@/enums/settings";
 import { useSettingsStore, useAppStore } from "@/store";
 import { isExternal } from "@/utils/index";
 import LayoutSidebarItem from "./LayoutSidebarItem.vue";
@@ -63,20 +62,12 @@ const expandedMenuIndexes = ref<string[]>([]);
 // 获取主题
 const theme = computed(() => settingsStore.theme);
 
-// 获取浅色主题下的侧边栏配色方案
-const sidebarColorScheme = computed(() => settingsStore.sidebarColorScheme);
-
 // 菜单主题属性
-const menuThemeProps = computed(() => {
-  const isDarkOrClassicBlue =
-    theme.value === "dark" || sidebarColorScheme.value === SidebarColor.CLASSIC_BLUE;
-
-  return {
-    backgroundColor: isDarkOrClassicBlue ? variables["menu-background"] : undefined,
-    textColor: isDarkOrClassicBlue ? variables["menu-text"] : undefined,
-    activeTextColor: isDarkOrClassicBlue ? variables["menu-active-text"] : undefined,
-  };
-});
+const menuThemeProps = computed(() => ({
+  backgroundColor: variables["menu-background"],
+  textColor: variables["menu-text"],
+  activeTextColor: variables["menu-active-text"],
+}));
 
 // 计算当前激活的菜单项
 const activeMenuPath = computed((): string => {

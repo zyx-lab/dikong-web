@@ -81,20 +81,24 @@
       <el-form-item>
         <div class="flex-y-center w-full gap-10px">
           <el-checkbox v-model="isRead">{{ t("login.agree") }}</el-checkbox>
-          <el-link type="primary" underline="never">{{ t("login.userAgreement") }}</el-link>
+          <Button variant="link" class="auth-register__link p-0">
+            {{ t("login.userAgreement") }}
+          </Button>
         </div>
       </el-form-item>
 
       <!-- 注册按钮 -->
       <el-form-item>
-        <el-button :loading="loading" type="success" class="w-full" @click="submit">
+        <Button :disabled="loading" class="w-full" @click="submit">
           {{ t("login.register") }}
-        </el-button>
+        </Button>
       </el-form-item>
     </el-form>
-    <div flex-center gap-10px>
-      <el-text size="default">{{ t("login.haveAccount") }}</el-text>
-      <el-link type="primary" underline="never" @click="toLogin">{{ t("login.login") }}</el-link>
+    <div class="auth-register__switch">
+      <span class="auth-register__switch-text">{{ t("login.haveAccount") }}</span>
+      <Button variant="link" class="auth-register__link p-0" @click="toLogin">
+        {{ t("login.login") }}
+      </Button>
     </div>
   </div>
 </template>
@@ -103,6 +107,7 @@ import type { FormInstance } from "element-plus";
 import { Lock } from "@element-plus/icons-vue";
 import { useI18n } from "vue-i18n";
 import AuthAPI from "@/api/auth";
+import { Button } from "@/components/ui/button";
 import type { LoginRequest } from "@/types/api";
 
 const { t } = useI18n();
@@ -206,3 +211,21 @@ const submit = async () => {
   ElMessage.warning("开发中 ...");
 };
 </script>
+
+<style scoped lang="scss">
+.auth-register__switch {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-register__switch-text {
+  color: var(--el-text-color-regular);
+}
+
+.auth-register__link {
+  height: auto;
+  font-size: 0.875rem;
+}
+</style>

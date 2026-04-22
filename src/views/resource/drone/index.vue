@@ -1,26 +1,24 @@
 <template>
-  <div class="app-container command-page">
-    <section class="command-page__hero">
+  <div class="app-container command-page resource-drone-page">
+    <section class="command-page__hero command-page__hero--compact">
       <div class="command-page__hero-inner">
         <div class="command-page__hero-main">
           <div class="command-page__heading">
-            <p class="command-page__eyebrow">Aircraft Readiness Matrix</p>
+            <p class="command-page__eyebrow">无人机资源</p>
             <h2 class="command-page__title">无人机管理</h2>
-            <p class="command-page__description">
-              将可用性、维护压力和保险风险收拢到同一张资源态势面里，让机队状态在进入列表前就先有重点与轻重缓急。
-            </p>
+            <p class="command-page__description">查看无人机在线、离线和挂载情况。</p>
           </div>
           <div class="command-page__signals">
-            <span class="command-page__signal">机队就绪态势</span>
-            <span class="command-page__signal">维护风险前置</span>
-            <span class="command-page__signal">控制权一眼可见</span>
+            <span class="command-page__signal">在线状态</span>
+            <span class="command-page__signal">维护状态</span>
+            <span class="command-page__signal">挂载情况</span>
           </div>
         </div>
         <div class="command-page__metrics">
           <div class="command-page__metric command-page__metric--accent">
             <div class="command-page__metric-label">无人机总量</div>
             <div class="command-page__metric-value">{{ total }}</div>
-            <div class="command-page__metric-note">当前筛选范围内的机队资源</div>
+            <div class="command-page__metric-note">当前列表中的无人机数量</div>
           </div>
           <div class="command-page__metric">
             <div class="command-page__metric-label">在线就绪</div>
@@ -28,17 +26,17 @@
               {{ onlineCount }}
               <span class="command-page__metric-sub">/ {{ total || 0 }}</span>
             </div>
-            <div class="command-page__metric-note">实时可调度的机体数量</div>
+            <div class="command-page__metric-note">可直接调度</div>
           </div>
           <div class="command-page__metric command-page__metric--warning">
-            <div class="command-page__metric-label">保养提醒</div>
-            <div class="command-page__metric-value">-</div>
-            <div class="command-page__metric-note">需要安排维护窗口的机体</div>
+            <div class="command-page__metric-label">离线待恢复</div>
+            <div class="command-page__metric-value">{{ offlineCount }}</div>
+            <div class="command-page__metric-note">待恢复的无人机</div>
           </div>
           <div class="command-page__metric command-page__metric--danger">
-            <div class="command-page__metric-label">保险风险</div>
-            <div class="command-page__metric-value">-</div>
-            <div class="command-page__metric-note">存在保险到期或过期风险</div>
+            <div class="command-page__metric-label">载荷已绑定</div>
+            <div class="command-page__metric-value">{{ payloadBoundCount }}</div>
+            <div class="command-page__metric-note">已绑定负载的无人机</div>
           </div>
         </div>
       </div>
@@ -65,8 +63,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery">查询</el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+          <Button size="sm" @click="handleQuery">查询</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -74,22 +72,22 @@
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button type="primary" icon="plus" @click="handleCreateClick">认领无人机</el-button>
-          <el-button
-            type="danger"
-            icon="delete"
+          <Button size="sm" @click="handleCreateClick">认领无人机</Button>
+          <Button
+            size="sm"
+            variant="destructive"
             :disabled="selectedIds.length === 0"
             @click="handleDelete()"
           >
             批量删除
-          </el-button>
+          </Button>
         </div>
         <div class="table-section__toolbar--right">
           <div class="table-toolbar-summary">
-            <el-tag type="info">共 {{ total }} 架无人机</el-tag>
-            <el-tag v-if="selectedIds.length > 0" type="primary">
+            <Badge variant="outline">共 {{ total }} 架无人机</Badge>
+            <Badge v-if="selectedIds.length > 0" variant="secondary">
               已选 {{ selectedIds.length }} 项
-            </el-tag>
+            </Badge>
           </div>
         </div>
       </div>
@@ -118,9 +116,9 @@
         />
         <el-table-column label="在线状态" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.djiOnline ? 'success' : 'info'" size="small">
+            <Badge :variant="getOnlineBadgeVariant(row.djiOnline)">
               {{ row.djiOnline ? "在线" : "离线" }}
-            </el-tag>
+            </Badge>
           </template>
         </el-table-column>
         <el-table-column label="最后在线" min-width="180">
@@ -134,12 +132,22 @@
         </el-table-column>
         <el-table-column fixed="right" label="操作" align="center" width="100">
           <template #default="scope">
-            <el-button type="primary" link size="small" @click="handleDetailClick(scope.row)">
+            <Button
+              variant="ghost"
+              size="sm"
+              class="resource-table-action"
+              @click="handleDetailClick(scope.row)"
+            >
               查看
-            </el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(scope.row.id)">
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              class="resource-table-action resource-table-action--danger"
+              @click="handleDelete(scope.row.id)"
+            >
               删除
-            </el-button>
+            </Button>
           </template>
         </el-table-column>
         <template #empty>
@@ -148,7 +156,7 @@
               :description="hasActiveFilters ? '当前筛选条件下暂无无人机' : '暂无无人机数据'"
             />
             <div v-if="hasActiveFilters" class="table-empty-state__actions">
-              <el-button link type="primary" @click="handleResetQuery">清空筛选</el-button>
+              <Button variant="ghost" size="sm" @click="handleResetQuery">清空筛选</Button>
             </div>
           </div>
         </template>
@@ -199,14 +207,10 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="closeClaimDialog">取消</el-button>
-          <el-button
-            type="primary"
-            :loading="claimDialog.confirmLoading"
-            @click="handleClaimConfirm"
-          >
-            确认认领
-          </el-button>
+          <Button variant="outline" @click="closeClaimDialog">取消</Button>
+          <Button :disabled="claimDialog.confirmLoading" @click="handleClaimConfirm">
+            {{ claimDialog.confirmLoading ? "认领中..." : "确认认领" }}
+          </Button>
         </div>
       </template>
     </el-dialog>
@@ -237,9 +241,9 @@
             <el-table-column prop="status" label="设备状态" width="100" align="center" />
             <el-table-column label="在线状态" width="90" align="center">
               <template #default="{ row }">
-                <el-tag :type="row.djiOnline ? 'success' : 'info'" size="small">
+                <Badge :variant="getOnlineBadgeVariant(row.djiOnline)">
                   {{ row.djiOnline ? "在线" : "离线" }}
-                </el-tag>
+                </Badge>
               </template>
             </el-table-column>
             <el-table-column
@@ -276,7 +280,7 @@
       </div>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="closeDetailDialog">关闭</el-button>
+          <Button variant="outline" @click="closeDetailDialog">关闭</Button>
         </div>
       </template>
     </el-dialog>
@@ -287,6 +291,8 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { useWindowSize } from "@vueuse/core";
 import { ElMessage, ElMessageBox, type FormInstance } from "element-plus";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { DroneInfo, DroneQuery } from "@/api/resource/types";
 import DroneAPI from "@/api/resource/drone";
 
@@ -313,6 +319,10 @@ const selectedIds = ref<number[]>([]);
 const dialogWidth = computed(() => (width.value < 768 ? "92%" : "860px"));
 const hasActiveFilters = computed(() => Boolean(queryParams.code || queryParams.name));
 const onlineCount = computed(() => tableData.value.filter((d) => d.djiOnline === true).length);
+const offlineCount = computed(() => Math.max((total.value || 0) - onlineCount.value, 0));
+const payloadBoundCount = computed(
+  () => tableData.value.filter((item) => Boolean(item.lastPayload)).length
+);
 
 const claimDialog = reactive({
   visible: false,
@@ -388,6 +398,10 @@ async function fetchAvailableData(): Promise<void> {
 function formatPayload(payload: Record<string, any> | undefined): string {
   if (!payload) return "-";
   return JSON.stringify(payload, null, 2);
+}
+
+function getOnlineBadgeVariant(isOnline?: boolean) {
+  return isOnline ? "secondary" : "outline";
 }
 
 function formatTime(value: string | undefined | null): string {
@@ -504,6 +518,60 @@ onMounted(() => {
   width: 100%;
 }
 
+.resource-drone-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.resource-drone-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.resource-drone-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.resource-drone-page :deep(.filter-section .el-input__wrapper),
+.resource-drone-page :deep(.filter-section .el-select__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.resource-drone-page :deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.resource-drone-page :deep(.table-section__toolbar) {
+  align-items: flex-start;
+}
+
+.resource-drone-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.resource-drone-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.resource-drone-page :deep(.el-dialog) {
+  border-radius: 24px;
+}
+
+.resource-drone-page :deep(.el-dialog__header) {
+  padding-bottom: 4px;
+}
+
+.resource-drone-page :deep(.el-dialog__body) {
+  padding-top: 10px;
+}
+
 .authority-tags {
   display: flex;
   flex-wrap: wrap;
@@ -513,5 +581,21 @@ onMounted(() => {
 
 .authority-tag {
   margin-right: 0;
+}
+
+.resource-table-action {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.resource-table-action--danger {
+  color: var(--destructive);
+}
+
+@media (max-width: 768px) {
+  .resource-drone-page :deep(.table-section__toolbar--actions),
+  .resource-drone-page :deep(.table-section__toolbar--right) {
+    width: 100%;
+  }
 }
 </style>

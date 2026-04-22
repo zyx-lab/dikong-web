@@ -3,11 +3,14 @@
     <div class="planner-sidebar__head">
       <div class="planner-sidebar__title">
         <div>
+          <div class="planner-sidebar__eyebrow">规划面板</div>
           <h3>航线配置</h3>
           <p>{{ draft.routeName }}</p>
         </div>
       </div>
-      <span class="planner-sidebar__type">{{ getRouteTypeLabel(draft.routeType) }}</span>
+      <Badge variant="outline" class="planner-sidebar__type">
+        {{ getRouteTypeLabel(draft.routeType) }}
+      </Badge>
     </div>
 
     <div class="planner-sidebar__stats">
@@ -40,7 +43,7 @@
               <template v-else>点击地图或输入经纬度设置兴趣点。</template>
             </p>
           </div>
-          <el-button link type="primary" @click="emit('clearGeometry')">清空</el-button>
+          <Button variant="ghost" size="sm" @click="emit('clearGeometry')">清空</Button>
         </div>
 
         <div v-if="draft.routeType === routeTypeEnum.POINT" class="waypoint-list">
@@ -50,9 +53,14 @@
           <div v-for="(point, index) in draft.points" :key="point.id" class="waypoint-card">
             <div class="waypoint-card__head">
               <strong>{{ point.name }}</strong>
-              <el-button link type="danger" size="small" @click="removeWaypoint(index)">
+              <Button
+                variant="ghost"
+                size="sm"
+                class="waypoint-card__delete"
+                @click="removeWaypoint(index)"
+              >
                 删除
-              </el-button>
+              </Button>
             </div>
             <div class="waypoint-card__meta">
               {{ point.lng.toFixed(6) }}, {{ point.lat.toFixed(6) }}
@@ -136,9 +144,7 @@
             <strong>{{ point.name }}</strong>
             <span>{{ point.lng.toFixed(6) }}, {{ point.lat.toFixed(6) }}</span>
           </div>
-          <el-tag v-if="pendingAreaSelection" type="warning" effect="dark">
-            已设置框选起点，等待终点
-          </el-tag>
+          <Badge v-if="pendingAreaSelection" variant="secondary">已设置框选起点，等待终点</Badge>
         </div>
 
         <div v-else class="loop-target-grid">
@@ -596,38 +602,40 @@
     </el-scrollbar>
 
     <div class="planner-sidebar__actions">
-      <el-button
+      <Button
         class="planner-sidebar__action-btn"
-        type="primary"
-        :loading="dispatching"
-        :disabled="saving"
+        :disabled="dispatching || saving"
         @click="emit('dispatch')"
       >
-        下发航线
-      </el-button>
-      <el-button class="planner-sidebar__action-btn" @click="emit('preview')">预览</el-button>
+        {{ dispatching ? "下发中..." : "下发航线" }}
+      </Button>
+      <Button class="planner-sidebar__action-btn" variant="outline" @click="emit('preview')">
+        预览
+      </Button>
       <div class="planner-sidebar__actions-row">
-        <el-button
+        <Button
           class="planner-sidebar__actions-row-btn"
-          type="primary"
-          :loading="saving"
+          :disabled="saving || dispatching"
           @click="emit('save')"
         >
-          保存
-        </el-button>
-        <el-button
+          {{ saving ? "保存中..." : "保存" }}
+        </Button>
+        <Button
           class="planner-sidebar__actions-row-btn"
-          :disabled="saving"
+          variant="secondary"
+          :disabled="saving || dispatching"
           @click="emit('reset')"
         >
           重置
-        </el-button>
+        </Button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { RouteType } from "@/api/flight/types";
 import type { RouteRecordModel } from "../types";
 import {
@@ -781,60 +789,73 @@ function removeWaypoint(index: number) {
 .planner-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   height: 100%;
 }
 
 .planner-sidebar__head {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: flex-start;
   justify-content: space-between;
+  padding: 2px 2px 0;
+}
+
+.planner-sidebar__eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
 }
 
 .planner-sidebar__title h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--foreground);
 }
 
 .planner-sidebar__title p {
-  margin: 4px 0 0;
-  color: var(--el-text-color-secondary);
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
 }
 
 .planner-sidebar__type {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
-  border: 1px solid var(--el-color-primary-light-8);
-  border-radius: 4px;
+  margin-top: 2px;
+  white-space: nowrap;
 }
 
 .planner-sidebar__stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .planner-stat {
-  padding: 8px 10px;
-  background: var(--el-fill-color-lighter);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(9, 9, 11, 0.04);
 }
 
 .planner-stat span {
   display: block;
-  margin-bottom: 6px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  margin-bottom: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .planner-stat strong {
-  font-size: 16px;
+  font-size: 1.125rem;
+  line-height: 1.2;
+  color: var(--foreground);
 }
 
 .planner-sidebar__scroll {
@@ -843,46 +864,49 @@ function removeWaypoint(index: number) {
 }
 
 .config-card {
-  padding: 10px;
-  margin-bottom: 10px;
-  background: var(--el-bg-color-overlay);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  padding: 14px;
+  margin-bottom: 12px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  border-radius: 18px;
+  box-shadow: 0 12px 24px rgba(9, 9, 11, 0.05);
 }
 
 .config-card__head {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  gap: 10px;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .config-card__head h4 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  color: var(--foreground);
 }
 
 .config-card__head p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  margin: 6px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--muted-foreground);
 }
 
 .waypoint-list,
 .corner-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .waypoint-card,
 .corner-item {
-  padding: 8px;
-  background: var(--el-fill-color-lighter);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--muted) 56%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+  border-radius: 16px;
 }
 
 .waypoint-card__head {
@@ -890,13 +914,24 @@ function removeWaypoint(index: number) {
   gap: 8px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.waypoint-card__head strong,
+.corner-item strong {
+  color: var(--foreground);
+}
+
+.waypoint-card__delete {
+  color: var(--destructive);
 }
 
 .waypoint-card__meta,
 .corner-item span,
 .empty-text {
-  color: var(--el-text-color-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--muted-foreground);
 }
 
 .corner-item {
@@ -910,7 +945,7 @@ function removeWaypoint(index: number) {
 .loop-target-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .number-grid label,
@@ -922,24 +957,28 @@ function removeWaypoint(index: number) {
 
 .number-grid label span,
 .loop-target-grid label span {
-  color: var(--el-text-color-regular);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--foreground);
 }
 
 .field-group {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .field-group__label {
   display: block;
   margin-bottom: 8px;
-  color: var(--el-text-color-regular);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
 }
 
 .field-group__hint {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: 0.8125rem;
   line-height: 1.5;
-  color: var(--el-text-color-secondary);
+  color: var(--muted-foreground);
 }
 
 .chip-group {
@@ -949,23 +988,34 @@ function removeWaypoint(index: number) {
 }
 
 .chip-group--compact {
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .option-chip {
-  padding: 5px 10px;
-  color: var(--el-text-color-regular);
+  padding: 7px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--foreground);
   cursor: pointer;
-  background: var(--el-fill-color-lighter);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  background: color-mix(in srgb, var(--background) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+  border-radius: 999px;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .option-chip:hover,
 .option-chip.is-active {
-  color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
-  border-color: var(--el-color-primary);
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--secondary) 92%, transparent);
+  border-color: color-mix(in srgb, var(--ring) 38%, transparent);
+}
+
+.option-chip:hover {
+  transform: translateY(-1px);
 }
 
 .planner-sidebar__actions {
@@ -991,6 +1041,29 @@ function removeWaypoint(index: number) {
 
 :deep(.el-input-number) {
   width: 100%;
+  --el-input-number-controls-color: var(--muted-foreground);
+  --el-input-number-controls-border-color: color-mix(in srgb, var(--border) 86%, transparent);
+}
+
+:deep(.el-input-number .el-input__wrapper) {
+  background: color-mix(in srgb, var(--background) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+:deep(.el-input-number .el-input__inner) {
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+
+:deep(.el-input-number__increase),
+:deep(.el-input-number__decrease) {
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+
+:deep(.el-scrollbar__view) {
+  min-height: 100%;
 }
 
 @media (max-width: 1400px) {

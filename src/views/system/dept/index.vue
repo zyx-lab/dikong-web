@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container system-dept-page">
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
         <el-form-item label="关键字" prop="keywords">
@@ -18,10 +18,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button class="filter-item" type="primary" icon="search" @click="handleQuery">
-            搜索
-          </el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+          <Button size="sm" @click="handleQuery">搜索</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -29,23 +27,15 @@
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button
-            v-hasPerm="['sys:dept:create']"
-            type="success"
-            icon="plus"
-            @click="openDialog()"
-          >
-            新增
-          </el-button>
-          <el-button
+          <Button v-hasPerm="['sys:dept:create']" @click="openDialog()">新增</Button>
+          <Button
             v-hasPerm="['sys:dept:delete']"
-            type="danger"
+            variant="destructive"
             :disabled="selectIds.length === 0"
-            icon="delete"
             @click="handleDelete()"
           >
             删除
-          </el-button>
+          </Button>
         </div>
       </div>
 
@@ -63,8 +53,9 @@
         <el-table-column prop="code" label="部门编号" width="200" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="scope">
-            <el-tag v-if="scope.row.status == 1" type="success">正常</el-tag>
-            <el-tag v-else type="info">禁用</el-tag>
+            <Badge :variant="scope.row.status == 1 ? 'secondary' : 'outline'">
+              {{ scope.row.status == 1 ? "正常" : "禁用" }}
+            </Badge>
           </template>
         </el-table-column>
 
@@ -72,36 +63,30 @@
 
         <el-table-column label="操作" fixed="right" align="left" width="200">
           <template #default="scope">
-            <el-button
+            <Button
               v-hasPerm="['sys:dept:create']"
-              type="primary"
-              link
-              size="small"
-              icon="plus"
+              class="system-dept-page__action"
+              size="sm"
               @click.stop="openDialog(scope.row.id, undefined)"
             >
               新增
-            </el-button>
-            <el-button
+            </Button>
+            <Button
               v-hasPerm="['sys:dept:update']"
-              type="primary"
-              link
-              size="small"
-              icon="edit"
+              class="system-dept-page__action"
+              size="sm"
               @click.stop="openDialog(scope.row.parentId, scope.row.id)"
             >
               编辑
-            </el-button>
-            <el-button
+            </Button>
+            <Button
               v-hasPerm="['sys:dept:delete']"
-              type="danger"
-              link
-              size="small"
-              icon="delete"
+              class="system-dept-page__action system-dept-page__action--danger"
+              size="sm"
               @click.stop="handleDelete(scope.row.id)"
             >
               删除
-            </el-button>
+            </Button>
           </template>
         </el-table-column>
       </el-table>
@@ -148,8 +133,8 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-          <el-button @click="closeDialog">取消</el-button>
+          <Button @click="handleSubmit">确定</Button>
+          <Button variant="outline" @click="closeDialog">取消</Button>
         </div>
       </template>
     </el-dialog>
@@ -157,6 +142,8 @@
 </template>
 
 <script setup lang="ts">
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 defineOptions({
   name: "Dept",
   inheritAttrs: false,
@@ -341,3 +328,60 @@ onMounted(() => {
   fetchData();
 });
 </script>
+
+<style scoped lang="scss">
+.system-dept-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.system-dept-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.system-dept-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.system-dept-page :deep(.filter-section .el-input__wrapper),
+.system-dept-page :deep(.filter-section .el-select__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-dept-page :deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.system-dept-page :deep(.table-section__toolbar) {
+  align-items: flex-start;
+}
+
+.system-dept-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.system-dept-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.system-dept-page :deep(.el-dialog) {
+  border-radius: 24px;
+}
+
+.system-dept-page__action {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.system-dept-page__action--danger {
+  color: var(--destructive);
+}
+</style>

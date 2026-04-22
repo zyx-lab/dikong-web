@@ -3,18 +3,18 @@
     <el-row :gutter="20">
       <!-- 左侧个人信息卡片 -->
       <el-col :span="8">
-        <el-card class="user-card">
+        <el-card class="user-card profile-surface">
           <div class="user-info">
             <div class="avatar-wrapper">
               <el-avatar :src="userStore.userInfo.avatar" :size="100" />
-              <el-button
-                type="info"
+              <Button
+                variant="outline"
                 class="avatar-edit-btn"
-                circle
-                :icon="Camera"
-                size="small"
+                size="icon-sm"
                 @click="triggerFileUpload"
-              />
+              >
+                <el-icon><Camera /></el-icon>
+              </Button>
               <input
                 ref="fileInput"
                 type="file"
@@ -29,21 +29,23 @@
                 <Edit />
               </el-icon>
             </div>
-            <div class="user-role">{{ userProfile.roleNames }}</div>
+            <div class="user-role">
+              <Badge variant="outline">{{ userProfile.roleNames || "未分配角色" }}</Badge>
+            </div>
           </div>
           <el-divider />
           <div class="user-stats">
             <div class="stat-item">
-              <div class="stat-value">0</div>
-              <div class="stat-label">待办</div>
+              <div class="stat-value">{{ securityBoundCount }}</div>
+              <div class="stat-label">已绑定</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value">0</div>
-              <div class="stat-label">消息</div>
+              <div class="stat-value">{{ profileReadyCount }}</div>
+              <div class="stat-label">资料项</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value">0</div>
-              <div class="stat-label">通知</div>
+              <div class="stat-value">{{ roleCount }}</div>
+              <div class="stat-label">角色数</div>
             </div>
           </div>
         </el-card>
@@ -51,38 +53,45 @@
 
       <!-- 右侧信息卡片 -->
       <el-col :span="16">
-        <el-card class="info-card">
+        <el-card class="info-card profile-surface">
           <template #header>
             <div class="card-header">
               <span>账号信息</span>
             </div>
           </template>
-          <el-descriptions :column="1" border>
-            <el-descriptions-item label="用户名">
-              {{ userProfile.username }}
-              <el-icon v-if="userProfile.gender === 1" class="gender-icon male">
-                <Male />
-              </el-icon>
-              <el-icon v-else class="gender-icon female">
-                <Female />
-              </el-icon>
-            </el-descriptions-item>
-            <el-descriptions-item label="手机号码">
-              {{ userProfile.mobile || "未绑定" }}
-            </el-descriptions-item>
-            <el-descriptions-item label="邮箱">
-              {{ userProfile.email || "未绑定" }}
-            </el-descriptions-item>
-            <el-descriptions-item label="部门">
-              {{ userProfile.deptName }}
-            </el-descriptions-item>
-            <el-descriptions-item label="创建时间">
-              {{ userProfile.createTime }}
-            </el-descriptions-item>
-          </el-descriptions>
+          <div class="profile-info-list">
+            <div class="profile-info-row">
+              <div class="profile-info-label">用户名</div>
+              <div class="profile-info-value">
+                {{ userProfile.username || "-" }}
+                <el-icon v-if="userProfile.gender === 1" class="gender-icon male">
+                  <Male />
+                </el-icon>
+                <el-icon v-else-if="userProfile.gender === 2" class="gender-icon female">
+                  <Female />
+                </el-icon>
+              </div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-info-label">手机号码</div>
+              <div class="profile-info-value">{{ userProfile.mobile || "未绑定" }}</div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-info-label">邮箱</div>
+              <div class="profile-info-value">{{ userProfile.email || "未绑定" }}</div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-info-label">部门</div>
+              <div class="profile-info-value">{{ userProfile.deptName || "-" }}</div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-info-label">创建时间</div>
+              <div class="profile-info-value">{{ formatProfileDate(userProfile.createTime) }}</div>
+            </div>
+          </div>
         </el-card>
 
-        <el-card class="security-card">
+        <el-card class="security-card profile-surface">
           <template #header>
             <div class="card-header">
               <span>安全设置</span>
@@ -93,9 +102,9 @@
               <div class="security-title">账户密码</div>
               <div class="security-desc">定期修改密码有助于保护账户安全</div>
             </div>
-            <el-button type="primary" link @click="() => handleOpenDialog(DialogType.PASSWORD)">
+            <Button variant="ghost" size="sm" @click="() => handleOpenDialog(DialogType.PASSWORD)">
               修改
-            </el-button>
+            </Button>
           </div>
 
           <div class="security-item">
@@ -106,25 +115,31 @@
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <el-button
+              <Button
                 v-if="userProfile.mobile"
-                type="primary"
-                link
+                variant="ghost"
+                size="sm"
                 @click="() => handleOpenDialog(DialogType.MOBILE)"
               >
                 更换
-              </el-button>
-              <el-button v-if="userProfile.mobile" type="danger" link @click="handleUnbindMobile">
+              </Button>
+              <Button
+                v-if="userProfile.mobile"
+                variant="ghost"
+                size="sm"
+                class="security-action--danger"
+                @click="handleUnbindMobile"
+              >
                 解绑
-              </el-button>
-              <el-button
+              </Button>
+              <Button
                 v-else
-                type="primary"
-                link
+                variant="ghost"
+                size="sm"
                 @click="() => handleOpenDialog(DialogType.MOBILE)"
               >
                 绑定
-              </el-button>
+              </Button>
             </div>
           </div>
 
@@ -136,25 +151,31 @@
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <el-button
+              <Button
                 v-if="userProfile.email"
-                type="primary"
-                link
+                variant="ghost"
+                size="sm"
                 @click="() => handleOpenDialog(DialogType.EMAIL)"
               >
                 更换
-              </el-button>
-              <el-button v-if="userProfile.email" type="danger" link @click="handleUnbindEmail">
+              </Button>
+              <Button
+                v-if="userProfile.email"
+                variant="ghost"
+                size="sm"
+                class="security-action--danger"
+                @click="handleUnbindEmail"
+              >
                 解绑
-              </el-button>
-              <el-button
+              </Button>
+              <Button
                 v-else
-                type="primary"
-                link
+                variant="ghost"
+                size="sm"
                 @click="() => handleOpenDialog(DialogType.EMAIL)"
               >
                 绑定
-              </el-button>
+              </Button>
             </div>
           </div>
         </el-card>
@@ -259,8 +280,8 @@
 
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="handleCancel">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
+          <Button variant="outline" @click="handleCancel">取消</Button>
+          <Button @click="handleSubmit">确定</Button>
         </span>
       </template>
     </el-dialog>
@@ -270,6 +291,7 @@
 <script lang="ts" setup>
 import UserAPI from "@/api/system/user";
 import type {
+  IamProfileResponse,
   UserProfileDetail,
   PasswordChangeForm,
   MobileUpdateForm,
@@ -280,13 +302,24 @@ import type {
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import FileAPI from "@/api/file";
 import { useUserStoreHook } from "@/store";
+import { useTenantStoreHook } from "@/store/modules/tenant";
 import { redirectToLogin } from "@/utils/auth";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 import { Camera } from "@element-plus/icons-vue";
 
 const userStore = useUserStoreHook();
+const tenantStore = useTenantStoreHook();
 
 const userProfile = ref<UserProfileDetail>({});
+
+const ROLE_NAME_MAP: Record<string, string> = {
+  tenant_admin: "租户管理员",
+  platform_admin: "平台管理员",
+  pilot_operator: "飞手",
+  dispatcher: "调度员",
+};
 
 const enum DialogType {
   ACCOUNT = "account",
@@ -385,6 +418,63 @@ const mobileSecurityDesc = computed(() => {
 const emailSecurityDesc = computed(() => {
   return userProfile.value.email ? `已绑定：${maskEmail(userProfile.value.email)}` : "未绑定邮箱";
 });
+
+const securityBoundCount = computed(() => {
+  let count = 0;
+  if (userProfile.value.mobile) count += 1;
+  if (userProfile.value.email) count += 1;
+  return count;
+});
+
+const profileReadyCount = computed(() => {
+  let count = 0;
+  if (userProfile.value.username) count += 1;
+  if (userProfile.value.nickname) count += 1;
+  if (userProfile.value.deptName) count += 1;
+  return count;
+});
+
+const roleCount = computed(() =>
+  userProfile.value.roleNames
+    ? userProfile.value.roleNames
+        .split(/[，,]/)
+        .map((item) => item.trim())
+        .filter(Boolean).length
+    : 0
+);
+
+function formatProfileDate(value?: Date | string) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const pad = (n: number) => `${n}`.padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function formatRoleNames(roleCodes: string[] = []) {
+  return roleCodes
+    .map((code) => ROLE_NAME_MAP[code] || code)
+    .filter(Boolean)
+    .join("，");
+}
+
+function normalizeProfile(profile: IamProfileResponse): UserProfileDetail {
+  const roleCodes =
+    userStore.userInfo.roles?.length > 0
+      ? userStore.userInfo.roles
+      : (tenantStore.currentTenant?.roleCodes ?? []);
+
+  return {
+    id: profile.userId ? String(profile.userId) : undefined,
+    username: profile.username,
+    nickname: profile.staffProfile?.name || userStore.userInfo.nickname || profile.username,
+    avatar: userStore.userInfo.avatar,
+    mobile: profile.staffProfile?.phone || undefined,
+    email: profile.staffProfile?.email || undefined,
+    roleNames: formatRoleNames(roleCodes),
+    createTime: profile.createdAt ? new Date(profile.createdAt) : undefined,
+  };
+}
 
 /**
  * 打开弹窗
@@ -600,8 +690,16 @@ const handleFileChange = async (event: Event) => {
 
 /** 加载用户信息 */
 const loadUserProfile = async () => {
-  const data = await UserAPI.getProfile();
-  userProfile.value = data;
+  if (!userStore.userInfoLoaded) {
+    await userStore.getUserInfo();
+  }
+
+  if (!tenantStore.currentTenant && tenantStore.currentTenantCode) {
+    await tenantStore.loadTenant().catch(() => null);
+  }
+
+  const data = await UserAPI.getInfo();
+  userProfile.value = normalizeProfile(data);
 };
 
 onMounted(async () => {
@@ -631,6 +729,13 @@ onBeforeUnmount(() => {
   background: var(--el-fill-color-blank);
 }
 
+.profile-surface {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
 .user-card {
   .user-info {
     padding: 20px 0;
@@ -645,13 +750,8 @@ onBeforeUnmount(() => {
         position: absolute;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        border: none;
-        transition: all 0.3s ease;
-
-        &:hover {
-          background: rgba(0, 0, 0, 0.7);
-        }
+        border-radius: 999px;
+        box-shadow: 0 8px 18px rgba(9, 9, 11, 0.16);
       }
     }
 
@@ -677,6 +777,7 @@ onBeforeUnmount(() => {
     }
 
     .user-role {
+      display: inline-flex;
       font-size: 14px;
       color: var(--el-text-color-secondary);
     }
@@ -684,11 +785,16 @@ onBeforeUnmount(() => {
 
   .user-stats {
     display: flex;
+    gap: 10px;
     justify-content: space-around;
     padding: 16px 0;
 
     .stat-item {
+      flex: 1;
+      padding: 14px 10px;
       text-align: center;
+      background: color-mix(in srgb, var(--muted) 56%, transparent);
+      border-radius: 16px;
 
       .stat-value {
         font-size: 20px;
@@ -711,7 +817,7 @@ onBeforeUnmount(() => {
 
   .card-header {
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 650;
     color: var(--el-text-color-primary);
   }
 }
@@ -720,7 +826,15 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 0;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 
   .security-info {
     .security-title {
@@ -737,18 +851,45 @@ onBeforeUnmount(() => {
   }
 }
 
-.el-descriptions {
-  .el-descriptions__label {
-    font-weight: 500;
-    color: var(--el-text-color-regular);
-  }
+.security-action--danger {
+  color: var(--destructive);
+}
 
-  .el-descriptions__content {
-    color: var(--el-text-color-primary);
-  }
+.profile-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-info-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 16px;
+}
+
+.profile-info-label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  letter-spacing: 0.04em;
+}
+
+.profile-info-value {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--el-text-color-primary);
+  overflow-wrap: anywhere;
 
   .gender-icon {
-    margin-left: 8px;
     font-size: 16px;
 
     &.male {
@@ -762,6 +903,8 @@ onBeforeUnmount(() => {
 }
 
 .el-dialog {
+  border-radius: 24px;
+
   .el-dialog__header {
     padding: 20px;
     margin: 0;
@@ -786,6 +929,11 @@ onBeforeUnmount(() => {
 
   .el-col {
     width: 100%;
+  }
+
+  .profile-info-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }
 </style>

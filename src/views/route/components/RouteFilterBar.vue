@@ -1,8 +1,8 @@
 <template>
   <Card data-testid="route-filter-bar" class="border-border/70 shadow-none">
     <CardContent class="pt-6">
-      <div class="grid gap-4 xl:grid-cols-6">
-        <div class="space-y-2 xl:col-span-2">
+      <div class="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_220px_auto]">
+        <div class="space-y-2">
           <label class="text-sm font-medium text-foreground">航线名称</label>
           <Input
             v-model="filterForm.routeName"
@@ -30,6 +30,19 @@
           </Select>
         </div>
 
+        <div class="flex flex-wrap items-end gap-3 lg:justify-end">
+          <Button variant="ghost" @click="showAdvanced = !showAdvanced">
+            {{ showAdvanced ? "收起高级筛选" : "高级筛选" }}
+          </Button>
+          <Button @click="emit('query')">查询</Button>
+          <Button variant="outline" @click="emit('reset')">重置</Button>
+        </div>
+      </div>
+
+      <div
+        v-if="showAdvanced"
+        class="mt-4 grid gap-4 border-t border-border/70 pt-4 md:grid-cols-3"
+      >
         <div class="space-y-2">
           <label class="text-sm font-medium text-foreground">创建人</label>
           <Input
@@ -64,18 +77,13 @@
             class="w-full"
           />
         </div>
-
-        <div class="flex items-end gap-3 xl:justify-end">
-          <Button @click="emit('query')">查询</Button>
-          <Button variant="outline" @click="emit('reset')">重置</Button>
-        </div>
       </div>
     </CardContent>
   </Card>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import type { RouteType } from "@/api/flight/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -105,6 +113,7 @@ const emit = defineEmits<{
 }>();
 
 const ALL_ROUTE_TYPES = "__all__";
+const showAdvanced = ref(false);
 
 const routeTypeValue = computed({
   get: () => props.filterForm.routeType ?? ALL_ROUTE_TYPES,

@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="app-container">
+  <div class="app-container system-notice-page">
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-suffix=":">
         <el-form-item label="标题" prop="title">
@@ -25,8 +25,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery()">搜索</el-button>
-          <el-button icon="refresh" @click="handleResetQuery()">重置</el-button>
+          <Button size="sm" @click="handleQuery()">搜索</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery()">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -34,23 +34,15 @@
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button
-            v-hasPerm="['sys:notice:create']"
-            type="success"
-            icon="plus"
-            @click="openDialog()"
-          >
-            新增通知
-          </el-button>
-          <el-button
+          <Button v-hasPerm="['sys:notice:create']" @click="openDialog()">新增通知</Button>
+          <Button
             v-hasPerm="['sys:notice:delete']"
-            type="danger"
+            variant="destructive"
             :disabled="selectIds.length === 0"
-            icon="delete"
             @click="handleDelete()"
           >
             删除
-          </el-button>
+          </Button>
         </div>
       </div>
 
@@ -78,15 +70,16 @@
         </el-table-column>
         <el-table-column align="center" label="通告目标类型" prop="targetType" min-width="100">
           <template #default="scope">
-            <el-tag v-if="scope.row.targetType == 1" type="warning">全体</el-tag>
-            <el-tag v-if="scope.row.targetType == 2" type="success">指定</el-tag>
+            <Badge :variant="scope.row.targetType == 1 ? 'outline' : 'secondary'">
+              {{ scope.row.targetType == 1 ? "全体" : "指定" }}
+            </Badge>
           </template>
         </el-table-column>
         <el-table-column align="center" label="发布状态" min-width="100">
           <template #default="scope">
-            <el-tag v-if="scope.row.publishStatus == 0" type="info">未发布</el-tag>
-            <el-tag v-if="scope.row.publishStatus == 1" type="success">已发布</el-tag>
-            <el-tag v-if="scope.row.publishStatus == -1" type="warning">已撤回</el-tag>
+            <Badge :variant="getPublishBadgeVariant(scope.row.publishStatus)">
+              {{ getPublishText(scope.row.publishStatus) }}
+            </Badge>
           </template>
         </el-table-column>
         <el-table-column label="操作时间" width="250">
@@ -108,49 +101,54 @@
         </el-table-column>
         <el-table-column align="center" fixed="right" label="操作" width="150">
           <template #default="scope">
-            <el-button type="primary" size="small" link @click="openDetailDialog(scope.row.id)">
+            <Button
+              class="system-notice-page__action"
+              variant="ghost"
+              size="sm"
+              @click="openDetailDialog(scope.row.id)"
+            >
               查看
-            </el-button>
-            <el-button
+            </Button>
+            <Button
               v-if="scope.row.publishStatus != 1"
               v-hasPerm="['sys:notice:publish']"
-              type="primary"
-              size="small"
-              link
+              class="system-notice-page__action"
+              variant="ghost"
+              size="sm"
               @click="handlePublish(scope.row.id)"
             >
               发布
-            </el-button>
-            <el-button
+            </Button>
+            <Button
               v-if="scope.row.publishStatus == 1"
               v-hasPerm="['sys:notice:revoke']"
-              type="primary"
-              size="small"
-              link
+              class="system-notice-page__action"
+              variant="ghost"
+              size="sm"
               @click="handleRevoke(scope.row.id)"
             >
               撤回
-            </el-button>
-            <el-button
+            </Button>
+            <Button
               v-if="scope.row.publishStatus != 1"
               v-hasPerm="['sys:notice:update']"
-              type="primary"
-              size="small"
-              link
+              class="system-notice-page__action"
+              variant="ghost"
+              size="sm"
               @click="openDialog(scope.row.id)"
             >
               编辑
-            </el-button>
-            <el-button
+            </Button>
+            <Button
               v-if="scope.row.publishStatus != 1"
               v-hasPerm="['sys:notice:delete']"
-              type="danger"
-              size="small"
-              link
+              class="system-notice-page__action system-notice-page__action--danger"
+              variant="ghost"
+              size="sm"
               @click="handleDelete(scope.row.id)"
             >
               删除
-            </el-button>
+            </Button>
           </template>
         </el-table-column>
       </el-table>
@@ -177,55 +175,90 @@
         <div class="flex-x-between">
           <span>{{ dialogState.title }}</span>
           <div class="dialog-toolbar">
-            <el-button circle @click="toggleDialogFullscreen">
+            <Button variant="outline" size="icon-sm" @click="toggleDialogFullscreen">
               <template #icon>
                 <FullScreen v-if="!dialogState.fullscreen" />
                 <CopyDocument v-else />
               </template>
-            </el-button>
-            <el-button circle @click="closeDialog">
+            </Button>
+            <Button variant="outline" size="icon-sm" @click="closeDialog">
               <template #icon>
                 <Close />
               </template>
-            </el-button>
+            </Button>
           </div>
         </div>
       </template>
-      <el-form ref="dataFormRef" :model="formData" :rules="rules" label-width="100px">
-        <el-form-item label="通知标题" prop="title">
-          <el-input v-model="formData.title" placeholder="通知标题" clearable />
-        </el-form-item>
+      <el-form
+        ref="dataFormRef"
+        :model="formData"
+        :rules="rules"
+        label-width="100px"
+        class="system-notice-page__dialog-form"
+      >
+        <section class="system-notice-page__form-section">
+          <div class="system-notice-page__form-title">基础信息</div>
+          <div class="system-notice-page__form-grid">
+            <el-form-item class="system-notice-page__form-item--full" label="通知标题" prop="title">
+              <el-input v-model="formData.title" placeholder="通知标题" clearable />
+            </el-form-item>
 
-        <el-form-item label="通知类型" prop="type">
-          <DictSelect v-model="formData.type" code="notice_type" />
-        </el-form-item>
-        <el-form-item label="通知等级" prop="level">
-          <DictSelect v-model="formData.level" code="notice_level" />
-        </el-form-item>
-        <el-form-item label="目标类型" prop="targetType">
-          <el-radio-group v-model="formData.targetType">
-            <el-radio :value="1">全体</el-radio>
-            <el-radio :value="2">指定</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="formData.targetType == 2" label="指定用户" prop="targetUsers">
-          <el-select v-model="formData.targetUsers" multiple search placeholder="请选择指定用户">
-            <el-option
-              v-for="item in userOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="通知内容" prop="content">
-          <WangEditor v-model="formData.content" height="350px" />
-        </el-form-item>
+            <el-form-item label="通知类型" prop="type">
+              <DictSelect v-model="formData.type" code="notice_type" />
+            </el-form-item>
+            <el-form-item label="通知等级" prop="level">
+              <DictSelect v-model="formData.level" code="notice_level" />
+            </el-form-item>
+            <el-form-item
+              class="system-notice-page__form-item--full"
+              label="目标类型"
+              prop="targetType"
+            >
+              <el-radio-group v-model="formData.targetType">
+                <el-radio :value="1">全体</el-radio>
+                <el-radio :value="2">指定</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item
+              v-if="formData.targetType == 2"
+              class="system-notice-page__form-item--full"
+              label="指定用户"
+              prop="targetUsers"
+            >
+              <el-select
+                v-model="formData.targetUsers"
+                multiple
+                search
+                placeholder="请选择指定用户"
+              >
+                <el-option
+                  v-for="item in userOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
+          </div>
+        </section>
+
+        <section class="system-notice-page__form-section">
+          <div class="system-notice-page__form-title">通知内容</div>
+          <div class="system-notice-page__form-grid">
+            <el-form-item
+              class="system-notice-page__form-item--full"
+              label="通知内容"
+              prop="content"
+            >
+              <WangEditor v-model="formData.content" height="350px" />
+            </el-form-item>
+          </div>
+        </section>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleSubmit()">确定</el-button>
-          <el-button @click="closeDialog()">取消</el-button>
+          <Button @click="handleSubmit()">确定</Button>
+          <Button variant="outline" @click="closeDialog()">取消</Button>
         </div>
       </template>
     </el-dialog>
@@ -240,11 +273,11 @@
         <div class="flex-x-between">
           <span>通知公告详情</span>
           <div class="dialog-toolbar">
-            <el-button circle @click="closeDetailDialog">
+            <Button variant="outline" size="icon-sm" @click="closeDetailDialog">
               <template #icon>
                 <Close />
               </template>
-            </el-button>
+            </Button>
           </div>
         </div>
       </template>
@@ -253,9 +286,9 @@
           {{ currentNotice.title }}
         </el-descriptions-item>
         <el-descriptions-item label="发布状态：">
-          <el-tag v-if="currentNotice.publishStatus == 0" type="info">未发布</el-tag>
-          <el-tag v-else-if="currentNotice.publishStatus == 1" type="success">已发布</el-tag>
-          <el-tag v-else-if="currentNotice.publishStatus == -1" type="warning">已撤回</el-tag>
+          <Badge :variant="getPublishBadgeVariant(currentNotice.publishStatus)">
+            {{ getPublishText(currentNotice.publishStatus) }}
+          </Badge>
         </el-descriptions-item>
         <el-descriptions-item label="发布人：">
           {{ currentNotice.publisherName }}
@@ -278,6 +311,8 @@ defineOptions({
 });
 
 import NoticeAPI from "@/api/system/notice";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { NoticeItem, NoticeForm, NoticeQueryParams, NoticeDetail } from "@/types/api";
 import UserAPI from "@/api/system/user";
 import type { FormInstance, FormRules } from "element-plus";
@@ -311,6 +346,18 @@ const formData = reactive<NoticeForm>({
   level: "L",
   targetType: 1,
 });
+
+function getPublishBadgeVariant(status?: number) {
+  if (status === 1) return "secondary";
+  if (status === -1) return "outline";
+  return "outline";
+}
+
+function getPublishText(status?: number) {
+  if (status === 1) return "已发布";
+  if (status === -1) return "已撤回";
+  return "未发布";
+}
 
 // 验证规则
 const rules: FormRules = {
@@ -566,3 +613,125 @@ onMounted(() => {
   handleQuery();
 });
 </script>
+
+<style scoped lang="scss">
+.system-notice-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.system-notice-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.system-notice-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.system-notice-page :deep(.filter-section .el-input__wrapper),
+.system-notice-page :deep(.filter-section .el-select__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-notice-page :deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.system-notice-page :deep(.table-section__toolbar) {
+  align-items: flex-start;
+}
+
+.system-notice-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.system-notice-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.system-notice-page :deep(.el-dialog) {
+  border-radius: 24px;
+}
+
+.system-notice-page :deep(.el-dialog .el-form-item__label) {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-notice-page :deep(.el-dialog .el-input__wrapper),
+.system-notice-page :deep(.el-dialog .el-select__wrapper),
+.system-notice-page :deep(.el-dialog .el-textarea__inner) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-notice-page__dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.system-notice-page__form-section {
+  padding: 16px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+}
+
+.system-notice-page__form-title {
+  margin-bottom: 14px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-notice-page__form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.system-notice-page__form-grid :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.system-notice-page__form-item--full {
+  grid-column: 1 / -1;
+}
+
+.system-notice-page__action {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.system-notice-page__action--danger {
+  color: var(--destructive);
+}
+
+.dialog-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.notice-content {
+  line-height: 1.75;
+}
+
+@media (max-width: 768px) {
+  .system-notice-page__form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

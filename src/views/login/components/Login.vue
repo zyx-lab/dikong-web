@@ -35,23 +35,23 @@
 
       <div class="flex-x-between w-full">
         <el-checkbox v-model="loginFormData.rememberMe">{{ t("login.rememberMe") }}</el-checkbox>
-        <el-link type="primary" underline="never" @click="toOtherForm('resetPwd')">
+        <Button variant="link" class="auth-panel-form__link p-0" @click="toOtherForm('resetPwd')">
           {{ t("login.forgetPassword") }}
-        </el-link>
+        </Button>
       </div>
 
       <el-form-item>
-        <el-button :loading="loading" type="primary" class="w-full" @click="handleLoginSubmit">
+        <Button :disabled="loading" class="w-full" @click="handleLoginSubmit">
           {{ t("login.login") }}
-        </el-button>
+        </Button>
       </el-form-item>
     </el-form>
 
-    <div flex-center gap-10px>
-      <el-text size="default">{{ t("login.noAccount") }}</el-text>
-      <el-link type="primary" underline="never" @click="toOtherForm('register')">
+    <div class="auth-panel-form__switch">
+      <span class="auth-panel-form__switch-text">{{ t("login.noAccount") }}</span>
+      <Button variant="link" class="auth-panel-form__link p-0" @click="toOtherForm('register')">
         {{ t("login.reg") }}
-      </el-link>
+      </Button>
     </div>
 
     <div class="third-party-login">
@@ -84,6 +84,7 @@ import type { LoginRequest } from "@/types/api";
 import router from "@/router";
 import { useUserStore } from "@/store";
 import { AuthStorage } from "@/utils/auth";
+import { Button } from "@/components/ui/button";
 
 const { t } = useI18n();
 const userStore = useUserStore();
@@ -163,6 +164,22 @@ function toOtherForm(type: "register" | "resetPwd") {
   margin: 0 0 0.5rem;
   font-size: 1.125rem;
   font-weight: 600;
+}
+
+.auth-panel-form__switch {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-panel-form__switch-text {
+  color: var(--el-text-color-regular);
+}
+
+.auth-panel-form__link {
+  height: auto;
+  font-size: 0.875rem;
 }
 
 .third-party-login {

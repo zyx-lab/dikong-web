@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container system-role-page">
     <!-- 搜索区域 -->
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
@@ -13,8 +13,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery">搜索</el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+          <Button size="sm" @click="handleQuery">搜索</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -22,15 +22,10 @@
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button type="success" icon="plus" @click="handleCreateClick()">新增</el-button>
-          <el-button
-            type="danger"
-            :disabled="ids.length === 0"
-            icon="delete"
-            @click="handleBatchDelete()"
-          >
+          <Button @click="handleCreateClick()">新增</Button>
+          <Button variant="destructive" :disabled="ids.length === 0" @click="handleBatchDelete()">
             删除
-          </el-button>
+          </Button>
         </div>
       </div>
 
@@ -51,8 +46,8 @@
 
         <el-table-column label="状态" align="center" width="100">
           <template #default="scope">
-            <el-tag v-if="scope.row.status === 1" type="success">正常</el-tag>
-            <el-tag v-else type="info">禁用</el-tag>
+            <Badge v-if="scope.row.status === 1" variant="secondary">正常</Badge>
+            <Badge v-else variant="outline">禁用</Badge>
           </template>
         </el-table-column>
 
@@ -62,28 +57,22 @@
           <template #default="scope">
             <el-button
               v-hasPerm="'sys:role:assign'"
-              type="primary"
+              class="system-role-page__action"
               size="small"
-              link
-              icon="position"
               @click="handleAssignPermClick(scope.row)"
             >
               分配权限
             </el-button>
             <el-button
-              type="primary"
+              class="system-role-page__action"
               size="small"
-              link
-              icon="edit"
               @click="handleEditClick(scope.row.id)"
             >
               编辑
             </el-button>
             <el-button
-              type="danger"
+              class="system-role-page__action system-role-page__action--danger"
               size="small"
-              link
-              icon="delete"
               @click="handleDelete(scope.row.id)"
             >
               删除
@@ -108,58 +97,82 @@
       width="600px"
       @close="closeDialog"
     >
-      <el-form ref="roleFormRef" :model="formData" :rules="rules" label-width="100px">
-        <el-form-item label="角色名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入角色名称" />
-        </el-form-item>
+      <el-form
+        ref="roleFormRef"
+        :model="formData"
+        :rules="rules"
+        label-width="100px"
+        class="system-role-page__dialog-form"
+      >
+        <section class="system-role-page__form-section">
+          <div class="system-role-page__form-title">角色资料</div>
+          <div class="system-role-page__form-grid">
+            <el-form-item label="角色名称" prop="name">
+              <el-input v-model="formData.name" placeholder="请输入角色名称" />
+            </el-form-item>
 
-        <el-form-item label="角色编码" prop="code">
-          <el-input v-model="formData.code" placeholder="请输入角色编码" />
-        </el-form-item>
+            <el-form-item label="角色编码" prop="code">
+              <el-input v-model="formData.code" placeholder="请输入角色编码" />
+            </el-form-item>
 
-        <el-form-item label="数据权限" prop="dataScope">
-          <el-select v-model="formData.dataScope" placeholder="请选择数据权限" style="width: 100%">
-            <el-option :key="1" label="全部数据" :value="1" />
-            <el-option :key="2" label="部门及子部门数据" :value="2" />
-            <el-option :key="3" label="本部门数据" :value="3" />
-            <el-option :key="4" label="本人数据" :value="4" />
-            <el-option :key="5" label="自定义部门数据" :value="5" />
-          </el-select>
-        </el-form-item>
+            <el-form-item
+              class="system-role-page__form-item--full"
+              label="数据权限"
+              prop="dataScope"
+            >
+              <el-select
+                v-model="formData.dataScope"
+                placeholder="请选择数据权限"
+                style="width: 100%"
+              >
+                <el-option :key="1" label="全部数据" :value="1" />
+                <el-option :key="2" label="部门及子部门数据" :value="2" />
+                <el-option :key="3" label="本部门数据" :value="3" />
+                <el-option :key="4" label="本人数据" :value="4" />
+                <el-option :key="5" label="自定义部门数据" :value="5" />
+              </el-select>
+            </el-form-item>
 
-        <!-- 自定义部门选择 -->
-        <el-form-item v-if="formData.dataScope === 5" label="选择部门" prop="deptIds">
-          <el-tree-select
-            v-model="formData.deptIds"
-            :data="deptOptions"
-            multiple
-            :render-after-expand="false"
-            check-strictly
-            placeholder="请选择部门"
-            style="width: 100%"
-          />
-        </el-form-item>
+            <!-- 自定义部门选择 -->
+            <el-form-item
+              v-if="formData.dataScope === 5"
+              class="system-role-page__form-item--full"
+              label="选择部门"
+              prop="deptIds"
+            >
+              <el-tree-select
+                v-model="formData.deptIds"
+                :data="deptOptions"
+                multiple
+                :render-after-expand="false"
+                check-strictly
+                placeholder="请选择部门"
+                style="width: 100%"
+              />
+            </el-form-item>
 
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="formData.status">
-            <el-radio :value="1">正常</el-radio>
-            <el-radio :value="0">停用</el-radio>
-          </el-radio-group>
-        </el-form-item>
+            <el-form-item label="状态" prop="status">
+              <el-radio-group v-model="formData.status">
+                <el-radio :value="1">正常</el-radio>
+                <el-radio :value="0">停用</el-radio>
+              </el-radio-group>
+            </el-form-item>
 
-        <el-form-item label="排序" prop="sort">
-          <el-input-number
-            v-model="formData.sort"
-            controls-position="right"
-            :min="0"
-            style="width: 100px"
-          />
-        </el-form-item>
+            <el-form-item label="排序" prop="sort">
+              <el-input-number
+                v-model="formData.sort"
+                controls-position="right"
+                :min="0"
+                style="width: 100px"
+              />
+            </el-form-item>
+          </div>
+        </section>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-          <el-button @click="closeDialog">取消</el-button>
+          <Button @click="handleSubmit">确定</Button>
+          <Button variant="outline" @click="closeDialog">取消</Button>
         </div>
       </template>
     </el-dialog>
@@ -178,12 +191,9 @@
         </el-input>
 
         <div class="flex-center ml-5">
-          <el-button type="primary" size="small" plain @click="togglePermTree">
-            <template #icon>
-              <Switch />
-            </template>
+          <Button size="sm" variant="outline" @click="togglePermTree">
             {{ isExpanded ? "收缩" : "展开" }}
-          </el-button>
+          </Button>
           <el-checkbox
             v-model="parentChildLinked"
             class="ml-5"
@@ -219,10 +229,8 @@
       </el-tree>
       <template #footer>
         <div class="dialog-footer">
-          <el-button v-hasPerm="'sys:role:assign'" type="primary" @click="handleAssignPermSubmit">
-            确定
-          </el-button>
-          <el-button @click="assignPermDialogVisible = false">取消</el-button>
+          <Button v-hasPerm="'sys:role:assign'" @click="handleAssignPermSubmit">确定</Button>
+          <Button variant="outline" @click="assignPermDialogVisible = false">取消</Button>
         </div>
       </template>
     </el-drawer>
@@ -230,6 +238,8 @@
 </template>
 
 <script setup lang="ts">
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/modules/app";
 import { DeviceEnum } from "@/enums/settings";
 
@@ -543,3 +553,137 @@ onMounted(() => {
   handleQuery();
 });
 </script>
+
+<style scoped lang="scss">
+.system-role-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.system-role-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.system-role-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.system-role-page :deep(.filter-section .el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-role-page :deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.system-role-page :deep(.table-section__toolbar) {
+  align-items: flex-start;
+}
+
+.system-role-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.system-role-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.system-role-page :deep(.el-dialog),
+.system-role-page :deep(.el-drawer) {
+  border-radius: 24px;
+}
+
+.system-role-page :deep(.el-dialog .el-form-item__label),
+.system-role-page :deep(.el-drawer .el-form-item__label) {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-role-page :deep(.el-dialog .el-input__wrapper),
+.system-role-page :deep(.el-dialog .el-select__wrapper),
+.system-role-page :deep(.el-dialog .el-tree-select__wrapper),
+.system-role-page :deep(.el-drawer .el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-role-page :deep(.el-drawer .el-tree) {
+  padding: 12px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+}
+
+.system-role-page :deep(.el-drawer .el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-role-page :deep(.el-dialog .el-form) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.system-role-page__dialog-form {
+  gap: 16px;
+}
+
+.system-role-page__form-section {
+  padding: 16px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+}
+
+.system-role-page__form-title {
+  margin-bottom: 14px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-role-page__form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.system-role-page__form-grid :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.system-role-page__form-item--full {
+  grid-column: 1 / -1;
+}
+
+.system-role-page__action {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.system-role-page__action--danger {
+  color: var(--destructive);
+}
+
+@media (max-width: 768px) {
+  .system-role-page :deep(.table-section__toolbar--actions) {
+    width: 100%;
+  }
+
+  .system-role-page__form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

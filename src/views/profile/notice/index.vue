@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="app-container">
+  <div class="app-container profile-notice-page">
     <!-- 搜索区域 -->
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
@@ -13,18 +13,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" @click="handleQuery">
-            <template #icon>
-              <Search />
-            </template>
-            搜索
-          </el-button>
-          <el-button @click="handleResetQuery">
-            <template #icon>
-              <Refresh />
-            </template>
-            重置
-          </el-button>
+          <Button size="sm" @click="handleQuery">搜索</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -59,15 +49,20 @@
         <el-table-column align="center" label="发布人" prop="publisherName" width="150" />
         <el-table-column align="center" label="状态" width="100">
           <template #default="scope">
-            <el-tag v-if="scope.row.isRead == 1" type="success">已读</el-tag>
-            <el-tag v-else type="info">未读</el-tag>
+            <Badge v-if="scope.row.isRead == 1" variant="secondary">已读</Badge>
+            <Badge v-else variant="outline">未读</Badge>
           </template>
         </el-table-column>
         <el-table-column align="center" fixed="right" label="操作" width="80">
           <template #default="scope">
-            <el-button type="primary" size="small" link @click="handleReadNotice(scope.row.id)">
+            <Button
+              variant="ghost"
+              size="sm"
+              class="notice-table-action"
+              @click="handleReadNotice(scope.row.id)"
+            >
               查看
-            </el-button>
+            </Button>
           </template>
         </el-table-column>
       </el-table>
@@ -89,14 +84,14 @@
     >
       <div v-if="noticeDetail" class="notice-detail__wrapper">
         <div class="notice-detail__meta">
-          <span>
+          <Badge variant="outline">
             <el-icon><User /></el-icon>
             {{ noticeDetail.publisherName }}
-          </span>
-          <span class="ml-2">
+          </Badge>
+          <Badge variant="secondary" class="ml-2">
             <el-icon><Timer /></el-icon>
             {{ noticeDetail.publishTime }}
-          </span>
+          </Badge>
         </div>
 
         <div class="notice-detail__content">
@@ -115,6 +110,8 @@ defineOptions({
 
 import { onMounted, reactive, ref } from "vue";
 import NoticeAPI from "@/api/system/notice";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { NoticeDetail, NoticeItem, NoticeQueryParams } from "@/types/api";
 
 const queryFormRef = ref();
@@ -159,8 +156,52 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+:deep(.filter-section) {
+  border-radius: 20px;
+}
+
+:deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+:deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+:deep(.filter-section .el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+:deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+:deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
 :deep(.el-dialog__header) {
   text-align: center;
+}
+
+:deep(.el-dialog) {
+  border-radius: 24px;
+}
+
+:deep(.el-dialog .el-dialog__body) {
+  padding-top: 10px;
+}
+
+.notice-table-action {
+  padding-right: 0;
+  padding-left: 0;
 }
 
 .notice-detail {

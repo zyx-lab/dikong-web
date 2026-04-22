@@ -1,18 +1,11 @@
 <template>
   <div class="app-container flex flex-col gap-6 py-6">
     <FlightPageHeader
-      eyebrow="Route Planning Hub"
+      eyebrow="航线管理"
       title="航线管理"
-      description="统一管理点状、面状与环状航线资产，让值守人员在进入列表前先看清航线规模、规划类型和待处理资源。"
+      description="查看航线类型、数量和使用情况。"
       action-label="新增航线"
       @action="openCreateDialog"
-    />
-
-    <RouteSummaryCards
-      :total-count="totalCount"
-      :point-route-count="pointRouteCount"
-      :area-route-count="areaRouteCount"
-      :loop-route-count="loopRouteCount"
     />
 
     <RouteFilterBar
@@ -24,9 +17,7 @@
 
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
-        <div class="table-section__toolbar--actions">
-          <el-button type="primary" icon="plus" @click="openCreateDialog">新增航线</el-button>
-        </div>
+        <div class="table-section__toolbar--actions"></div>
         <div class="table-section__toolbar--right">
           <div class="table-toolbar-summary">
             <el-tag type="info">共 {{ totalCount }} 条航线</el-tag>
@@ -82,7 +73,6 @@ import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
 import RouteCardList from "@/views/route/components/RouteCardList.vue";
 import RouteEditorSheet from "@/views/route/components/RouteEditorSheet.vue";
 import RouteFilterBar from "@/views/route/components/RouteFilterBar.vue";
-import RouteSummaryCards from "@/views/route/components/RouteSummaryCards.vue";
 import { saveRouteDraft } from "./storage";
 import { hydrateRouteRecord } from "./route-xml";
 import type { CreateRouteForm, RouteFilterForm, RouteRecordModel } from "./types";

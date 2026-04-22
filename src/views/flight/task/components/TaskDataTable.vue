@@ -1,72 +1,76 @@
 <template>
   <div data-testid="task-data-table" class="space-y-4">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead class="w-10">
-            <Checkbox :model-value="allSelected" @update:model-value="toggleAll" />
-          </TableHead>
-          <TableHead class="w-16">ID</TableHead>
-          <TableHead>任务名称</TableHead>
-          <TableHead>任务航线</TableHead>
-          <TableHead>执行无人机</TableHead>
-          <TableHead>计划执行时间</TableHead>
-          <TableHead>任务状态</TableHead>
-          <TableHead>创建时间</TableHead>
-          <TableHead>更新时间</TableHead>
-          <TableHead>开始时间</TableHead>
-          <TableHead>结束时间</TableHead>
-          <TableHead>备注</TableHead>
-          <TableHead class="min-w-72 text-right">操作</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <template v-if="rows.length > 0">
-          <TableRow v-for="row in rows" :key="row.id">
-            <TableCell>
-              <Checkbox
-                :model-value="selectedIds.includes(row.id)"
-                @update:model-value="toggleOne(row.id, $event)"
-              />
-            </TableCell>
-            <TableCell>{{ row.id }}</TableCell>
-            <TableCell class="max-w-44 truncate">{{ row.name }}</TableCell>
-            <TableCell class="max-w-44 truncate">{{ row.routeName || "-" }}</TableCell>
-            <TableCell class="max-w-40 truncate">{{ row.droneName || "-" }}</TableCell>
-            <TableCell>{{ formatTime(row.scheduledAt) }}</TableCell>
-            <TableCell>
-              <Badge :variant="getStatusVariant(row.status)">{{ formatStatus(row.status) }}</Badge>
-            </TableCell>
-            <TableCell>{{ formatTime(row.createdAt) }}</TableCell>
-            <TableCell>{{ formatTime(row.updatedAt) }}</TableCell>
-            <TableCell>{{ formatTime(row.startedAt) }}</TableCell>
-            <TableCell>{{ formatTime(row.finishedAt) }}</TableCell>
-            <TableCell class="max-w-40 truncate">{{ row.remark || "-" }}</TableCell>
-            <TableCell>
-              <div class="flex flex-wrap justify-end gap-2">
-                <Button variant="ghost" size="sm" @click="emit('detail', row)">详情</Button>
-                <Button variant="ghost" size="sm" @click="emit('edit', row)">编辑</Button>
-                <Button variant="ghost" size="sm" @click="emit('delete', row.id)">删除</Button>
-                <Button variant="ghost" size="sm" @click="emit('advance', row)">推进任务</Button>
-                <Button variant="ghost" size="sm" @click="emit('live', row)">直播画面</Button>
-              </div>
-            </TableCell>
+    <div class="overflow-x-auto rounded-2xl border border-border/70">
+      <Table class="min-w-[1500px]">
+        <TableHeader>
+          <TableRow>
+            <TableHead class="w-10">
+              <Checkbox :model-value="allSelected" @update:model-value="toggleAll" />
+            </TableHead>
+            <TableHead class="w-16">ID</TableHead>
+            <TableHead>任务名称</TableHead>
+            <TableHead>任务航线</TableHead>
+            <TableHead>执行无人机</TableHead>
+            <TableHead>计划执行时间</TableHead>
+            <TableHead>任务状态</TableHead>
+            <TableHead>创建时间</TableHead>
+            <TableHead>更新时间</TableHead>
+            <TableHead>开始时间</TableHead>
+            <TableHead>结束时间</TableHead>
+            <TableHead>备注</TableHead>
+            <TableHead class="min-w-72 text-right">操作</TableHead>
           </TableRow>
-        </template>
-        <TableEmpty v-else :colspan="13">
-          <FlightEmptyState
-            title="暂无任务"
-            :description="
-              hasActiveFilters
-                ? '当前筛选条件下暂无任务，请调整筛选条件后重试。'
-                : '任务数据还没有准备好，可以先创建一个新任务。'
-            "
-            :action-label="hasActiveFilters ? '清空筛选' : undefined"
-            @action="emit('clearFilters')"
-          />
-        </TableEmpty>
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          <template v-if="rows.length > 0">
+            <TableRow v-for="row in rows" :key="row.id">
+              <TableCell>
+                <Checkbox
+                  :model-value="selectedIds.includes(row.id)"
+                  @update:model-value="toggleOne(row.id, $event)"
+                />
+              </TableCell>
+              <TableCell>{{ row.id }}</TableCell>
+              <TableCell class="max-w-44 truncate">{{ row.name }}</TableCell>
+              <TableCell class="max-w-44 truncate">{{ row.routeName || "-" }}</TableCell>
+              <TableCell class="max-w-40 truncate">{{ row.droneName || "-" }}</TableCell>
+              <TableCell>{{ formatTime(row.scheduledAt) }}</TableCell>
+              <TableCell>
+                <Badge :variant="getStatusVariant(row.status)">
+                  {{ formatStatus(row.status) }}
+                </Badge>
+              </TableCell>
+              <TableCell>{{ formatTime(row.createdAt) }}</TableCell>
+              <TableCell>{{ formatTime(row.updatedAt) }}</TableCell>
+              <TableCell>{{ formatTime(row.startedAt) }}</TableCell>
+              <TableCell>{{ formatTime(row.finishedAt) }}</TableCell>
+              <TableCell class="max-w-40 truncate">{{ row.remark || "-" }}</TableCell>
+              <TableCell>
+                <div class="flex flex-wrap justify-end gap-2">
+                  <Button variant="ghost" size="sm" @click="emit('detail', row)">详情</Button>
+                  <Button variant="ghost" size="sm" @click="emit('edit', row)">编辑</Button>
+                  <Button variant="ghost" size="sm" @click="emit('delete', row.id)">删除</Button>
+                  <Button variant="ghost" size="sm" @click="emit('advance', row)">推进任务</Button>
+                  <Button variant="ghost" size="sm" @click="emit('live', row)">直播画面</Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          </template>
+          <TableEmpty v-else :colspan="13">
+            <FlightEmptyState
+              title="暂无任务"
+              :description="
+                hasActiveFilters
+                  ? '当前筛选条件下暂无任务，请调整筛选条件后重试。'
+                  : '任务数据还没有准备好，可以先创建一个新任务。'
+              "
+              :action-label="hasActiveFilters ? '清空筛选' : undefined"
+              @action="emit('clearFilters')"
+            />
+          </TableEmpty>
+        </TableBody>
+      </Table>
+    </div>
   </div>
 </template>
 

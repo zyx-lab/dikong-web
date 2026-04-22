@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container system-tenant-page">
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
         <el-form-item prop="keywords" label="关键字">
@@ -19,8 +19,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery">搜索</el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+          <Button size="sm" @click="handleQuery">搜索</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -28,23 +28,15 @@
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button
-            v-hasPerm="['sys:tenant:create']"
-            type="success"
-            icon="plus"
-            @click="openDialog()"
-          >
-            新增
-          </el-button>
-          <el-button
+          <Button v-hasPerm="['sys:tenant:create']" @click="openDialog()">新增</Button>
+          <Button
             v-hasPerm="['sys:tenant:delete']"
-            type="danger"
-            icon="delete"
+            variant="destructive"
             :disabled="ids.length === 0"
             @click="handleDelete()"
           >
             删除
-          </el-button>
+          </Button>
         </div>
       </div>
 
@@ -74,9 +66,9 @@
         <el-table-column label="电话" prop="contactPhone" width="120" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'info'">
+            <Badge :variant="scope.row.status === 1 ? 'secondary' : 'outline'">
               {{ scope.row.status === 1 ? "正常" : "禁用" }}
-            </el-tag>
+            </Badge>
           </template>
         </el-table-column>
         <el-table-column label="过期时间" prop="expireTime" width="160" />
@@ -88,57 +80,49 @@
               content="更换租户套餐（将影响可用功能）"
               placement="top"
             >
-              <el-button
+              <Button
                 v-hasPerm="['sys:tenant:plan-assign']"
-                type="primary"
-                size="small"
-                link
-                icon="menu"
+                class="system-tenant-page__action"
+                size="sm"
                 title="更换租户套餐（将影响可用功能）"
                 @click="openTenantPlanDialog(scope.row)"
               >
                 更换套餐
-              </el-button>
+              </Button>
             </el-tooltip>
             <el-tooltip
               v-if="!isPlatformTenantId(scope.row.id)"
               content="在当前套餐范围内配置租户可用功能"
               placement="top"
             >
-              <el-button
+              <Button
                 v-hasPerm="['sys:tenant:plan-assign']"
-                type="primary"
-                size="small"
-                link
-                icon="setting"
+                class="system-tenant-page__action"
+                size="sm"
                 :disabled="!scope.row.planId"
                 title="在当前套餐范围内配置租户可用功能"
                 @click="openTenantCustomizeDialog(scope.row)"
               >
                 套餐功能配置
-              </el-button>
+              </Button>
             </el-tooltip>
-            <el-button
+            <Button
               v-hasPerm="['sys:tenant:update']"
-              type="primary"
-              size="small"
-              link
-              icon="edit"
+              class="system-tenant-page__action"
+              size="sm"
               @click="openDialog(scope.row.id)"
             >
               编辑
-            </el-button>
-            <el-button
+            </Button>
+            <Button
               v-if="!isPlatformTenantId(scope.row.id)"
               v-hasPerm="['sys:tenant:delete']"
-              type="danger"
-              size="small"
-              link
-              icon="delete"
+              class="system-tenant-page__action system-tenant-page__action--danger"
+              size="sm"
               @click="handleDelete(scope.row.id)"
             >
               删除
-            </el-button>
+            </Button>
           </template>
         </el-table-column>
       </el-table>
@@ -158,88 +142,107 @@
       width="600px"
       @close="closeDialog"
     >
-      <el-form ref="dataFormRef" :model="formData" :rules="rules" label-width="100px">
-        <el-form-item label="租户名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入租户名称" />
-        </el-form-item>
+      <el-form
+        ref="dataFormRef"
+        :model="formData"
+        :rules="rules"
+        label-width="100px"
+        class="system-tenant-page__dialog-form"
+      >
+        <section class="system-tenant-page__form-section">
+          <div class="system-tenant-page__form-title">租户基础资料</div>
+          <div class="system-tenant-page__form-grid">
+            <el-form-item label="租户名称" prop="name">
+              <el-input v-model="formData.name" placeholder="请输入租户名称" />
+            </el-form-item>
 
-        <el-form-item label="租户编码" prop="code">
-          <el-input
-            v-model="formData.code"
-            placeholder="请输入租户编码"
-            :disabled="formData.id != null && String(formData.id) !== ''"
-          />
-        </el-form-item>
+            <el-form-item label="租户编码" prop="code">
+              <el-input
+                v-model="formData.code"
+                placeholder="请输入租户编码"
+                :disabled="formData.id != null && String(formData.id) !== ''"
+              />
+            </el-form-item>
 
-        <el-form-item label="域名" prop="domain">
-          <el-input v-model="formData.domain" placeholder="demo.youlai.tech（可选）" />
-        </el-form-item>
+            <el-form-item class="system-tenant-page__form-item--full" label="域名" prop="domain">
+              <el-input v-model="formData.domain" placeholder="demo.youlai.tech（可选）" />
+            </el-form-item>
 
-        <el-form-item
-          v-if="!isPlatformTenant && (formData.id == null || String(formData.id) === '')"
-          label="租户套餐"
-          prop="planId"
-        >
-          <el-select v-model="formData.planId" placeholder="请选择租户套餐" style="width: 100%">
-            <el-option
-              v-for="item in planOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
-        </el-form-item>
+            <el-form-item
+              v-if="!isPlatformTenant && (formData.id == null || String(formData.id) === '')"
+              class="system-tenant-page__form-item--full"
+              label="租户套餐"
+              prop="planId"
+            >
+              <el-select v-model="formData.planId" placeholder="请选择租户套餐" style="width: 100%">
+                <el-option
+                  v-for="item in planOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
 
-        <el-form-item label="联系人" prop="contactName">
-          <el-input v-model="formData.contactName" placeholder="可选" />
-        </el-form-item>
+            <el-form-item label="联系人" prop="contactName">
+              <el-input v-model="formData.contactName" placeholder="可选" />
+            </el-form-item>
 
-        <el-form-item label="联系电话" prop="contactPhone">
-          <el-input v-model="formData.contactPhone" placeholder="可选" />
-        </el-form-item>
+            <el-form-item label="联系电话" prop="contactPhone">
+              <el-input v-model="formData.contactPhone" placeholder="可选" />
+            </el-form-item>
 
-        <el-form-item label="联系邮箱" prop="contactEmail">
-          <el-input v-model="formData.contactEmail" placeholder="可选" />
-        </el-form-item>
+            <el-form-item label="联系邮箱" prop="contactEmail">
+              <el-input v-model="formData.contactEmail" placeholder="可选" />
+            </el-form-item>
 
-        <el-form-item label="过期时间" prop="expireTime">
-          <el-date-picker
-            v-model="formData.expireTime"
-            type="datetime"
-            placeholder="不填表示永不过期"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            style="width: 100%"
-          />
-        </el-form-item>
+            <el-form-item label="过期时间" prop="expireTime">
+              <el-date-picker
+                v-model="formData.expireTime"
+                type="datetime"
+                placeholder="不填表示永不过期"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </div>
+        </section>
 
-        <el-form-item
-          v-if="formData.id == null || String(formData.id) === ''"
-          label="管理员账号"
-          prop="adminUsername"
-        >
-          <el-input v-model="formData.adminUsername" placeholder="为空则系统生成" />
-        </el-form-item>
+        <section class="system-tenant-page__form-section">
+          <div class="system-tenant-page__form-title">账号与状态</div>
+          <div class="system-tenant-page__form-grid">
+            <el-form-item
+              v-if="formData.id == null || String(formData.id) === ''"
+              class="system-tenant-page__form-item--full"
+              label="管理员账号"
+              prop="adminUsername"
+            >
+              <el-input v-model="formData.adminUsername" placeholder="为空则系统生成" />
+            </el-form-item>
 
-        <el-form-item
-          v-if="formData.id != null && String(formData.id) !== ''"
-          label="状态"
-          prop="status"
-        >
-          <el-radio-group v-model="formData.status">
-            <el-radio :value="1">正常</el-radio>
-            <el-radio :value="0">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
+            <el-form-item
+              v-if="formData.id != null && String(formData.id) !== ''"
+              class="system-tenant-page__form-item--full"
+              label="状态"
+              prop="status"
+            >
+              <el-radio-group v-model="formData.status">
+                <el-radio :value="1">正常</el-radio>
+                <el-radio :value="0">禁用</el-radio>
+              </el-radio-group>
+            </el-form-item>
 
-        <el-form-item label="备注" prop="remark">
-          <el-input v-model="formData.remark" type="textarea" :rows="3" placeholder="可选" />
-        </el-form-item>
+            <el-form-item class="system-tenant-page__form-item--full" label="备注" prop="remark">
+              <el-input v-model="formData.remark" type="textarea" :rows="3" placeholder="可选" />
+            </el-form-item>
+          </div>
+        </section>
       </el-form>
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-          <el-button @click="closeDialog">取消</el-button>
+          <Button @click="handleSubmit">确定</Button>
+          <Button variant="outline" @click="closeDialog">取消</Button>
         </div>
       </template>
     </el-dialog>
@@ -286,15 +289,14 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button
+          <Button
             v-hasPerm="['sys:tenant:plan-assign']"
-            type="primary"
             :disabled="!tenantPlanId || isPlanMenuEmpty"
             @click="handleTenantPlanSelectSubmit"
           >
             确认更换
-          </el-button>
-          <el-button @click="tenantPlanSelectVisible = false">取消</el-button>
+          </Button>
+          <Button variant="outline" @click="tenantPlanSelectVisible = false">取消</Button>
         </div>
       </template>
     </el-dialog>
@@ -334,15 +336,14 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button
+          <Button
             v-hasPerm="['sys:tenant:plan-assign']"
-            type="primary"
             :disabled="isPlanMenuEmpty"
             @click="handleTenantPlanSubmit"
           >
             保存配置
-          </el-button>
-          <el-button @click="tenantPlanDialogVisible = false">取消</el-button>
+          </Button>
+          <Button variant="outline" @click="tenantPlanDialogVisible = false">取消</Button>
         </div>
       </template>
     </el-drawer>
@@ -357,6 +358,8 @@ defineOptions({
 
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import { useDebounceFn } from "@vueuse/core";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { hasPerm } from "@/utils/auth";
 import TenantAPI from "@/api/system/tenant";
 import TenantPlanAPI from "@/api/system/tenant-plan";
@@ -1012,4 +1015,133 @@ onMounted(() => {
 });
 </script>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+.system-tenant-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.system-tenant-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.system-tenant-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.system-tenant-page :deep(.filter-section .el-input__wrapper),
+.system-tenant-page :deep(.filter-section .el-select__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-tenant-page :deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.system-tenant-page :deep(.table-section__toolbar) {
+  align-items: flex-start;
+}
+
+.system-tenant-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.system-tenant-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.system-tenant-page :deep(.el-dialog),
+.system-tenant-page :deep(.el-drawer) {
+  border-radius: 24px;
+}
+
+.system-tenant-page :deep(.el-dialog .el-form-item__label),
+.system-tenant-page :deep(.el-drawer .el-form-item__label) {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-tenant-page :deep(.el-dialog .el-input__wrapper),
+.system-tenant-page :deep(.el-dialog .el-select__wrapper),
+.system-tenant-page :deep(.el-dialog .el-date-editor.el-input__wrapper),
+.system-tenant-page :deep(.el-drawer .el-input__wrapper),
+.system-tenant-page :deep(.el-drawer .el-select__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-tenant-page :deep(.el-dialog .el-form-item__label),
+.system-tenant-page :deep(.el-drawer .el-form-item__label) {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-tenant-page :deep(.el-drawer .el-tree) {
+  padding: 12px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+}
+
+.system-tenant-page__dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.system-tenant-page__form-section {
+  padding: 16px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+}
+
+.system-tenant-page__form-title {
+  margin-bottom: 14px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-tenant-page__form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.system-tenant-page__form-grid :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.system-tenant-page__form-item--full {
+  grid-column: 1 / -1;
+}
+
+.system-tenant-page__action {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.system-tenant-page__action--danger {
+  color: var(--destructive);
+}
+
+@media (max-width: 768px) {
+  .system-tenant-page__form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

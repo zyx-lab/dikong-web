@@ -3,7 +3,7 @@
     <SheetContent side="right" class="w-full sm:max-w-2xl">
       <SheetHeader class="space-y-2">
         <SheetTitle>{{ title }}</SheetTitle>
-        <SheetDescription>统一维护任务与航线、人员、执行时间的基础关联信息。</SheetDescription>
+        <SheetDescription>填写任务、航线、人员和执行时间。</SheetDescription>
       </SheetHeader>
 
       <div class="grid gap-5 px-4 py-6">

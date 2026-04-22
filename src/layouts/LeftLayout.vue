@@ -47,6 +47,7 @@ const { showTagsView, showLogo, isSidebarOpen, routes } = useLayout();
     z-index: 999;
     width: $sidebar-width;
     background-color: $menu-background;
+    border-right: 1px solid $sidebar-border-color;
     transition: width 0.28s;
 
     &--collapsed {

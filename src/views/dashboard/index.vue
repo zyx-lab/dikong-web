@@ -4,16 +4,14 @@
       <div class="command-page__hero-inner">
         <div class="command-page__hero-main">
           <div class="command-page__heading">
-            <p class="command-page__eyebrow">Low-Altitude Command Center</p>
+            <p class="command-page__eyebrow">首页总览</p>
             <h2 class="command-page__title">低空巡检值守总览</h2>
-            <p class="command-page__description">
-              以值守中枢的排布方式，把今日飞行、告警、机队与保障压力收拢在同一张态势面中，让调度、复盘与资源管理从首页就建立统一节奏。
-            </p>
+            <p class="command-page__description">查看今日飞行任务、预警、设备和工单情况。</p>
           </div>
           <div class="command-page__signals">
-            <span class="command-page__signal">港区与园区联动</span>
-            <span class="command-page__signal">任务 告警 资源三线同屏</span>
-            <span class="command-page__signal">值守态势实时可读</span>
+            <span class="command-page__signal">飞行任务</span>
+            <span class="command-page__signal">预警处置</span>
+            <span class="command-page__signal">资源保障</span>
           </div>
         </div>
         <div class="command-page__metrics">
@@ -23,7 +21,7 @@
               {{ stats.todayFlightTasks }}
               <span class="command-page__metric-sub">+12%</span>
             </div>
-            <div class="command-page__metric-note">较昨日任务窗口持续放量</div>
+            <div class="command-page__metric-note">较昨日增加 12%</div>
           </div>
           <div class="command-page__metric">
             <div class="command-page__metric-label">无人机在线</div>
@@ -43,7 +41,7 @@
           <div class="command-page__metric command-page__metric--danger">
             <div class="command-page__metric-label">工单待处理</div>
             <div class="command-page__metric-value">{{ stats.pendingWorkorders }}</div>
-            <div class="command-page__metric-note">需要运维与值守联动处置</div>
+            <div class="command-page__metric-note">待处理工单</div>
           </div>
         </div>
       </div>
@@ -52,18 +50,23 @@
     <section class="dashboard-overview-grid">
       <InfoPanel title="值守总览">
         <template #header-extra>
-          <el-button type="primary" link size="small" @click="goTo('/flight/task')">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="dashboard-panel-action"
+            @click="goTo('/flight/task')"
+          >
             进入任务管理
             <el-icon><ArrowRight /></el-icon>
-          </el-button>
+          </Button>
         </template>
 
         <div class="dashboard-overview">
           <div class="dashboard-overview__lead">
-            <div class="dashboard-overview__badge">实时态势</div>
-            <h3 class="dashboard-overview__title">今日低空巡检窗口已全面启动</h3>
+            <div class="dashboard-overview__badge">今日概况</div>
+            <h3 class="dashboard-overview__title">今日低空巡检运行正常</h3>
             <p class="dashboard-overview__description">
-              当前值守重点集中在港区巡检、围栏安全与园区红外监测。首页优先呈现任务推进、机队可用性与告警处置压力，帮助调度视角和管理视角快速对齐。
+              当前重点区域包括港区、围栏和园区。可在首页快速查看任务、设备和预警情况。
             </p>
           </div>
 
@@ -101,9 +104,9 @@
         <div class="dashboard-focus-list">
           <article v-for="item in focusItems" :key="item.id" class="dashboard-focus-list__item">
             <div class="dashboard-focus-list__meta">
-              <el-tag :type="alertLevelType(item.level)" size="small" effect="dark">
+              <Badge :variant="alertBadgeVariant(item.level)">
                 {{ alertLevelText(item.level) }}
-              </el-tag>
+              </Badge>
               <span class="dashboard-focus-list__time">{{ item.triggerTime }}</span>
             </div>
             <h3 class="dashboard-focus-list__title">{{ item.description }}</h3>
@@ -116,17 +119,26 @@
     <section class="dashboard-chart-grid">
       <InfoPanel title="本周飞行趋势">
         <template #header-extra>
-          <el-radio-group v-model="trendRange" size="small">
-            <el-radio-button label="近7天" :value="7" />
-            <el-radio-button label="近30天" :value="30" />
-          </el-radio-group>
+          <div class="dashboard-range-switch">
+            <Button
+              v-for="option in trendRangeOptions"
+              :key="option.value"
+              size="sm"
+              :variant="trendRange === option.value ? 'default' : 'outline'"
+              @click="trendRange = option.value"
+            >
+              {{ option.label }}
+            </Button>
+          </div>
         </template>
 
         <div class="dashboard-chart-placeholder">
-          <el-icon :size="48" color="#6ec9ff"><TrendCharts /></el-icon>
+          <div class="dashboard-chart-placeholder__icon">
+            <el-icon :size="42"><TrendCharts /></el-icon>
+          </div>
           <div class="dashboard-chart-placeholder__title">飞行趋势图待接入</div>
           <p class="dashboard-chart-placeholder__description">
-            当前先预留趋势区位，后续接入 ECharts 后可展示飞行次数、飞行时长和告警密度的时间变化。
+            图表接入后显示飞行次数、时长和预警变化。
           </p>
           <div class="dashboard-chart-placeholder__meta">
             <span>执行中 {{ executingFlightCount }} 架次</span>
@@ -138,15 +150,17 @@
 
       <InfoPanel title="告警分布">
         <template #header-extra>
-          <el-tag size="small">本月</el-tag>
+          <Badge variant="outline">本月</Badge>
         </template>
 
         <div class="dashboard-chart-placeholder dashboard-chart-placeholder--compact">
-          <el-icon :size="48" color="#67c23a"><PieChart /></el-icon>
+          <div
+            class="dashboard-chart-placeholder__icon dashboard-chart-placeholder__icon--secondary"
+          >
+            <el-icon :size="42"><PieChart /></el-icon>
+          </div>
           <div class="dashboard-chart-placeholder__title">告警分布图待接入</div>
-          <p class="dashboard-chart-placeholder__description">
-            后续可对接告警等级、区域来源与处置进度分布，形成更直观的风险聚集态势。
-          </p>
+          <p class="dashboard-chart-placeholder__description">图表接入后显示区域和等级分布。</p>
           <div class="dashboard-chart-placeholder__meta">
             <span>今日告警 {{ stats.todayAlerts }}</span>
             <span>紧急 {{ stats.alertUrgent }}</span>
@@ -159,43 +173,62 @@
     <section class="dashboard-feed-grid">
       <InfoPanel title="最近飞行记录">
         <template #header-extra>
-          <el-button type="primary" link size="small" @click="goTo('/flight/record')">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="dashboard-panel-action"
+            @click="goTo('/flight/record')"
+          >
             查看更多
-          </el-button>
+          </Button>
         </template>
 
-        <el-table :data="recentFlights" stripe style="width: 100%" size="small">
-          <el-table-column prop="taskName" label="任务名称" min-width="140" show-overflow-tooltip />
-          <el-table-column prop="droneName" label="无人机" width="120" />
-          <el-table-column prop="takeoffTime" label="起飞时间" width="160" />
-          <el-table-column prop="status" label="状态" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag :type="flightStatusType(row.status)" size="small" effect="light">
-                {{ flightStatusText(row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-        </el-table>
+        <div class="dashboard-record-table">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>任务名称</TableHead>
+                <TableHead class="w-32">无人机</TableHead>
+                <TableHead class="w-44">起飞时间</TableHead>
+                <TableHead class="w-28 text-right">状态</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="row in recentFlights" :key="`${row.taskName}-${row.takeoffTime}`">
+                <TableCell class="max-w-48">
+                  <div class="dashboard-record-table__title">{{ row.taskName }}</div>
+                </TableCell>
+                <TableCell>{{ row.droneName }}</TableCell>
+                <TableCell>{{ row.takeoffTime }}</TableCell>
+                <TableCell class="text-right">
+                  <Badge :variant="flightStatusBadgeVariant(row.status)">
+                    {{ flightStatusText(row.status) }}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
       </InfoPanel>
 
       <InfoPanel title="最新告警">
         <template #header-extra>
-          <el-button type="primary" link size="small" @click="goTo('/alert/center')">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="dashboard-panel-action"
+            @click="goTo('/alert/center')"
+          >
             查看更多
-          </el-button>
+          </Button>
         </template>
 
         <div class="alert-list">
           <div v-for="item in recentAlerts" :key="item.id" class="alert-list__item">
             <div class="alert-list__left">
-              <el-tag
-                :type="alertLevelType(item.level)"
-                size="small"
-                effect="dark"
-                class="alert-list__badge"
-              >
+              <Badge :variant="alertBadgeVariant(item.level)" class="alert-list__badge">
                 {{ alertLevelText(item.level) }}
-              </el-tag>
+              </Badge>
               <div class="alert-list__info">
                 <span class="alert-list__title">{{ item.description }}</span>
                 <span class="alert-list__source">来源：{{ item.source }}</span>
@@ -215,6 +248,16 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { ArrowRight, PieChart, TrendCharts } from "@element-plus/icons-vue";
 import InfoPanel from "@/components/InfoPanel.vue";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 defineOptions({
   name: "Dashboard",
@@ -223,6 +266,10 @@ defineOptions({
 
 const router = useRouter();
 const trendRange = ref(7);
+const trendRangeOptions = [
+  { label: "近7天", value: 7 },
+  { label: "近30天", value: 30 },
+] as const;
 
 const stats = ref({
   todayFlightTasks: 24,
@@ -309,22 +356,22 @@ const recentAlerts = ref([
 const quickModules = [
   {
     title: "任务管理",
-    description: "编排今日巡检窗口与执行资源",
+    description: "查看任务计划和执行情况",
     path: "/flight/task",
   },
   {
     title: "飞行记录",
-    description: "核实告警与图像视频证据",
+    description: "查看飞行记录和现场资料",
     path: "/flight/record",
   },
   {
     title: "无人机管理",
-    description: "检查机队就绪率与维护风险",
+    description: "查看无人机状态和维护情况",
     path: "/resource/drone",
   },
   {
     title: "飞手管理",
-    description: "协调值守飞手与证件完备情况",
+    description: "查看飞手排班和证件情况",
     path: "/resource/pilot",
   },
 ] as const;
@@ -360,25 +407,25 @@ const overviewBlocks = computed(() => [
   {
     label: "高优先级告警",
     value: `${highPriorityAlertCount.value}`,
-    note: "紧急与重要告警需优先闭环",
+    note: "需要优先处理",
     tone: "danger",
   },
   {
     label: "工单待处理",
     value: `${stats.value.pendingWorkorders}`,
-    note: "建议与维护和任务处置同步推进",
+    note: "待安排处理",
     tone: "warning",
   },
   {
     label: "已完成架次",
     value: `${completedFlightCount.value}`,
-    note: "最近飞行任务已逐步形成闭环",
+    note: "已完成飞行任务",
     tone: "normal",
   },
   {
     label: "一般告警",
     value: `${stats.value.alertNormal}`,
-    note: "可进入批量复核与复盘队列",
+    note: "可按批次复核",
     tone: "normal",
   },
 ]);
@@ -388,22 +435,22 @@ const focusItems = computed(() => recentAlerts.value.slice(0, 4));
 function goTo(path: string): void {
   const resolved = router.resolve(path);
   if (resolved.matched.length === 0) {
-    ElMessage.info("首批联调阶段仅开放首页，其他业务页将在下一步逐个接入。");
+    ElMessage.info("页面暂未开放");
     return;
   }
 
   router.push(path);
 }
 
-function flightStatusType(status: number) {
-  const map: Record<number, string> = {
-    0: "info",
-    1: "primary",
-    2: "success",
-    3: "danger",
-    4: "warning",
+function flightStatusBadgeVariant(status: number) {
+  const map: Record<number, "outline" | "secondary" | "destructive"> = {
+    0: "outline",
+    1: "secondary",
+    2: "outline",
+    3: "destructive",
+    4: "secondary",
   };
-  return (map[status] ?? "info") as "info" | "primary" | "success" | "danger" | "warning";
+  return map[status] ?? "outline";
 }
 
 function flightStatusText(status: number) {
@@ -417,9 +464,13 @@ function flightStatusText(status: number) {
   return map[status] ?? "未知";
 }
 
-function alertLevelType(level: number) {
-  const map: Record<number, string> = { 1: "danger", 2: "warning", 3: "info" };
-  return (map[level] ?? "info") as "danger" | "warning" | "info";
+function alertBadgeVariant(level: number) {
+  const map: Record<number, "destructive" | "secondary" | "outline"> = {
+    1: "destructive",
+    2: "secondary",
+    3: "outline",
+  };
+  return map[level] ?? "outline";
 }
 
 function alertLevelText(level: number) {
@@ -458,15 +509,19 @@ function alertLevelText(level: number) {
 
 .command-dashboard :deep(.info-panel) {
   overflow: hidden;
-  border: 1px solid rgba(29, 78, 128, 0.14);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
   border-radius: 18px;
-  box-shadow: 0 12px 30px rgba(15, 32, 56, 0.08);
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
 }
 
 .command-dashboard :deep(.info-panel__card-header) {
   padding: 18px 20px 14px;
-  background: linear-gradient(180deg, rgba(11, 79, 109, 0.06), rgba(11, 79, 109, 0));
-  border-bottom: 1px solid rgba(29, 78, 128, 0.12);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--muted) 42%, transparent),
+    transparent
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
 }
 
 .command-dashboard :deep(.info-panel__card-body) {
@@ -480,24 +535,46 @@ function alertLevelText(level: number) {
   letter-spacing: 0.03em;
 }
 
-.command-dashboard :deep(.info-panel__extra .el-button),
-.command-dashboard :deep(.info-panel__extra .el-tag),
-.command-dashboard :deep(.info-panel__extra .el-radio-button__inner) {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
 .dashboard-overview {
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
+.dashboard-panel-action {
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.dashboard-range-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dashboard-record-table {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+}
+
+.dashboard-record-table__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .dashboard-overview__lead {
   padding: 18px;
-  background: linear-gradient(135deg, rgba(13, 31, 59, 0.05), rgba(18, 55, 99, 0.12));
-  border: 1px solid rgba(64, 158, 255, 0.12);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--muted) 60%, transparent),
+    transparent
+  );
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   border-radius: 18px;
 }
 
@@ -509,10 +586,10 @@ function alertLevelText(level: number) {
   margin-bottom: 12px;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #1d6fe8;
+  color: var(--foreground);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  background: rgba(64, 158, 255, 0.1);
+  background: color-mix(in srgb, var(--secondary) 92%, transparent);
   border-radius: 999px;
 }
 
@@ -542,21 +619,25 @@ function alertLevelText(level: number) {
 
 .dashboard-overview__block {
   padding: 16px;
-  background: linear-gradient(180deg, rgba(11, 79, 109, 0.04), rgba(11, 79, 109, 0));
-  border: 1px solid rgba(29, 78, 128, 0.12);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--muted) 50%, transparent),
+    transparent
+  );
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   border-radius: 16px;
 
   &--accent {
-    border-color: rgba(64, 158, 255, 0.2);
-    box-shadow: inset 0 1px 0 rgba(64, 158, 255, 0.08);
+    border-color: color-mix(in srgb, var(--chart-3) 38%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--chart-3) 14%, transparent);
   }
 
   &--warning {
-    border-color: rgba(230, 162, 60, 0.22);
+    border-color: color-mix(in srgb, var(--chart-5) 34%, transparent);
   }
 
   &--danger {
-    border-color: rgba(245, 108, 108, 0.2);
+    border-color: color-mix(in srgb, var(--destructive) 30%, transparent);
   }
 }
 
@@ -600,8 +681,8 @@ function alertLevelText(level: number) {
   padding: 15px 16px;
   text-align: left;
   cursor: pointer;
-  background: var(--el-bg-color-overlay);
-  border: 1px solid rgba(29, 78, 128, 0.12);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   border-radius: 16px;
   transition:
     transform 0.2s ease,
@@ -609,8 +690,8 @@ function alertLevelText(level: number) {
     box-shadow 0.2s ease;
 
   &:hover {
-    border-color: rgba(64, 158, 255, 0.22);
-    box-shadow: 0 10px 24px rgba(15, 32, 56, 0.08);
+    border-color: color-mix(in srgb, var(--ring) 32%, transparent);
+    box-shadow: 0 10px 24px rgba(9, 9, 11, 0.06);
     transform: translateY(-2px);
   }
 }
@@ -639,7 +720,7 @@ function alertLevelText(level: number) {
 .dashboard-shortcut__icon {
   flex-shrink: 0;
   font-size: 16px;
-  color: var(--el-color-primary);
+  color: var(--muted-foreground);
 }
 
 .dashboard-focus-list {
@@ -650,8 +731,12 @@ function alertLevelText(level: number) {
 
 .dashboard-focus-list__item {
   padding: 15px 16px;
-  background: linear-gradient(180deg, rgba(11, 79, 109, 0.04), rgba(11, 79, 109, 0));
-  border: 1px solid rgba(29, 78, 128, 0.12);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--muted) 48%, transparent),
+    transparent
+  );
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
   border-radius: 16px;
 }
 
@@ -697,10 +782,26 @@ function alertLevelText(level: number) {
   padding: 28px;
   color: var(--el-text-color-secondary);
   background:
-    linear-gradient(180deg, rgba(11, 79, 109, 0.06), rgba(11, 79, 109, 0) 52%),
+    linear-gradient(180deg, color-mix(in srgb, var(--muted) 54%, transparent), transparent 52%),
     var(--el-bg-color-overlay);
-  border: 1px dashed rgba(64, 158, 255, 0.22);
+  border: 1px dashed color-mix(in srgb, var(--border) 86%, transparent);
   border-radius: 18px;
+}
+
+.dashboard-chart-placeholder__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--secondary) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 20px;
+}
+
+.dashboard-chart-placeholder__icon--secondary {
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
 }
 
 .dashboard-chart-placeholder--compact {
@@ -738,7 +839,7 @@ function alertLevelText(level: number) {
     font-variant-numeric: tabular-nums;
     color: var(--el-text-color-secondary);
     letter-spacing: 0.03em;
-    background: rgba(64, 158, 255, 0.08);
+    background: color-mix(in srgb, var(--secondary) 88%, transparent);
     border-radius: 999px;
   }
 }
@@ -746,17 +847,16 @@ function alertLevelText(level: number) {
 .alert-list {
   display: flex;
   flex-direction: column;
+  gap: 10px;
 
   &__item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--el-border-color-lighter);
-
-    &:last-child {
-      border-bottom: none;
-    }
+    padding: 14px 16px;
+    background: color-mix(in srgb, var(--card) 94%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+    border-radius: 16px;
   }
 
   &__left {

@@ -1,9 +1,9 @@
 <template>
   <div class="app-container flex flex-col gap-6 py-6">
     <FlightPageHeader
-      eyebrow="Flight Console"
+      eyebrow="飞行控制"
       title="飞行控制台"
-      description="将视频、无人机状态、任务操作和飞行轨迹聚合到一个控制面板中，便于值守人员实时处置。"
+      description="查看实时画面、飞行状态和任务操作。"
     />
 
     <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -29,7 +29,7 @@
       <Card class="border-border/70 shadow-none">
         <CardHeader>
           <CardTitle>无人机视频</CardTitle>
-          <CardDescription>当前无人机实时画面和视觉任务状态。</CardDescription>
+          <CardDescription>查看当前实时画面。</CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
           <div class="flex aspect-video items-center justify-center rounded-xl border bg-muted/30">
@@ -53,7 +53,7 @@
         <Card class="border-border/70 shadow-none">
           <CardHeader>
             <CardTitle>无人机信息</CardTitle>
-            <CardDescription>实时掌握控制对象的状态与关键参数。</CardDescription>
+            <CardDescription>查看当前无人机状态。</CardDescription>
           </CardHeader>
           <CardContent class="grid gap-3 text-sm">
             <div class="rounded-lg border p-3">型号：{{ selectedMission.drone }}</div>
@@ -66,7 +66,7 @@
         <Card class="border-border/70 shadow-none">
           <CardHeader>
             <CardTitle>任务操作</CardTitle>
-            <CardDescription>控制当前任务的执行状态和动作指令。</CardDescription>
+            <CardDescription>执行当前任务操作。</CardDescription>
           </CardHeader>
           <CardContent class="grid gap-3">
             <Button
@@ -89,7 +89,7 @@
       <Card class="border-border/70 shadow-none">
         <CardHeader>
           <CardTitle>飞行轨迹</CardTitle>
-          <CardDescription>根据任务执行过程实时更新轨迹和当前位置。</CardDescription>
+          <CardDescription>查看当前飞行轨迹。</CardDescription>
         </CardHeader>
         <CardContent>
           <svg viewBox="0 0 600 240" class="h-64 w-full rounded-xl border bg-muted/20 p-4">
@@ -113,7 +113,7 @@
       <Card class="border-border/70 shadow-none">
         <CardHeader>
           <CardTitle>事件时间线</CardTitle>
-          <CardDescription>汇总当前飞行过程中产生的关键事件。</CardDescription>
+          <CardDescription>查看本次飞行事件。</CardDescription>
         </CardHeader>
         <CardContent class="space-y-3">
           <div

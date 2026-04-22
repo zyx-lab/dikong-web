@@ -18,28 +18,26 @@
       <section class="auth-feature">
         <div class="auth-feature__badge">
           <span class="auth-feature__dot" />
-          Enterprise Ready
+          低空巡检平台
         </div>
-        <h1 class="auth-feature__title">企业级管理系统</h1>
-        <p class="auth-feature__subtitle">
-          提供安全、高效、可扩展的管理解决方案，助力企业数字化转型与业务增长。
-        </p>
+        <h1 class="auth-feature__title">低空智能巡检平台</h1>
+        <p class="auth-feature__subtitle">用于任务管理、预警处置、工单流转和资源管理。</p>
         <ul class="auth-feature__highlights">
           <li>
             <span>✓</span>
-            统一身份认证与权限管理
+            巡检任务与航线管理
           </li>
           <li>
             <span>✓</span>
-            支持多租户模式与租户隔离
+            预警核实与工单处理
           </li>
           <li>
             <span>✓</span>
-            数据安全与操作审计
+            无人机、机场、飞手、负载管理
           </li>
           <li>
             <span>✓</span>
-            灵活扩展与高可用架构
+            飞行记录与现场资料留存
           </li>
         </ul>
       </section>
@@ -54,13 +52,11 @@
               <span class="auth-panel__title">{{ appConfig.title }}</span>
             </div>
             <div v-if="appConfig.version || tenantEnabled" class="auth-panel__version-row">
-              <el-text size="small" type="info">VERSION</el-text>
-              <el-tag v-if="appConfig.version" size="small" effect="light" round>
+              <span class="auth-panel__version-label">VERSION</span>
+              <Badge v-if="appConfig.version" variant="outline">
                 {{ `v${appConfig.version}` }}
-              </el-tag>
-              <el-tag v-if="tenantEnabled" type="success" size="small" effect="light" round>
-                多租户
-              </el-tag>
+              </Badge>
+              <Badge v-if="tenantEnabled" variant="secondary">多租户</Badge>
             </div>
           </div>
         </div>
@@ -70,10 +66,10 @@
         </transition>
 
         <footer class="auth-panel__footer">
-          <el-text size="small">
-            Copyright © 2021 - 2025 youlai.tech
-            <a href="http://beian.miit.gov.cn/" target="_blank">皖ICP备00064962号</a>
-          </el-text>
+          <p class="auth-panel__copyright">
+            Copyright © 暨南大学低空实验室
+            <a href="http://beian.miit.gov.cn/" target="_blank">粤ICP备2026044441号-2</a>
+          </p>
         </footer>
       </section>
     </div>
@@ -84,6 +80,7 @@
 import logo from "@/assets/images/logo.png";
 import { appConfig } from "@/settings";
 import ThemeSwitch from "@/components/ThemeSwitch/index.vue";
+import { Badge } from "@/components/ui/badge";
 
 type LayoutMap = "login" | "register" | "resetPwd";
 
@@ -117,7 +114,7 @@ const formComponents = {
     inset: 0;
     z-index: -2;
     content: "";
-    background: url("@/assets/images/login-bg.svg") center/cover no-repeat;
+    background: url("@/assets/images/login-city-bg.png") center center / cover no-repeat;
   }
 
   &::after {
@@ -126,7 +123,15 @@ const formComponents = {
     z-index: -1;
     pointer-events: none;
     content: "";
-    background: linear-gradient(120deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0));
+    background:
+      linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.08),
+        rgba(255, 255, 255, 0.18) 38%,
+        rgba(255, 255, 255, 0.74) 72%,
+        rgba(255, 255, 255, 0.9) 100%
+      ),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
   }
 }
 
@@ -427,6 +432,13 @@ const formComponents = {
   font-size: 0.78rem;
 }
 
+.auth-panel__version-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--el-text-color-secondary);
+  letter-spacing: 0.08em;
+}
+
 .auth-panel__form {
   width: 100%;
   max-width: 100%;
@@ -459,7 +471,6 @@ const formComponents = {
 .auth-panel__footer {
   padding-top: 0.875rem;
   margin-top: 0.125rem;
-  font-size: 0.875rem;
   text-align: center;
   border-top: 1px solid rgba(22, 93, 255, 0.06);
 
@@ -484,6 +495,19 @@ const formComponents = {
         color: rgba(160, 190, 255, 1);
       }
     }
+  }
+}
+
+.auth-panel__copyright {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: var(--el-text-color-secondary);
+
+  a {
+    white-space: nowrap;
   }
 }
 

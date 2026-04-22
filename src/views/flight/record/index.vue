@@ -1,16 +1,9 @@
 <template>
   <div class="app-container flex flex-col gap-6 py-6">
     <FlightPageHeader
-      eyebrow="Flight Replay Desk"
+      eyebrow="飞行记录"
       title="飞行记录"
-      description="以复盘视角聚合架次、告警、媒体与核实进度，帮助值守人员快速定位需要复查的飞行任务和异常事件。"
-    />
-
-    <RecordSummaryCards
-      :total-count="totalCount"
-      :pending-record-count="pendingRecordCount"
-      :pending-alarm-count="pendingAlarmCount"
-      :media-asset-count="mediaAssetCount"
+      description="查看飞行记录、媒体资料和核实状态。"
     />
 
     <RecordFilterBar :query-params="queryParams" @query="handleQuery" @reset="handleResetQuery" />
@@ -77,7 +70,6 @@ import RecordDataTable from "@/views/flight/record/components/RecordDataTable.vu
 import RecordDetailDialog from "@/views/flight/record/components/RecordDetailDialog.vue";
 import RecordEditSheet from "@/views/flight/record/components/RecordEditSheet.vue";
 import RecordFilterBar from "@/views/flight/record/components/RecordFilterBar.vue";
-import RecordSummaryCards from "@/views/flight/record/components/RecordSummaryCards.vue";
 
 defineOptions({ name: "FlightRecord", inheritAttrs: false });
 
@@ -100,14 +92,6 @@ const totalCount = computed(() => Math.max(0, total.value - deletedIds.value.siz
 
 const hasActiveFilters = computed(() =>
   Boolean(queryParams.flightNo || queryParams.status !== undefined)
-);
-
-const pendingRecordCount = computed(
-  () => tableData.value.filter((r) => r.status === 0 || r.status === 2).length
-);
-const pendingAlarmCount = computed(() => 0);
-const mediaAssetCount = computed(() =>
-  tableData.value.reduce((sum, r) => sum + (r.photoCount ?? 0) + (r.videoCount ?? 0), 0)
 );
 
 // Detail dialog

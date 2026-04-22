@@ -6,15 +6,15 @@
 
 .command-page {
   --command-font-display:
-    "Bahnschrift", "Segoe UI Variable Display", "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Geist", "Segoe UI Variable Display", "Segoe UI", "PingFang SC", "Hiragino Sans GB",
     "Microsoft YaHei UI", sans-serif;
   --command-font-text:
-    "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI",
-    sans-serif;
+    "Geist", "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei UI", sans-serif;
   --command-text-label: 0.75rem;
   --command-text-caption: 0.8125rem;
   --command-text-body: 0.9375rem;
-  --command-text-title: clamp(2.05rem, 2.8vw, 2.9rem);
+  --command-text-title: clamp(1.9rem, 2.6vw, 2.55rem);
 
   display: flex;
   flex-direction: column;
@@ -33,14 +33,21 @@
   position: relative;
   padding: 22px 24px 24px;
   overflow: hidden;
-  color: #fff;
+  color: var(--foreground);
   background:
-    radial-gradient(circle at top right, rgba(64, 158, 255, 0.24), transparent 32%),
-    radial-gradient(circle at 18% 20%, rgba(18, 216, 250, 0.16), transparent 24%),
-    linear-gradient(135deg, #0d1f3b 0%, #123763 54%, #0a5367 100%);
-  border: 1px solid rgba(103, 194, 255, 0.18);
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--muted) 72%, transparent),
+      transparent 28%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--card) 98%, transparent),
+      color-mix(in srgb, var(--muted) 32%, transparent)
+    );
+  border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
   border-radius: 20px;
-  box-shadow: 0 18px 40px rgba(10, 27, 49, 0.22);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
 
   &::before,
   &::after {
@@ -50,36 +57,36 @@
   }
 
   &::before {
-    inset: 0;
-    background:
-      linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0.05) 0,
-        rgba(255, 255, 255, 0.05) 1px,
-        transparent 1px,
-        transparent 72px
-      ),
-      linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.05) 0,
-        rgba(255, 255, 255, 0.05) 1px,
-        transparent 1px,
-        transparent 72px
-      );
-    opacity: 0.16;
+    top: 0;
+    right: 22px;
+    left: 22px;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--foreground) 12%, transparent),
+      transparent
+    );
   }
 
   &::after {
-    right: -32px;
-    bottom: -42px;
-    width: 210px;
-    height: 210px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    right: -42px;
+    bottom: -52px;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--muted) 78%, transparent) 0%,
+      transparent 68%
+    );
     border-radius: 50%;
-    box-shadow:
-      0 0 0 26px rgba(255, 255, 255, 0.04),
-      0 0 0 52px rgba(255, 255, 255, 0.02);
+    opacity: 0.9;
   }
+}
+
+.command-page__hero--compact {
+  min-height: 0 !important;
+  padding: 18px 22px;
 }
 
 .command-page__hero-inner {
@@ -94,7 +101,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
 }
 
@@ -103,13 +110,7 @@
 }
 
 .command-page__eyebrow {
-  margin: 0 0 8px;
-  font-family: var(--command-font-display);
-  font-size: var(--command-text-label);
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.66);
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
+  display: none;
 }
 
 .command-page__title {
@@ -118,6 +119,7 @@
   font-size: var(--command-text-title);
   font-weight: 700;
   line-height: 1.08;
+  color: var(--foreground);
   letter-spacing: -0.035em;
   text-wrap: balance;
 }
@@ -127,14 +129,14 @@
   margin: 10px 0 0;
   font-size: 1rem;
   line-height: 1.8;
-  color: rgba(255, 255, 255, 0.76);
+  color: var(--muted-foreground);
 }
 
 .command-page__signals {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .command-page__signal {
@@ -145,12 +147,11 @@
   font-size: var(--command-text-label);
   font-weight: 600;
   line-height: 1.4;
-  color: rgba(255, 255, 255, 0.88);
-  letter-spacing: 0.04em;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--foreground);
+  letter-spacing: 0.02em;
+  background: color-mix(in srgb, var(--muted) 74%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
   border-radius: 999px;
-  backdrop-filter: blur(12px);
 }
 
 .command-page__metrics {
@@ -163,10 +164,14 @@
   position: relative;
   padding: 15px 16px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.06));
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--background) 98%, transparent),
+    color-mix(in srgb, var(--muted) 26%, transparent)
+  );
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
   border-radius: 16px;
-  backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--background) 90%, transparent);
 
   &::after {
     position: absolute;
@@ -175,22 +180,21 @@
     width: 10px;
     height: 10px;
     content: "";
-    background: rgba(255, 255, 255, 0.34);
+    background: color-mix(in srgb, var(--muted-foreground) 22%, transparent);
     border-radius: 50%;
-    box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--muted) 68%, transparent);
   }
 
   &--accent {
-    border-color: rgba(64, 158, 255, 0.28);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-color: color-mix(in srgb, var(--primary) 18%, var(--border));
   }
 
   &--warning {
-    border-color: rgba(230, 162, 60, 0.3);
+    border-color: rgba(217, 119, 6, 0.24);
   }
 
   &--danger {
-    border-color: rgba(245, 108, 108, 0.28);
+    border-color: color-mix(in srgb, var(--destructive) 22%, var(--border));
   }
 }
 
@@ -199,8 +203,8 @@
   font-size: var(--command-text-label);
   font-weight: 600;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.62);
-  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+  letter-spacing: 0.04em;
 }
 
 .command-page__metric-value {
@@ -212,6 +216,7 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  color: var(--foreground);
   letter-spacing: -0.04em;
 }
 
@@ -219,14 +224,68 @@
   margin-top: 8px;
   font-size: var(--command-text-caption);
   line-height: 1.65;
-  color: rgba(255, 255, 255, 0.68);
+  color: var(--muted-foreground);
 }
 
 .command-page__metric-sub {
   font-size: 0.875rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.74);
+  color: var(--muted-foreground);
+}
+
+.command-page__hero--compact .command-page__hero-inner {
+  gap: 12px;
+}
+
+.command-page__hero--compact .command-page__hero-main {
+  gap: 14px;
+  align-items: center;
+}
+
+.command-page__hero--compact .command-page__heading {
+  max-width: 54ch;
+}
+
+.command-page__hero--compact .command-page__eyebrow {
+  margin-bottom: 6px;
+}
+
+.command-page__hero--compact .command-page__title {
+  font-size: clamp(1.8rem, 2.2vw, 2.25rem);
+}
+
+.command-page__hero--compact .command-page__description {
+  margin-top: 6px;
+  line-height: 1.65;
+}
+
+.command-page__hero--compact .command-page__signals {
+  gap: 6px;
+}
+
+.command-page__hero--compact .command-page__signal {
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: 0.6875rem;
+}
+
+.command-page__hero--compact .command-page__metrics {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.command-page__hero--compact .command-page__metric {
+  padding: 13px 14px;
+}
+
+.command-page__hero--compact .command-page__metric-label {
+  margin-bottom: 6px;
+}
+
+.command-page__hero--compact .command-page__metric-note {
+  margin-top: 6px;
+  line-height: 1.55;
 }
 
 .command-page .filter-section,
@@ -241,9 +300,9 @@
   padding: 14px 16px 6px;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(11, 79, 109, 0.06), rgba(11, 79, 109, 0) 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--muted) 52%, transparent), transparent 58%),
     var(--el-bg-color-overlay);
-  border-color: rgba(29, 78, 128, 0.14);
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
 
   &::before {
     position: absolute;
@@ -252,7 +311,12 @@
     left: 20px;
     height: 1px;
     content: "";
-    background: linear-gradient(90deg, transparent, rgba(64, 158, 255, 0.35), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--foreground) 10%, transparent),
+      transparent
+    );
   }
 }
 
@@ -360,11 +424,18 @@
   --el-menu-active-color: var(--menu-active-text);
   --el-menu-hover-bg-color: var(--menu-hover);
 
+  padding: 6px;
   background-color: var(--menu-background);
+  border: 1px solid var(--sidebar-border-color);
+  border-radius: 14px;
+  box-shadow: var(--el-box-shadow-light);
 
   .el-menu-item,
   .el-sub-menu__title {
+    min-height: 38px;
+    margin: 2px 0;
     color: var(--menu-text) !important;
+    border-radius: 10px;
   }
 
   .el-menu-item:hover,
@@ -375,34 +446,72 @@
 
   .el-menu-item.is-active {
     color: var(--menu-active-text) !important;
-    background-color: var(--menu-hover) !important;
+    background-color: var(--menu-active-background) !important;
   }
 }
 
 /* ============================================
-   混合布局左侧菜单 hover 样式
+   左侧菜单统一成更接近 shadcn 的交互风格
    ============================================ */
+.layout-sidebar .el-menu,
 .layout-mix .layout__sidebar--left .el-menu {
+  padding: 10px 8px 16px;
+  background-color: var(--menu-background);
+
   .el-menu-item {
-    &:hover {
-      background-color: var(--el-fill-color-light) !important;
-    }
-  }
+    min-height: 40px;
+    margin: 2px 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--menu-text);
+    border-radius: 10px;
+    transition:
+      color 0.18s ease,
+      background-color 0.18s ease,
+      box-shadow 0.18s ease;
 
-  .el-sub-menu__title {
     &:hover {
-      background-color: var(--el-fill-color-light) !important;
-    }
-  }
-}
-
-/* 深色或深蓝侧边栏的 hover 样式 */
-html.dark .layout-mix .layout__sidebar--left .el-menu,
-html.sidebar-color-blue .layout-mix .layout__sidebar--left .el-menu {
-  .el-menu-item,
-  .el-sub-menu__title {
-    &:hover {
+      color: var(--menu-active-text) !important;
       background-color: var(--menu-hover) !important;
+    }
+
+    &.is-active {
+      font-weight: 600;
+      color: var(--menu-active-text) !important;
+      background-color: var(--menu-active-background) !important;
+    }
+  }
+
+  .el-sub-menu__title {
+    min-height: 40px;
+    margin: 2px 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--menu-text);
+    border-radius: 10px;
+    transition:
+      color 0.18s ease,
+      background-color 0.18s ease,
+      box-shadow 0.18s ease;
+
+    &:hover {
+      color: var(--menu-active-text) !important;
+      background-color: var(--menu-hover) !important;
+    }
+  }
+
+  .el-sub-menu.is-opened:not(.has-active-child) > .el-sub-menu__title {
+    color: var(--menu-active-text) !important;
+  }
+
+  &.el-menu--collapse {
+    padding-right: 6px;
+    padding-left: 6px;
+
+    > .el-menu-item,
+    > .el-sub-menu > .el-sub-menu__title {
+      justify-content: center;
+      padding: 0 !important;
     }
   }
 }
@@ -744,9 +853,17 @@ html.sidebar-color-blue .layout-mix .layout__sidebar--left .el-menu {
     padding: 18px 18px 20px;
   }
 
+  .command-page__hero--compact {
+    padding: 16px 18px;
+  }
+
   .command-page__hero-main {
     gap: 16px;
     align-items: flex-start;
+  }
+
+  .command-page__hero--compact .command-page__hero-main {
+    gap: 10px;
   }
 
   .command-page__signals {

@@ -61,12 +61,19 @@
           </InfoPanel>
 
           <InfoPanel title="飞行日志" class="detail-log-panel" body-class="detail-panel__body">
+            <template #header-extra>
+              <Badge variant="outline">{{ record.flightLogs.length }} 条日志</Badge>
+            </template>
             <RecordFlightLogList :logs="record.flightLogs" />
           </InfoPanel>
         </div>
 
         <div class="record-detail-grid__main">
           <InfoPanel title="无人机视频" body-class="detail-panel__body">
+            <template #header-extra>
+              <Badge variant="secondary">{{ record.flightDurationText }}</Badge>
+              <Badge variant="outline">{{ record.videoCount }} 路视频</Badge>
+            </template>
             <div class="video-stage">
               <div class="video-stage__media">
                 <RecordVideoStatusBar
@@ -210,6 +217,7 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 import FlightEmptyState from "@/components/flight/FlightEmptyState.vue";
 import InfoPanel from "@/components/InfoPanel.vue";
+import { Badge } from "@/components/ui/badge";
 import { getFlightRecordById } from "@/views/flight/record/data";
 import RecordDetailHeader from "@/views/flight/record/components/RecordDetailHeader.vue";
 import RecordFlightLogList from "@/views/flight/record/components/RecordFlightLogList.vue";
@@ -1982,21 +1990,40 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .flight-record-detail-page {
   min-height: calc(100vh - 84px);
+  --record-surface-strong: rgba(9, 9, 11, 0.74);
+  --record-surface-stronger: rgba(9, 9, 11, 0.82);
+  --record-surface-soft: rgba(255, 255, 255, 0.08);
+  --record-border-soft: rgba(255, 255, 255, 0.12);
+  --record-border-strong: rgba(255, 255, 255, 0.16);
+  --record-ink-on-dark: #fafafa;
+  --record-ink-muted: rgba(244, 244, 245, 0.72);
+  --record-route-base: color-mix(in srgb, var(--foreground) 26%, transparent);
+  --record-route-live: var(--chart-2);
+  --record-route-live-glow: color-mix(in srgb, var(--chart-2) 46%, transparent);
+  --record-route-current: var(--chart-3);
+  --record-route-start: var(--chart-2);
+  --record-route-end: var(--chart-5);
+  --record-chart-altitude: var(--chart-1);
+  --record-chart-speed: var(--chart-2);
+  --record-chart-indicator: color-mix(in srgb, var(--foreground) 40%, transparent);
+  --record-chart-grid: color-mix(in srgb, var(--muted-foreground) 18%, transparent);
 }
 
 .detail-panel {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .detail-panel + .detail-panel {
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .map-panel {
   position: relative;
   min-height: 420px;
   overflow: hidden;
-  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(9, 9, 11, 0.12);
 }
 
 .map-panel__snapshot-host {
@@ -2034,24 +2061,24 @@ onBeforeUnmount(() => {
 
 .map-panel__route-base {
   fill: none;
-  stroke: rgba(119, 207, 255, 0.42);
+  stroke: var(--record-route-base);
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .map-panel__route-live {
-  filter: drop-shadow(0 0 6px rgba(76, 255, 213, 0.45));
+  filter: drop-shadow(0 0 6px var(--record-route-live-glow));
   fill: none;
-  stroke: rgba(76, 255, 213, 0.98);
+  stroke: var(--record-route-live);
   stroke-width: 2.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .map-panel__drone-dot {
-  filter: drop-shadow(0 0 6px rgba(255, 224, 130, 0.42));
-  fill: #ffe082;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--record-route-current) 44%, transparent));
+  fill: var(--record-route-current);
   stroke: rgba(13, 24, 35, 0.9);
   stroke-width: 1;
 }
@@ -2061,12 +2088,12 @@ onBeforeUnmount(() => {
 }
 
 .map-panel__anchor--start {
-  fill: #7ee787;
+  fill: var(--record-route-start);
   stroke: rgba(9, 28, 18, 0.9);
 }
 
 .map-panel__anchor--end {
-  fill: #ff8a65;
+  fill: var(--record-route-end);
   stroke: rgba(45, 18, 10, 0.9);
 }
 
@@ -2079,90 +2106,37 @@ onBeforeUnmount(() => {
   justify-content: center;
   padding: 24px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 36%),
-    linear-gradient(180deg, rgba(49, 56, 67, 0.2), rgba(8, 14, 22, 0.54));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 32%),
+    linear-gradient(180deg, rgba(24, 24, 27, 0.2), rgba(9, 9, 11, 0.6));
+  backdrop-filter: blur(10px);
 }
 
 .map-panel__status-card {
   max-width: 300px;
-  padding: 16px 18px;
+  padding: 18px 20px;
   text-align: center;
-  background: rgba(8, 15, 23, 0.72);
-  border: 1px solid rgba(115, 186, 255, 0.28);
-  border-radius: 12px;
-  backdrop-filter: blur(12px);
+  background: var(--record-surface-stronger);
+  border: 1px solid var(--record-border-soft);
+  border-radius: 18px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(14px);
 }
 
 .map-panel__status-title {
   font-size: 16px;
   font-weight: 700;
-  color: #f4f8ff;
+  color: var(--record-ink-on-dark);
 }
 
 .map-panel__status-text {
   margin-top: 8px;
   font-size: 13px;
   line-height: 1.6;
-  color: rgba(231, 238, 250, 0.78);
-}
-
-.map-panel__badge {
-  position: absolute;
-  bottom: 52px;
-  left: 16px;
-  z-index: 4;
-  padding: 7px 10px;
-  font-size: 12px;
-  color: var(--el-text-color-primary);
-  background: rgba(15, 31, 58, 0.76);
-  border: 1px solid rgba(10, 186, 255, 0.3);
-  border-radius: 4px;
-}
-
-.map-panel__switches {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  z-index: 4;
-  display: flex;
-  gap: 6px;
+  color: var(--record-ink-muted);
 }
 
 .detail-log-panel :deep(.info-panel__body) {
   padding-top: 0;
-}
-
-.flight-log-list {
-  padding: 12px 0 0;
-}
-
-.flight-log-list__item {
-  display: flex;
-  gap: 8px;
-  padding: 0 0 12px;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.flight-log-list__time {
-  flex: 0 0 auto;
-  font-weight: 600;
-}
-
-.flight-log-list__time.is-danger {
-  color: var(--el-color-danger);
-}
-
-.flight-log-list__time.is-warning {
-  color: var(--el-color-warning);
-}
-
-.flight-log-list__time.is-info {
-  color: var(--el-text-color-regular);
-}
-
-.flight-log-list__content {
-  color: var(--el-text-color-primary);
 }
 
 .video-stage {
@@ -2175,9 +2149,10 @@ onBeforeUnmount(() => {
   position: relative;
   min-height: 520px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(66, 76, 90, 0.88), rgba(45, 55, 68, 0.96));
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(39, 39, 42, 0.96), rgba(24, 24, 27, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 22px 46px rgba(9, 9, 11, 0.18);
 }
 
 .video-stage__viewer {
@@ -2200,10 +2175,10 @@ onBeforeUnmount(() => {
   width: min(28%, 280px);
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  background: rgba(4, 10, 17, 0.88);
-  border: 1px solid rgba(130, 194, 255, 0.38);
-  border-radius: 10px;
-  box-shadow: 0 16px 28px rgba(2, 8, 15, 0.32);
+  background: rgba(9, 9, 11, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  box-shadow: 0 20px 36px rgba(0, 0, 0, 0.28);
   will-change: transform;
 }
 
@@ -2217,110 +2192,33 @@ onBeforeUnmount(() => {
   padding: 24px;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 36%),
-    linear-gradient(180deg, rgba(49, 56, 67, 0.22), rgba(16, 22, 31, 0.58));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 32%),
+    linear-gradient(180deg, rgba(39, 39, 42, 0.22), rgba(9, 9, 11, 0.64));
+  backdrop-filter: blur(10px);
 }
 
 .video-stage__status-card {
   max-width: 360px;
-  padding: 16px 18px;
+  padding: 18px 20px;
   text-align: center;
-  background: rgba(8, 15, 23, 0.72);
-  border: 1px solid rgba(115, 186, 255, 0.28);
-  border-radius: 12px;
-  backdrop-filter: blur(12px);
+  background: var(--record-surface-stronger);
+  border: 1px solid var(--record-border-soft);
+  border-radius: 18px;
+  box-shadow: 0 22px 42px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(14px);
 }
 
 .video-stage__status-title {
   font-size: 16px;
   font-weight: 700;
-  color: #f4f8ff;
+  color: var(--record-ink-on-dark);
 }
 
 .video-stage__status-text {
   margin-top: 8px;
   font-size: 13px;
   line-height: 1.6;
-  color: rgba(231, 238, 250, 0.78);
-}
-
-.video-stage__radar-legend {
-  position: absolute;
-  top: 58px;
-  left: 18px;
-  z-index: 2;
-  width: 168px;
-  padding: 14px 14px 12px;
-  background: rgba(7, 16, 25, 0.78);
-  border: 1px solid rgba(116, 196, 255, 0.26);
-  border-radius: 14px;
-  box-shadow: 0 14px 28px rgba(3, 8, 14, 0.24);
-  backdrop-filter: blur(14px);
-}
-
-.video-stage__radar-legend-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #eef7ff;
-}
-
-.video-stage__radar-legend-subtitle {
-  margin-top: 4px;
-  font-size: 11px;
-  line-height: 1.45;
-  color: rgba(224, 237, 248, 0.74);
-}
-
-.video-stage__radar-legend-body {
-  display: grid;
-  grid-template-columns: 12px minmax(0, 1fr);
-  gap: 12px;
-  align-items: stretch;
-  margin-top: 12px;
-}
-
-.video-stage__radar-legend-bar {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-}
-
-.video-stage__radar-legend-scale {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 188px;
-}
-
-.video-stage__radar-legend-item {
-  display: grid;
-  grid-template-columns: 8px 1fr auto;
-  gap: 8px;
-  align-items: center;
-}
-
-.video-stage__radar-legend-swatch {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
-}
-
-.video-stage__radar-legend-label {
-  font-size: 11px;
-  color: rgba(224, 237, 248, 0.78);
-}
-
-.video-stage__radar-legend-value {
-  font-size: 11px;
-  font-weight: 600;
-  color: #f6fbff;
-}
-
-.video-stage__radar-legend-footnote {
-  margin-top: 10px;
-  font-size: 11px;
-  color: rgba(224, 237, 248, 0.62);
+  color: var(--record-ink-muted);
 }
 
 .video-stage__overlay {
@@ -2329,6 +2227,7 @@ onBeforeUnmount(() => {
   left: 16px;
   z-index: 2;
   display: flex;
+  gap: 12px;
   align-items: center;
   justify-content: space-between;
 }
@@ -2337,30 +2236,40 @@ onBeforeUnmount(() => {
   top: 14px;
 }
 
-.video-stage__tag-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
 .video-stage__overlay--bottom {
   right: 18px;
   bottom: 14px;
   left: 18px;
   gap: 16px;
   align-items: center;
+  padding: 10px 12px;
+  background: var(--record-surface-strong);
+  border: 1px solid var(--record-border-soft);
+  border-radius: 18px;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(16px);
 }
 
 .play-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  color: var(--el-text-color-primary);
-  background: rgba(15, 31, 58, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  width: 38px;
+  height: 38px;
+  color: var(--record-ink-on-dark);
+  background: var(--record-surface-soft);
+  border: 1px solid var(--record-border-strong);
   border-radius: 50%;
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.play-toggle:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
 }
 
 .video-slider {
@@ -2369,31 +2278,41 @@ onBeforeUnmount(() => {
 
 .video-slider :deep(.el-slider__runway) {
   height: 4px;
+  background-color: rgba(255, 255, 255, 0.16);
 }
 
 .video-slider :deep(.el-slider__bar) {
   height: 4px;
+  background-color: var(--record-chart-indicator);
+}
+
+.video-slider :deep(.el-slider__button) {
+  width: 14px;
+  height: 14px;
+  background-color: var(--record-ink-on-dark);
+  border: 3px solid var(--record-chart-indicator);
 }
 
 .video-time {
   min-width: 112px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--record-ink-on-dark);
   text-align: right;
 }
 
 .telemetry-section {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: 12px;
 }
 
 .telemetry-chart {
-  padding: 14px 16px 8px;
+  padding: 16px 18px 12px;
   background: var(--el-bg-color-overlay);
   border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  border-radius: 18px;
+  box-shadow: 0 12px 24px rgba(9, 9, 11, 0.06);
 }
 
 .telemetry-chart__header {
@@ -2411,7 +2330,7 @@ onBeforeUnmount(() => {
 }
 
 .telemetry-grid {
-  stroke: rgba(120, 172, 240, 0.18);
+  stroke: var(--record-chart-grid);
   stroke-width: 1;
 }
 
@@ -2423,15 +2342,15 @@ onBeforeUnmount(() => {
 }
 
 .telemetry-line--altitude {
-  stroke: var(--el-color-primary);
+  stroke: var(--record-chart-altitude);
 }
 
 .telemetry-line--speed {
-  stroke: #51f4f3;
+  stroke: var(--record-chart-speed);
 }
 
 .telemetry-indicator {
-  stroke: #6c76f4;
+  stroke: var(--record-chart-indicator);
   stroke-width: 2;
 }
 
@@ -2441,99 +2360,17 @@ onBeforeUnmount(() => {
 }
 
 .telemetry-point--altitude {
-  fill: var(--el-color-primary);
+  fill: var(--record-chart-altitude);
 }
 
 .telemetry-point--speed {
-  fill: #51f4f3;
-}
-
-.telemetry-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.metric-card {
-  background: var(--el-bg-color-overlay);
-  border-color: var(--el-border-color-light);
-}
-
-.metric-card :deep(.el-card__body) {
-  padding: 18px 16px;
-}
-
-.metric-card :deep(.el-statistic__head) {
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-
-.metric-card :deep(.el-statistic__content) {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--el-color-primary);
-}
-
-.metric-card :deep(.el-statistic__suffix) {
-  margin-left: 4px;
-  font-size: 14px;
-  color: var(--el-text-color-secondary);
-}
-
-.projection-control {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.projection-control__header,
-.projection-control__meta,
-.projection-control__switch,
-.projection-control__display-mode {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.projection-control__header {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--el-text-color-primary);
-}
-
-.projection-control__meta {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.projection-control__switch {
-  font-size: 13px;
-  color: var(--el-text-color-primary);
-}
-
-.projection-control__display-mode {
-  align-items: flex-start;
-  font-size: 13px;
-  color: var(--el-text-color-primary);
-}
-
-.projection-control__display-mode :deep(.el-radio-group) {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.projection-control__hint {
-  font-size: 12px;
-  line-height: 1.6;
-  color: rgba(82, 158, 213, 0.84);
+  fill: var(--record-chart-speed);
 }
 
 .record-detail-grid {
   display: grid;
   grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.65fr);
-  gap: 20px;
+  gap: 16px;
 }
 
 .record-detail-grid__side,
@@ -2561,14 +2398,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
-  .video-stage__radar-legend {
-    top: auto;
-    right: 18px;
-    bottom: 68px;
-    left: auto;
-    width: min(200px, calc(100% - 36px));
-  }
-
   .video-stage__overlay--bottom {
     flex-wrap: wrap;
     gap: 10px;

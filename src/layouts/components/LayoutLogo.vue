@@ -28,13 +28,15 @@ defineProps({
   width: 100%;
   height: $navbar-height;
   background-color: $sidebar-logo-background;
+  border-bottom: 1px solid $sidebar-border-color;
 
   .title {
     flex-shrink: 0;
     margin-left: 10px;
     font-size: 14px;
-    font-weight: bold;
+    font-weight: 600;
     color: $sidebar-logo-text-color;
+    letter-spacing: 0.01em;
   }
 }
 </style>
@@ -45,9 +47,10 @@ defineProps({
 .layout-mix {
   .logo {
     background-color: transparent !important;
+    border-bottom: none;
 
     .title {
-      color: var(--menu-text);
+      color: var(--menu-active-text);
     }
   }
 }

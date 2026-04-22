@@ -1,9 +1,9 @@
 <template>
   <div class="app-container flex flex-col gap-6 py-6">
     <FlightPageHeader
-      eyebrow="Quick Dispatch"
+      eyebrow="快速调度"
       title="一键调飞"
-      description="将可用无人机、待执行航线和调飞指令集中到一页里，值守人员可以快速完成资源匹配和任务下发。"
+      description="选择无人机和航线，快速下发调飞指令。"
     />
 
     <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -49,7 +49,7 @@
       <Card class="border-border/70 shadow-none">
         <CardHeader>
           <CardTitle>可用无人机</CardTitle>
-          <CardDescription>选择一架空闲无人机作为本次任务载体。</CardDescription>
+          <CardDescription>选择本次任务使用的无人机。</CardDescription>
         </CardHeader>
         <CardContent class="space-y-3">
           <Button
@@ -80,7 +80,7 @@
       <Card class="border-border/70 shadow-none">
         <CardHeader>
           <CardTitle>待执行航线</CardTitle>
-          <CardDescription>挑选一个待执行航线，系统会自动生成调飞建议。</CardDescription>
+          <CardDescription>选择需要执行的航线。</CardDescription>
         </CardHeader>
         <CardContent class="space-y-3">
           <Button
@@ -109,7 +109,7 @@
       <Card class="border-border/70 shadow-none">
         <CardHeader>
           <CardTitle>调飞指令</CardTitle>
-          <CardDescription>确认资源匹配后，直接下发调飞命令。</CardDescription>
+          <CardDescription>确认选择后下发调飞指令。</CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
           <div class="rounded-lg border bg-muted/20 p-4">
@@ -248,10 +248,10 @@ const canDispatch = computed(() => Boolean(selectedDrone.value && selectedRoute.
 const dispatchNote = computed({
   get: () => {
     if (!selectedDrone.value || !selectedRoute.value) {
-      return "请选择一架无人机和一条待执行航线，系统将自动生成调飞建议。";
+      return "请选择一架无人机和一条待执行航线。";
     }
 
-    return `建议由 ${selectedDrone.value.name} 执行 ${selectedRoute.value.name}，起降机场为 ${selectedRoute.value.airport}，预计耗时 ${selectedRoute.value.duration}。`;
+    return `${selectedDrone.value.name} 执行 ${selectedRoute.value.name}，起降机场 ${selectedRoute.value.airport}，预计耗时 ${selectedRoute.value.duration}。`;
   },
   set: () => {},
 });

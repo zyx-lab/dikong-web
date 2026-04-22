@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container system-dict-item-page">
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
         <el-form-item label="关键字" prop="keywords">
@@ -12,8 +12,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery">搜索</el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+          <Button size="sm" @click="handleQuery">搜索</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -21,15 +21,10 @@
     <el-card shadow="never" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button type="success" icon="plus" @click="openDialog()">新增</el-button>
-          <el-button
-            type="danger"
-            :disabled="ids.length === 0"
-            icon="delete"
-            @click="handleDelete()"
-          >
+          <Button @click="openDialog()">新增</Button>
+          <Button variant="destructive" :disabled="ids.length === 0" @click="handleDelete()">
             删除
-          </el-button>
+          </Button>
         </div>
       </div>
 
@@ -46,32 +41,30 @@
         <el-table-column label="排序" prop="sort" />
         <el-table-column label="状态">
           <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'info'">
+            <Badge :variant="scope.row.status === 1 ? 'secondary' : 'outline'">
               {{ scope.row.status === 1 ? "启用" : "禁用" }}
-            </el-tag>
+            </Badge>
           </template>
         </el-table-column>
 
         <el-table-column fixed="right" label="操作" align="center" width="220">
           <template #default="scope">
-            <el-button
-              type="primary"
-              link
-              size="small"
-              icon="edit"
+            <Button
+              class="system-dict-item-page__action"
+              variant="ghost"
+              size="sm"
               @click.stop="openDialog(scope.row)"
             >
               编辑
-            </el-button>
-            <el-button
-              type="danger"
-              link
-              size="small"
-              icon="delete"
+            </Button>
+            <Button
+              class="system-dict-item-page__action system-dict-item-page__action--danger"
+              variant="ghost"
+              size="sm"
               @click.stop="handleDelete(scope.row.id)"
             >
               删除
-            </el-button>
+            </Button>
           </template>
         </el-table-column>
       </el-table>
@@ -91,60 +84,100 @@
       width="600px"
       @close="closeDialog"
     >
-      <el-form ref="dataFormRef" :model="formData" :rules="rules" label-width="100px">
-        <el-form-item label="字典项标签" prop="label">
-          <el-input v-model="formData.label" placeholder="请输入字典标签" />
-        </el-form-item>
-        <el-form-item label="字典项值" prop="value">
-          <el-input v-model="formData.value" placeholder="请输入字典值" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="formData.status">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="formData.sort" controls-position="right" />
-        </el-form-item>
-        <el-form-item>
-          <template #label>
-            <div class="flex-y-center">
-              标签类型
-              <el-tooltip>
-                <template #content>回显样式，为空时则显示 '文本'</template>
-                <el-icon class="ml-1 cursor-pointer">
-                  <QuestionFilled />
-                </el-icon>
-              </el-tooltip>
-            </div>
-          </template>
-          <el-select
-            v-model="formData.tagType"
-            placeholder="请选择标签类型"
-            clearable
-            @clear="formData.tagType = ''"
-          >
-            <template #label="{ value }">
-              <el-tag v-if="value" :type="value">
-                {{ formData.label ? formData.label : "字典标签" }}
-              </el-tag>
-            </template>
-            <!-- <el-option label="默认文本" value="" /> -->
-            <el-option v-for="type in tagType" :key="type" :label="type" :value="type as string">
-              <div flex-y-center gap-10px>
-                <el-tag :type="type">{{ formData.label ?? "字典标签" }}</el-tag>
-                <span>{{ type }}</span>
-              </div>
-            </el-option>
-          </el-select>
-        </el-form-item>
+      <el-form
+        ref="dataFormRef"
+        :model="formData"
+        :rules="rules"
+        label-width="100px"
+        class="system-dict-item-page__dialog-form"
+      >
+        <section class="system-dict-item-page__form-section">
+          <div class="system-dict-item-page__form-title">字典项信息</div>
+          <div class="system-dict-item-page__form-grid">
+            <el-form-item label="字典项标签" prop="label">
+              <el-input v-model="formData.label" placeholder="请输入字典标签" />
+            </el-form-item>
+            <el-form-item label="字典项值" prop="value">
+              <el-input v-model="formData.value" placeholder="请输入字典值" />
+            </el-form-item>
+            <el-form-item label="状态">
+              <el-radio-group v-model="formData.status">
+                <el-radio :value="1">启用</el-radio>
+                <el-radio :value="0">禁用</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="排序">
+              <el-input-number v-model="formData.sort" controls-position="right" />
+            </el-form-item>
+          </div>
+        </section>
+
+        <section class="system-dict-item-page__form-section">
+          <div class="system-dict-item-page__form-title">展示方式</div>
+          <div class="system-dict-item-page__form-grid">
+            <el-form-item class="system-dict-item-page__form-item--full">
+              <template #label>
+                <div class="flex-y-center">
+                  标签类型
+                  <el-tooltip>
+                    <template #content>回显样式，为空时则显示 '文本'</template>
+                    <el-icon class="ml-1 cursor-pointer">
+                      <QuestionFilled />
+                    </el-icon>
+                  </el-tooltip>
+                </div>
+              </template>
+              <el-select
+                v-model="formData.tagType"
+                placeholder="请选择标签类型"
+                clearable
+                @clear="formData.tagType = ''"
+              >
+                <template #label="{ value }">
+                  <Badge
+                    v-if="value"
+                    :variant="
+                      value === 'danger'
+                        ? 'destructive'
+                        : value === 'success'
+                          ? 'secondary'
+                          : 'outline'
+                    "
+                  >
+                    {{ formData.label ? formData.label : "字典标签" }}
+                  </Badge>
+                </template>
+                <el-option
+                  v-for="type in tagType"
+                  :key="type"
+                  :label="type"
+                  :value="type as string"
+                >
+                  <div flex-y-center gap-10px>
+                    <Badge
+                      :variant="
+                        type === 'danger'
+                          ? 'destructive'
+                          : type === 'success'
+                            ? 'secondary'
+                            : 'outline'
+                      "
+                    >
+                      {{ formData.label ?? "字典标签" }}
+                    </Badge>
+                    <span>{{ type }}</span>
+                  </div>
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </div>
+        </section>
       </el-form>
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleSubmit">确 定</el-button>
-          <el-button @click="closeDialog">取 消</el-button>
+          <Button @click="handleSubmit">确 定</Button>
+          <Button variant="outline" @click="closeDialog">取 消</Button>
         </div>
       </template>
     </el-dialog>
@@ -153,6 +186,8 @@
 
 <script setup lang="ts">
 import DictAPI from "@/api/system/dict";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { DictItemQueryParams, DictItem, DictItemForm } from "@/types/api";
 import type { FormInstance, FormRules } from "element-plus";
 
@@ -337,3 +372,113 @@ onMounted(() => {
   handleQuery();
 });
 </script>
+
+<style scoped lang="scss">
+.system-dict-item-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.system-dict-item-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.system-dict-item-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.system-dict-item-page :deep(.filter-section .el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-dict-item-page :deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.system-dict-item-page :deep(.table-section__toolbar) {
+  align-items: flex-start;
+}
+
+.system-dict-item-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.system-dict-item-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.system-dict-item-page :deep(.el-dialog) {
+  border-radius: 24px;
+}
+
+.system-dict-item-page :deep(.el-dialog .el-form-item__label) {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-dict-item-page :deep(.el-dialog .el-input__wrapper),
+.system-dict-item-page :deep(.el-dialog .el-select__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-dict-item-page__dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.system-dict-item-page__form-section {
+  padding: 16px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+}
+
+.system-dict-item-page__form-title {
+  margin-bottom: 14px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: 0.04em;
+}
+
+.system-dict-item-page__form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.system-dict-item-page__form-grid :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.system-dict-item-page__form-item--full {
+  grid-column: 1 / -1;
+}
+
+.system-dict-item-page__action {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.system-dict-item-page__action--danger {
+  color: var(--destructive);
+}
+
+@media (max-width: 768px) {
+  .system-dict-item-page__form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

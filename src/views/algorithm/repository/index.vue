@@ -1,41 +1,39 @@
 <template>
   <div class="app-container command-page">
-    <section class="command-page__hero">
+    <section class="command-page__hero command-page__hero--compact">
       <div class="command-page__hero-inner">
         <div class="command-page__hero-main">
           <div class="command-page__heading">
-            <p class="command-page__eyebrow">Algorithm Repository</p>
+            <p class="command-page__eyebrow">算法资源</p>
             <h2 class="command-page__title">算法仓库</h2>
-            <p class="command-page__description">
-              统一管理识别算法、模型版本与适用场景，让值守人员在进入列表前先看清算法储备、重点类型和当前可直接下发的能力。
-            </p>
+            <p class="command-page__description">查看算法清单、版本和启用状态。</p>
           </div>
           <div class="command-page__signals">
-            <span class="command-page__signal">算法资产总览</span>
-            <span class="command-page__signal">版本与场景联动</span>
-            <span class="command-page__signal">多类算法统一编排</span>
+            <span class="command-page__signal">算法清单</span>
+            <span class="command-page__signal">版本状态</span>
+            <span class="command-page__signal">分类管理</span>
           </div>
         </div>
         <div class="command-page__metrics">
           <div class="command-page__metric command-page__metric--accent">
             <div class="command-page__metric-label">算法总量</div>
             <div class="command-page__metric-value">{{ total }}</div>
-            <div class="command-page__metric-note">当前筛选条件下可管理的算法资产规模</div>
+            <div class="command-page__metric-note">当前算法数量</div>
           </div>
           <div class="command-page__metric">
             <div class="command-page__metric-label">目标识别</div>
             <div class="command-page__metric-value">{{ detectionCount }}</div>
-            <div class="command-page__metric-note">适合卡口识别、目标检测与分类分析</div>
+            <div class="command-page__metric-note">目标识别类</div>
           </div>
           <div class="command-page__metric">
             <div class="command-page__metric-label">行为分析</div>
             <div class="command-page__metric-value">{{ behaviorCount }}</div>
-            <div class="command-page__metric-note">适合聚集、入侵与异常行为识别场景</div>
+            <div class="command-page__metric-note">行为分析类</div>
           </div>
           <div class="command-page__metric command-page__metric--warning">
             <div class="command-page__metric-label">环境监测</div>
             <div class="command-page__metric-value">{{ environmentCount }}</div>
-            <div class="command-page__metric-note">适合越界、风险区域和环境态势感知</div>
+            <div class="command-page__metric-note">环境监测类</div>
           </div>
         </div>
       </div>
@@ -86,8 +84,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery">查询</el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+          <Button size="sm" @click="handleQuery">查询</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -95,14 +93,14 @@
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button type="primary" icon="plus" @click="handleCreateClick">新增算法</el-button>
+          <Button size="sm" @click="handleCreateClick">新增算法</Button>
         </div>
         <div class="table-section__toolbar--right">
           <div class="table-toolbar-summary">
-            <el-tag type="info">共 {{ total }} 套算法</el-tag>
-            <el-tag type="primary">开启 {{ enabledCount }} 套</el-tag>
-            <el-tag type="success">目标识别 {{ detectionCount }} 套</el-tag>
-            <el-tag type="warning">环境监测 {{ environmentCount }} 套</el-tag>
+            <Badge variant="outline">共 {{ total }} 套算法</Badge>
+            <Badge variant="secondary">开启 {{ enabledCount }} 套</Badge>
+            <Badge variant="outline">目标识别 {{ detectionCount }} 套</Badge>
+            <Badge variant="outline">环境监测 {{ environmentCount }} 套</Badge>
           </div>
         </div>
       </div>
@@ -296,14 +294,9 @@
                   <h3>{{ item.name }}</h3>
                   <p>算法类型：{{ getTypeLabel(item.type) }}</p>
                 </div>
-                <el-tag
-                  size="small"
-                  effect="plain"
-                  class="route-type-tag"
-                  :type="getStatusTagType(item.status)"
-                >
+                <Badge class="route-type-tag" :variant="getStatusBadgeVariant(item.status)">
                   {{ getStatusLabel(item.status) }}
-                </el-tag>
+                </Badge>
               </div>
 
               <div class="route-card__meta">
@@ -328,17 +321,10 @@
               </div>
 
               <div class="route-card__actions">
-                <el-button link type="primary" size="small" @click="handleDetail(item)">
-                  详情
-                </el-button>
-                <el-button
-                  link
-                  :type="item.status === AlgorithmStatus.ENABLED ? 'warning' : 'primary'"
-                  size="small"
-                  @click="handleToggleStatus(item)"
-                >
+                <Button variant="ghost" size="sm" @click="handleDetail(item)">详情</Button>
+                <Button variant="ghost" size="sm" @click="handleToggleStatus(item)">
                   {{ item.status === AlgorithmStatus.ENABLED ? "停用" : "开启" }}
-                </el-button>
+                </Button>
               </div>
             </div>
           </article>
@@ -347,7 +333,7 @@
         <div v-else class="table-empty-state">
           <el-empty :description="hasActiveFilters ? '当前筛选条件下暂无算法' : '暂无算法数据'" />
           <div v-if="hasActiveFilters" class="table-empty-state__actions">
-            <el-button link type="primary" @click="handleResetQuery">清空筛选</el-button>
+            <Button variant="ghost" size="sm" @click="handleResetQuery">清空筛选</Button>
           </div>
         </div>
       </div>
@@ -366,6 +352,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox, type FormInstance } from "element-plus";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { AlgorithmType, type AlgorithmInfo, type AlgorithmQuery } from "@/api/algorithm/types";
 
 defineOptions({
@@ -471,7 +459,7 @@ function buildMockData(): AlgorithmRepositoryCard[] {
     {
       id: 1,
       name: "人脸识别",
-      description: "适用于布控比对、重点人员识别与访客通行核验。",
+      description: "用于人员识别和通行核验。",
       type: AlgorithmType.OBJECT_DETECTION,
       version: "2.5.1",
       accuracy: 98.6,
@@ -486,7 +474,7 @@ function buildMockData(): AlgorithmRepositoryCard[] {
     {
       id: 2,
       name: "人员异常聚集",
-      description: "用于广场、景区和园区场景的人群聚集趋势感知。",
+      description: "用于人群聚集监测。",
       type: AlgorithmType.BEHAVIOR_ANALYSIS,
       version: "1.8.4",
       accuracy: 95.2,
@@ -501,7 +489,7 @@ function buildMockData(): AlgorithmRepositoryCard[] {
     {
       id: 3,
       name: "非机动车识别",
-      description: "用于道路通行秩序识别、禁停区告警与轨迹检索。",
+      description: "用于非机动车识别和轨迹检索。",
       type: AlgorithmType.OBJECT_DETECTION,
       version: "3.0.2",
       accuracy: 96.4,
@@ -516,7 +504,7 @@ function buildMockData(): AlgorithmRepositoryCard[] {
     {
       id: 4,
       name: "危化品车辆识别",
-      description: "适合港区与道路场景的危化运输车辆识别与分类统计。",
+      description: "用于危化车辆识别。",
       type: AlgorithmType.OBJECT_DETECTION,
       version: "2.1.0",
       accuracy: 97.3,
@@ -531,7 +519,7 @@ function buildMockData(): AlgorithmRepositoryCard[] {
     {
       id: 5,
       name: "遗留物品检测",
-      description: "面向重点区域的滞留物发现、告警与处置联动。",
+      description: "用于遗留物品检测。",
       type: AlgorithmType.OBJECT_DETECTION,
       version: "1.6.9",
       accuracy: 94.7,
@@ -546,7 +534,7 @@ function buildMockData(): AlgorithmRepositoryCard[] {
     {
       id: 6,
       name: "人员闯入",
-      description: "适合围界、机房与重点目标区域的入侵识别和处置联动。",
+      description: "用于入侵识别。",
       type: AlgorithmType.BEHAVIOR_ANALYSIS,
       version: "2.2.7",
       accuracy: 96.1,
@@ -561,7 +549,7 @@ function buildMockData(): AlgorithmRepositoryCard[] {
     {
       id: 7,
       name: "徘徊识别",
-      description: "识别长时间逗留与反复徘徊行为，辅助安防人员快速研判。",
+      description: "用于徘徊识别。",
       type: AlgorithmType.BEHAVIOR_ANALYSIS,
       version: "1.3.6",
       accuracy: 92.8,
@@ -576,7 +564,7 @@ function buildMockData(): AlgorithmRepositoryCard[] {
     {
       id: 8,
       name: "越界检测",
-      description: "适用于禁入区、危险区和边界区域的越界识别与实时预警。",
+      description: "用于越界预警。",
       type: AlgorithmType.ENVIRONMENT_MONITOR,
       version: "2.0.5",
       accuracy: 97.8,
@@ -613,16 +601,14 @@ function getStatusLabel(status: AlgorithmStatus): string {
   }
 }
 
-function getStatusTagType(
-  status: AlgorithmStatus
-): "primary" | "info" | "warning" | "success" | "danger" {
+function getStatusBadgeVariant(status: AlgorithmStatus) {
   switch (status) {
     case AlgorithmStatus.DISABLED:
-      return "info";
+      return "outline";
     case AlgorithmStatus.TESTING:
-      return "warning";
+      return "secondary";
     default:
-      return "primary";
+      return "secondary";
   }
 }
 

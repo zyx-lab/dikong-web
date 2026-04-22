@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container system-log-page">
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
         <el-form-item prop="keywords" label="关键字">
@@ -25,8 +25,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery">搜索</el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+          <Button size="sm" @click="handleQuery">搜索</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -68,6 +68,7 @@ defineOptions({
 });
 
 import LogAPI from "@/api/system/log";
+import { Button } from "@/components/ui/button";
 import type { LogItem, LogQueryParams } from "@/types/api";
 import type { FormInstance } from "element-plus";
 
@@ -124,3 +125,43 @@ onMounted(() => {
   handleQuery();
 });
 </script>
+
+<style scoped lang="scss">
+.system-log-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.system-log-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.system-log-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.system-log-page :deep(.filter-section .el-input__wrapper),
+.system-log-page :deep(.filter-section .el-range-editor.el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-log-page :deep(.data-table) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.system-log-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.system-log-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+</style>

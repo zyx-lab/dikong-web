@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container system-dict-page">
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
         <el-form-item label="关键字" prop="keywords">
@@ -12,8 +12,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery">搜索</el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+          <Button size="sm" @click="handleQuery">搜索</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -21,15 +21,10 @@
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button type="success" icon="plus" @click="handleCreateClick()">新增</el-button>
-          <el-button
-            type="danger"
-            :disabled="ids.length === 0"
-            icon="delete"
-            @click="handleDelete()"
-          >
+          <Button @click="handleCreateClick()">新增</Button>
+          <Button variant="destructive" :disabled="ids.length === 0" @click="handleDelete()">
             删除
-          </el-button>
+          </Button>
         </div>
       </div>
 
@@ -46,38 +41,38 @@
         <el-table-column label="字典编码" prop="dictCode" />
         <el-table-column label="状态" prop="status">
           <template #default="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'info'">
+            <Badge :variant="scope.row.status === 1 ? 'secondary' : 'outline'">
               {{ scope.row.status === 1 ? "启用" : "禁用" }}
-            </el-tag>
+            </Badge>
           </template>
         </el-table-column>
         <el-table-column fixed="right" label="操作" align="center" width="220">
           <template #default="scope">
-            <el-button type="primary" link size="small" @click.stop="openDictData(scope.row)">
-              <template #icon>
-                <Collection />
-              </template>
+            <Button
+              class="system-dict-page__action"
+              variant="ghost"
+              size="sm"
+              @click.stop="openDictData(scope.row)"
+            >
               字典数据
-            </el-button>
+            </Button>
 
-            <el-button
-              type="primary"
-              link
-              size="small"
-              icon="edit"
+            <Button
+              class="system-dict-page__action"
+              variant="ghost"
+              size="sm"
               @click.stop="handleEditClick(scope.row.id)"
             >
               编辑
-            </el-button>
-            <el-button
-              type="danger"
-              link
-              size="small"
-              icon="delete"
+            </Button>
+            <Button
+              class="system-dict-page__action system-dict-page__action--danger"
+              variant="ghost"
+              size="sm"
               @click.stop="handleDelete(scope.row.id)"
             >
               删除
-            </el-button>
+            </Button>
           </template>
         </el-table-column>
       </el-table>
@@ -120,8 +115,8 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleSubmit">确 定</el-button>
-          <el-button @click="closeDialog">取 消</el-button>
+          <Button @click="handleSubmit">确 定</Button>
+          <Button variant="outline" @click="closeDialog">取 消</Button>
         </div>
       </template>
     </el-dialog>
@@ -129,6 +124,8 @@
 </template>
 
 <script setup lang="ts">
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 defineOptions({
   name: "Dict",
   inheritAttrs: false,
@@ -332,3 +329,59 @@ onMounted(() => {
   handleQuery();
 });
 </script>
+
+<style scoped lang="scss">
+.system-dict-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.system-dict-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.system-dict-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.system-dict-page :deep(.filter-section .el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-dict-page :deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.system-dict-page :deep(.table-section__toolbar) {
+  align-items: flex-start;
+}
+
+.system-dict-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.system-dict-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.system-dict-page :deep(.el-dialog) {
+  border-radius: 24px;
+}
+
+.system-dict-page__action {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.system-dict-page__action--danger {
+  color: var(--destructive);
+}
+</style>

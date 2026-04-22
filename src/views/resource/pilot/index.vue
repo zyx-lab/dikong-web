@@ -1,41 +1,39 @@
 <template>
-  <div class="app-container command-page">
-    <section class="command-page__hero">
+  <div class="app-container command-page resource-pilot-page">
+    <section class="command-page__hero command-page__hero--compact">
       <div class="command-page__hero-inner">
         <div class="command-page__hero-main">
           <div class="command-page__heading">
-            <p class="command-page__eyebrow">Pilot Duty Matrix</p>
+            <p class="command-page__eyebrow">飞手排班</p>
             <h2 class="command-page__title">飞手管理</h2>
-            <p class="command-page__description">
-              把飞手账号、证件合规与机体分配关系放到同一张值守工作面中，便于快速判断谁可立即投入执行、谁需要补齐资料或调配。
-            </p>
+            <p class="command-page__description">查看飞手账号、证件和机体分配情况。</p>
           </div>
           <div class="command-page__signals">
-            <span class="command-page__signal">值守人员编组</span>
-            <span class="command-page__signal">证件合规检查</span>
-            <span class="command-page__signal">机体分配联动</span>
+            <span class="command-page__signal">账号状态</span>
+            <span class="command-page__signal">证件资料</span>
+            <span class="command-page__signal">机体分配</span>
           </div>
         </div>
         <div class="command-page__metrics">
           <div class="command-page__metric command-page__metric--accent">
             <div class="command-page__metric-label">飞手总量</div>
             <div class="command-page__metric-value">{{ total }}</div>
-            <div class="command-page__metric-note">当前筛选结果中的飞手资源池</div>
+            <div class="command-page__metric-note">当前列表中的飞手数量</div>
           </div>
           <div class="command-page__metric">
             <div class="command-page__metric-label">启用账号</div>
             <div class="command-page__metric-value">{{ enabledPilotCount }}</div>
-            <div class="command-page__metric-note">可直接投入排班的账号数量</div>
+            <div class="command-page__metric-note">可用于排班</div>
           </div>
           <div class="command-page__metric">
             <div class="command-page__metric-label">已分配机体</div>
             <div class="command-page__metric-value">{{ assignedPilotCount }}</div>
-            <div class="command-page__metric-note">具备明确机体协同关系的飞手</div>
+            <div class="command-page__metric-note">已分配机体</div>
           </div>
           <div class="command-page__metric command-page__metric--warning">
             <div class="command-page__metric-label">资料完备</div>
             <div class="command-page__metric-value">{{ certificateReadyCount }}</div>
-            <div class="command-page__metric-note">证件扫描件已齐备的飞手数量</div>
+            <div class="command-page__metric-note">资料完整的飞手</div>
           </div>
         </div>
       </div>
@@ -110,8 +108,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery">查询</el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+          <Button size="sm" @click="handleQuery">查询</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -119,23 +117,23 @@
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button type="primary" icon="plus" @click="handleCreateClick">新增飞手</el-button>
-          <el-button
-            type="danger"
-            icon="delete"
+          <Button size="sm" @click="handleCreateClick">新增飞手</Button>
+          <Button
+            size="sm"
+            variant="destructive"
             :disabled="selectedIds.length === 0"
             @click="handleDelete()"
           >
             批量删除
-          </el-button>
+          </Button>
         </div>
         <div class="table-section__toolbar--right">
           <div class="table-toolbar-summary">
-            <el-tag type="info">共 {{ total }} 位飞手</el-tag>
-            <el-tag type="success">启用 {{ enabledPilotCount }} 位</el-tag>
-            <el-tag v-if="selectedIds.length > 0" type="primary">
+            <Badge variant="outline">共 {{ total }} 位飞手</Badge>
+            <Badge variant="secondary">启用 {{ enabledPilotCount }} 位</Badge>
+            <Badge v-if="selectedIds.length > 0" variant="secondary">
               已选 {{ selectedIds.length }} 项
-            </el-tag>
+            </Badge>
           </div>
         </div>
       </div>
@@ -161,7 +159,9 @@
         />
         <el-table-column label="证件类型" prop="certificateType" width="110" align="center">
           <template #default="scope">
-            {{ getCertificateTypeLabel(scope.row.certificateType) }}
+            <Badge :variant="getCertificateBadgeVariant(scope.row.certificateType)">
+              {{ getCertificateTypeLabel(scope.row.certificateType) }}
+            </Badge>
           </template>
         </el-table-column>
         <el-table-column
@@ -186,25 +186,45 @@
         <el-table-column label="创建时间" prop="createdAt" min-width="160" />
         <el-table-column fixed="right" label="操作" align="center" width="290">
           <template #default="scope">
-            <el-button type="primary" link size="small" @click="handleDetailClick(scope.row)">
+            <Button
+              variant="ghost"
+              size="sm"
+              class="resource-table-action"
+              @click="handleDetailClick(scope.row)"
+            >
               详情
-            </el-button>
-            <el-button type="primary" link size="small" @click="handleEditClick(scope.row)">
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              class="resource-table-action"
+              @click="handleEditClick(scope.row)"
+            >
               编辑
-            </el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(scope.row.id)">
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              class="resource-table-action resource-table-action--danger"
+              @click="handleDelete(scope.row.id)"
+            >
               删除
-            </el-button>
-            <el-button type="primary" link size="small" @click="handleResetPassword(scope.row)">
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              class="resource-table-action"
+              @click="handleResetPassword(scope.row)"
+            >
               重置密码
-            </el-button>
+            </Button>
           </template>
         </el-table-column>
         <template #empty>
           <div class="table-empty-state">
             <el-empty :description="hasActiveFilters ? '当前筛选条件下暂无飞手' : '暂无飞手数据'" />
             <div v-if="hasActiveFilters" class="table-empty-state__actions">
-              <el-button link type="primary" @click="handleResetQuery">清空筛选</el-button>
+              <Button variant="ghost" size="sm" @click="handleResetQuery">清空筛选</Button>
             </div>
           </div>
         </template>
@@ -367,8 +387,10 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="closeDialog">取消</el-button>
-          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+          <Button variant="outline" @click="closeDialog">取消</Button>
+          <Button :disabled="submitLoading" @click="handleSubmit">
+            {{ submitLoading ? "提交中..." : "确定" }}
+          </Button>
         </div>
       </template>
     </el-dialog>
@@ -379,6 +401,8 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { useWindowSize } from "@vueuse/core";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   PilotAccountStatus,
   PilotCertificateType,
@@ -512,6 +536,18 @@ const rules: FormRules<PilotForm> = {
 
 function getCertificateTypeLabel(type?: PilotCertificateType): string {
   return certificateTypeOptions.find((item) => item.value === type)?.label ?? type ?? "-";
+}
+
+function getCertificateBadgeVariant(type?: PilotCertificateType) {
+  if (type === PilotCertificateType.AOPA) {
+    return "secondary";
+  }
+
+  if (type === PilotCertificateType.ALPA) {
+    return "outline";
+  }
+
+  return "outline";
 }
 
 function getControlModeLabel(mode?: PilotControlMode): string {
@@ -827,5 +863,75 @@ onMounted(() => {
 <style scoped>
 .w-full {
   width: 100%;
+}
+
+.resource-pilot-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.resource-pilot-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.resource-pilot-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.resource-pilot-page :deep(.filter-section .el-input__wrapper),
+.resource-pilot-page :deep(.filter-section .el-select__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.resource-pilot-page :deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.resource-pilot-page :deep(.table-section__toolbar) {
+  align-items: flex-start;
+}
+
+.resource-pilot-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.resource-pilot-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.resource-pilot-page :deep(.el-dialog) {
+  border-radius: 24px;
+}
+
+.resource-pilot-page :deep(.el-dialog__header) {
+  padding-bottom: 4px;
+}
+
+.resource-pilot-page :deep(.el-dialog__body) {
+  padding-top: 10px;
+}
+
+.resource-table-action {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.resource-table-action--danger {
+  color: var(--destructive);
+}
+
+@media (max-width: 768px) {
+  .resource-pilot-page :deep(.table-section__toolbar--actions),
+  .resource-pilot-page :deep(.table-section__toolbar--right) {
+    width: 100%;
+  }
 }
 </style>

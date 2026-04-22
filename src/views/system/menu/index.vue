@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container system-menu-page">
     <div class="filter-section">
       <el-form ref="queryFormRef" :model="queryParams" :inline="true">
         <el-form-item label="关键字" prop="keywords">
@@ -12,8 +12,8 @@
         </el-form-item>
 
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="search" @click="handleQuery">搜索</el-button>
-          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
+          <Button size="sm" @click="handleQuery">搜索</Button>
+          <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
         </el-form-item>
       </el-form>
     </div>
@@ -21,14 +21,7 @@
     <el-card shadow="hover" class="table-section">
       <div class="table-section__toolbar">
         <div class="table-section__toolbar--actions">
-          <el-button
-            v-hasPerm="['sys:menu:create']"
-            type="success"
-            icon="plus"
-            @click="openDialog('0')"
-          >
-            新增
-          </el-button>
+          <Button v-hasPerm="['sys:menu:create']" @click="openDialog('0')">新增</Button>
         </div>
       </div>
 
@@ -64,9 +57,15 @@
 
         <el-table-column label="类型" align="center" width="80">
           <template #default="scope">
-            <el-tag v-if="scope.row.type === MenuTypeEnum.CATALOG" type="warning">目录</el-tag>
-            <el-tag v-if="scope.row.type === MenuTypeEnum.MENU" type="success">菜单</el-tag>
-            <el-tag v-if="scope.row.type === MenuTypeEnum.BUTTON" type="danger">按钮</el-tag>
+            <Badge :variant="getMenuTypeBadgeVariant(scope.row.type)">
+              {{
+                scope.row.type === MenuTypeEnum.CATALOG
+                  ? "目录"
+                  : scope.row.type === MenuTypeEnum.MENU
+                    ? "菜单"
+                    : "按钮"
+              }}
+            </Badge>
           </template>
         </el-table-column>
         <el-table-column label="路由名称" align="left" width="150" prop="routeName" />
@@ -75,52 +74,50 @@
         <el-table-column label="权限标识" align="center" width="200" prop="perm" />
         <el-table-column v-if="showMenuScope" label="范围" align="center" width="100">
           <template #default="scope">
-            <el-tag v-if="scope.row.scope === MenuScopeEnum.PLATFORM" type="danger">平台</el-tag>
-            <el-tag v-else type="success">业务</el-tag>
+            <Badge
+              :variant="scope.row.scope === MenuScopeEnum.PLATFORM ? 'destructive' : 'secondary'"
+            >
+              {{ scope.row.scope === MenuScopeEnum.PLATFORM ? "平台" : "业务" }}
+            </Badge>
           </template>
         </el-table-column>
 
         <el-table-column label="状态" align="center" width="80">
           <template #default="scope">
-            <el-tag v-if="scope.row.visible === 1" type="success">显示</el-tag>
-            <el-tag v-else type="info">隐藏</el-tag>
+            <Badge :variant="scope.row.visible === 1 ? 'secondary' : 'outline'">
+              {{ scope.row.visible === 1 ? "显示" : "隐藏" }}
+            </Badge>
           </template>
         </el-table-column>
         <el-table-column label="排序" align="center" width="80" prop="sort" />
         <el-table-column fixed="right" align="center" label="操作" width="220">
           <template #default="scope">
-            <el-button
+            <Button
               v-if="scope.row.type == MenuTypeEnum.CATALOG || scope.row.type == MenuTypeEnum.MENU"
               v-hasPerm="['sys:menu:create']"
-              type="primary"
-              link
-              size="small"
-              icon="plus"
+              class="system-menu-page__action"
+              size="sm"
               @click.stop="openDialog(scope.row.id)"
             >
               新增
-            </el-button>
+            </Button>
 
-            <el-button
+            <Button
               v-hasPerm="['sys:menu:update']"
-              type="primary"
-              link
-              size="small"
-              icon="edit"
+              class="system-menu-page__action"
+              size="sm"
               @click.stop="openDialog(undefined, scope.row.id)"
             >
               编辑
-            </el-button>
-            <el-button
+            </Button>
+            <Button
               v-hasPerm="['sys:menu:delete']"
-              type="danger"
-              link
-              size="small"
-              icon="delete"
+              class="system-menu-page__action system-menu-page__action--danger"
+              size="sm"
               @click.stop="handleDelete(scope.row.id)"
             >
               删除
-            </el-button>
+            </Button>
           </template>
         </el-table-column>
       </el-table>
@@ -349,8 +346,8 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-          <el-button @click="closeDialog">取消</el-button>
+          <Button @click="handleSubmit">确定</Button>
+          <Button variant="outline" @click="closeDialog">取消</Button>
         </div>
       </template>
     </el-drawer>
@@ -358,6 +355,8 @@
 </template>
 
 <script setup lang="ts">
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/modules/app";
 import { DeviceEnum } from "@/enums/settings";
 import MenuAPI from "@/api/system/menu";
@@ -522,6 +521,18 @@ function handleMenuTypeChange(): void {
   }
 }
 
+function getMenuTypeBadgeVariant(type: MenuTypeEnum) {
+  if (type === MenuTypeEnum.BUTTON) {
+    return "destructive";
+  }
+
+  if (type === MenuTypeEnum.MENU) {
+    return "secondary";
+  }
+
+  return "outline";
+}
+
 /**
  * 提交表单
  */
@@ -607,7 +618,65 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+.system-menu-page :deep(.filter-section) {
+  border-radius: 20px;
+}
+
+.system-menu-page :deep(.filter-section .el-form) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.system-menu-page :deep(.filter-section .el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
+}
+
+.system-menu-page :deep(.filter-section .el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.system-menu-page :deep(.table-section) {
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(9, 9, 11, 0.05);
+}
+
+.system-menu-page :deep(.table-section__toolbar) {
+  align-items: flex-start;
+}
+
+.system-menu-page :deep(.el-table) {
+  --el-table-header-bg-color: color-mix(in srgb, var(--muted) 46%, transparent);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--muted) 36%, transparent);
+  border-radius: 16px;
+}
+
+.system-menu-page :deep(.el-table th.el-table__cell) {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.system-menu-page :deep(.el-drawer__header) {
+  padding-bottom: 4px;
+}
+
+.system-menu-page :deep(.el-drawer__body) {
+  padding-top: 10px;
+}
+
+.system-menu-page__action {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.system-menu-page__action--danger {
+  color: var(--destructive);
+}
+
 .menu-name-cell {
   display: inline-flex;
   align-items: center;

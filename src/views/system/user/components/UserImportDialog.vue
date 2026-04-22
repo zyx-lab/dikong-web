@@ -5,16 +5,17 @@
       :align-center="true"
       title="导入数据"
       width="600px"
+      class="user-import-dialog"
       @close="closeDialog"
     >
       <el-scrollbar max-height="60vh">
         <el-form
           ref="importFormRef"
-          style="padding-right: var(--el-dialog-padding-primary)"
           :model="importFormData"
           :rules="importFormRules"
+          class="user-import-dialog__form"
         >
-          <el-form-item label="文件" prop="files">
+          <el-form-item label="文件" prop="files" class="user-import-dialog__form-item">
             <el-upload
               ref="uploadRef"
               v-model:file-list="importFormData.files"
@@ -31,16 +32,9 @@
                 <em>点击上传</em>
               </div>
               <template #tip>
-                <div class="el-upload__tip">
+                <div class="el-upload__tip user-import-dialog__tip">
                   格式为 *.xlsx / *.xls，文件不超过1M
-                  <el-link
-                    type="primary"
-                    icon="download"
-                    underline="never"
-                    @click="downloadTemplate"
-                  >
-                    下载模板
-                  </el-link>
+                  <Button variant="link" class="p-0" @click="downloadTemplate">下载模板</Button>
                 </div>
               </template>
             </el-upload>
@@ -48,18 +42,12 @@
         </el-form>
       </el-scrollbar>
       <template #footer>
-        <div style="padding-right: var(--el-dialog-padding-primary)">
-          <el-button v-if="resultData.length > 0" type="primary" @click="showResult">
+        <div class="dialog-footer">
+          <Button v-if="resultData.length > 0" variant="outline" @click="showResult">
             错误信息
-          </el-button>
-          <el-button
-            type="primary"
-            :disabled="importFormData.files.length === 0"
-            @click="handleUpload"
-          >
-            确定
-          </el-button>
-          <el-button @click="closeDialog">取消</el-button>
+          </Button>
+          <Button :disabled="importFormData.files.length === 0" @click="handleUpload">确定</Button>
+          <Button variant="outline" @click="closeDialog">取消</Button>
         </div>
       </template>
     </el-dialog>
@@ -80,7 +68,7 @@
       </el-table>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="closeResultDialog">关闭</el-button>
+          <Button variant="outline" @click="closeResultDialog">关闭</Button>
         </div>
       </template>
     </el-dialog>
@@ -90,6 +78,7 @@
 <script lang="ts" setup>
 import { ElMessage, type UploadUserFile } from "element-plus";
 import UserAPI from "@/api/system/user";
+import { Button } from "@/components/ui/button";
 import { ApiCodeEnum } from "@/enums/api";
 import { downloadFile } from "@/utils/download";
 
@@ -194,3 +183,34 @@ function closeDialog(): void {
   visible.value = false;
 }
 </script>
+
+<style scoped lang="scss">
+.user-import-dialog :deep(.el-dialog) {
+  border-radius: 24px;
+}
+
+.user-import-dialog :deep(.el-dialog .el-form-item__label) {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  letter-spacing: 0.04em;
+}
+
+.user-import-dialog__form {
+  padding-right: var(--el-dialog-padding-primary);
+}
+
+.user-import-dialog__form-item {
+  padding: 16px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  border-radius: 18px;
+}
+
+.user-import-dialog__tip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+</style>

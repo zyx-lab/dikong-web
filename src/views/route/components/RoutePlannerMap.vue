@@ -30,6 +30,13 @@ const DEFAULT_VIEW = {
   lat: 22.2599,
   height: 2000,
 } as const;
+const ROUTE_LINE_COLOR = "#14b8a6";
+const ROUTE_LINE_OUTLINE_COLOR = "#0f766e";
+const WAYPOINT_COLOR = "#334155";
+const WAYPOINT_LABEL_BG = "#0f172a";
+const LOOP_TARGET_COLOR = "#f97316";
+const LOOP_TARGET_LABEL_BG = "#ea580c";
+const DASH_LINE_COLOR = "#64748b";
 const NATURAL_EARTH_URL = Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII");
 const TDT_TOKEN = "ee242ce841590ad7342ea4be574716ce";
 const TDT_SUBDOMAINS = ["0", "1", "2", "3", "4", "5", "6", "7"];
@@ -80,65 +87,65 @@ function getMapPalette(mode: BaseMapMode): MapPalette {
   if (props.darkMode) {
     if (mode === "satellite") {
       return {
-        background: "#050B14",
-        globe: "#07101B",
-        brightness: 0.64,
-        contrast: 1.18,
-        gamma: 0.9,
-        saturation: 0.82,
+        background: "#09090b",
+        globe: "#111827",
+        brightness: 0.68,
+        contrast: 1.1,
+        gamma: 0.92,
+        saturation: 0.72,
       };
     }
 
     if (mode === "terrain") {
       return {
-        background: "#09131F",
-        globe: "#0B1623",
-        brightness: 0.7,
-        contrast: 1.12,
-        gamma: 0.92,
-        saturation: 0.78,
+        background: "#111827",
+        globe: "#1f2937",
+        brightness: 0.74,
+        contrast: 1.08,
+        gamma: 0.94,
+        saturation: 0.76,
       };
     }
 
     return {
-      background: "#08111F",
-      globe: "#0A1628",
-      brightness: 0.76,
-      contrast: 1.08,
-      gamma: 0.94,
-      saturation: 0.84,
+      background: "#0f172a",
+      globe: "#1e293b",
+      brightness: 0.8,
+      contrast: 1.04,
+      gamma: 0.96,
+      saturation: 0.8,
     };
   }
 
   if (mode === "satellite") {
     return {
-      background: "#DBE7F4",
-      globe: "#D0DFEE",
+      background: "#f8fafc",
+      globe: "#e2e8f0",
       brightness: 1,
-      contrast: 1.08,
+      contrast: 1.02,
       gamma: 1,
-      saturation: 1.04,
+      saturation: 0.98,
     };
   }
 
   if (mode === "terrain") {
     return {
-      background: "#EEF4FB",
-      globe: "#DCE6F2",
+      background: "#f5f7fb",
+      globe: "#e5e7eb",
       brightness: 1,
-      contrast: 1.04,
+      contrast: 1,
       gamma: 0.98,
-      saturation: 0.98,
+      saturation: 0.92,
     };
   }
 
   return {
-    background: "#EAF4FF",
-    globe: "#DDEEFF",
-    brightness: 1.02,
-    contrast: 1,
+    background: "#f8fafc",
+    globe: "#e5e7eb",
+    brightness: 1.01,
+    contrast: 0.98,
     gamma: 0.98,
-    saturation: 1,
+    saturation: 0.96,
   };
 }
 
@@ -219,12 +226,12 @@ async function createBaseLayer(mode: BaseMapMode, hasIonToken: boolean) {
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 512">
               <defs>
                 <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#173867" />
-                  <stop offset="100%" stop-color="#08111f" />
+                  <stop offset="0%" stop-color="#334155" />
+                  <stop offset="100%" stop-color="#111827" />
                 </linearGradient>
               </defs>
               <rect width="1024" height="512" fill="url(#bg)" />
-              <g fill="none" stroke="#51F4F3" stroke-opacity="0.22">
+              <g fill="none" stroke="#94a3b8" stroke-opacity="0.18">
                 <ellipse cx="512" cy="256" rx="420" ry="168" />
                 <ellipse cx="512" cy="256" rx="312" ry="124" />
                 <ellipse cx="512" cy="256" rx="198" ry="78" />
@@ -419,7 +426,7 @@ function drawPointRoute(entities: Cesium.EntityCollection) {
       polyline: {
         positions,
         width: 4,
-        material: Cesium.Color.fromCssColorString("#51F4F3"),
+        material: Cesium.Color.fromCssColorString(ROUTE_LINE_COLOR),
       },
     });
   }
@@ -436,7 +443,7 @@ function drawAreaRoute(entities: Cesium.EntityCollection) {
       polyline: {
         positions: [...positions, positions[0]],
         width: 3,
-        material: Cesium.Color.fromCssColorString("#51F4F3"),
+        material: Cesium.Color.fromCssColorString(ROUTE_LINE_COLOR),
       },
     });
   }
@@ -445,9 +452,9 @@ function drawAreaRoute(entities: Cesium.EntityCollection) {
     entities.add({
       polygon: {
         hierarchy: positions,
-        material: Cesium.Color.fromCssColorString("#51F4F3").withAlpha(0.16),
+        material: Cesium.Color.fromCssColorString(ROUTE_LINE_COLOR).withAlpha(0.14),
         outline: true,
-        outlineColor: Cesium.Color.fromCssColorString("#0ABAFF"),
+        outlineColor: Cesium.Color.fromCssColorString(ROUTE_LINE_OUTLINE_COLOR),
       },
     });
   }
@@ -472,7 +479,7 @@ function drawLoopRoute(entities: Cesium.EntityCollection) {
     position: targetPosition,
     point: {
       pixelSize: 12,
-      color: Cesium.Color.fromCssColorString("#FC6533"),
+      color: Cesium.Color.fromCssColorString(LOOP_TARGET_COLOR),
       outlineColor: Cesium.Color.WHITE,
       outlineWidth: 2,
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
@@ -482,7 +489,7 @@ function drawLoopRoute(entities: Cesium.EntityCollection) {
       font: "600 14px Inter, sans-serif",
       fillColor: Cesium.Color.WHITE,
       showBackground: true,
-      backgroundColor: Cesium.Color.fromCssColorString("#FC6533").withAlpha(0.85),
+      backgroundColor: Cesium.Color.fromCssColorString(LOOP_TARGET_LABEL_BG).withAlpha(0.88),
       pixelOffset: new Cesium.Cartesian2(0, -24),
       verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
       disableDepthTestDistance: Number.POSITIVE_INFINITY,
@@ -494,7 +501,7 @@ function drawLoopRoute(entities: Cesium.EntityCollection) {
       polyline: {
         positions: loopPositions,
         width: 4,
-        material: Cesium.Color.fromCssColorString("#51F4F3"),
+        material: Cesium.Color.fromCssColorString(ROUTE_LINE_COLOR),
       },
     });
 
@@ -502,7 +509,7 @@ function drawLoopRoute(entities: Cesium.EntityCollection) {
       position: loopPositions[0],
       point: {
         pixelSize: 11,
-        color: Cesium.Color.fromCssColorString("#0ABAFF"),
+        color: Cesium.Color.fromCssColorString(WAYPOINT_COLOR),
         outlineColor: Cesium.Color.WHITE,
         outlineWidth: 2,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
@@ -512,7 +519,7 @@ function drawLoopRoute(entities: Cesium.EntityCollection) {
         font: "600 13px Inter, sans-serif",
         fillColor: Cesium.Color.WHITE,
         showBackground: true,
-        backgroundColor: Cesium.Color.fromCssColorString("#0ABAFF").withAlpha(0.85),
+        backgroundColor: Cesium.Color.fromCssColorString(WAYPOINT_LABEL_BG).withAlpha(0.88),
         pixelOffset: new Cesium.Cartesian2(0, -22),
         verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
@@ -530,9 +537,9 @@ function drawLoopRoute(entities: Cesium.EntityCollection) {
       semiMajorAxis: props.draft.loopConfig.radius,
       semiMinorAxis: props.draft.loopConfig.radius,
       height: props.draft.loopConfig.flightHeight,
-      material: Cesium.Color.fromCssColorString("#51F4F3").withAlpha(0.08),
+      material: Cesium.Color.fromCssColorString(ROUTE_LINE_COLOR).withAlpha(0.08),
       outline: true,
-      outlineColor: Cesium.Color.fromCssColorString("#51F4F3").withAlpha(0.55),
+      outlineColor: Cesium.Color.fromCssColorString(ROUTE_LINE_COLOR).withAlpha(0.45),
     },
   });
 }
@@ -549,7 +556,7 @@ function addWaypointEntities(
       position: pointPosition,
       point: {
         pixelSize: 11,
-        color: Cesium.Color.fromCssColorString("#0ABAFF"),
+        color: Cesium.Color.fromCssColorString(WAYPOINT_COLOR),
         outlineColor: Cesium.Color.WHITE,
         outlineWidth: 2,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
@@ -559,7 +566,7 @@ function addWaypointEntities(
         font: "600 13px Inter, sans-serif",
         fillColor: Cesium.Color.WHITE,
         showBackground: true,
-        backgroundColor: Cesium.Color.fromCssColorString("#0ABAFF").withAlpha(0.9),
+        backgroundColor: Cesium.Color.fromCssColorString(WAYPOINT_LABEL_BG).withAlpha(0.9),
         pixelOffset: new Cesium.Cartesian2(0, -22),
         verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
@@ -571,7 +578,7 @@ function addWaypointEntities(
         positions: [pointPosition, groundPosition],
         width: 1.5,
         material: new Cesium.PolylineDashMaterialProperty({
-          color: Cesium.Color.fromCssColorString("#0ABAFF").withAlpha(0.5),
+          color: Cesium.Color.fromCssColorString(DASH_LINE_COLOR).withAlpha(0.48),
           dashLength: 8.0,
         }),
       },
@@ -646,7 +653,8 @@ defineExpose({
   overflow: hidden;
   background: var(--el-bg-color-page);
   border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   :deep(.cesium-viewer),
   :deep(.cesium-viewer-cesiumWidgetContainer),
@@ -664,11 +672,12 @@ defineExpose({
   :deep(.cesium-viewer-bottom) {
     right: 8px;
     bottom: 8px;
-    padding: 2px 6px;
+    padding: 4px 8px;
     color: var(--el-text-color-secondary);
-    background: var(--el-bg-color-overlay);
+    background: color-mix(in srgb, var(--el-bg-color-overlay) 92%, transparent);
     border: 1px solid var(--el-border-color-light);
-    border-radius: 4px;
+    border-radius: 12px;
+    box-shadow: 0 10px 20px rgba(9, 9, 11, 0.08);
   }
 
   :deep(.cesium-credit-textContainer),

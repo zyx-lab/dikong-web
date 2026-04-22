@@ -16,7 +16,7 @@
               </div>
               <h1>{{ activeDraft.routeName }}</h1>
               <p>
-                {{ activeDraft.description || "统一维护航线规划、模拟飞行和下发状态。" }}
+                {{ activeDraft.description || "查看航线规划、模拟飞行和下发状态。" }}
               </p>
             </div>
           </div>
@@ -501,7 +501,7 @@ watch(
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   min-height: 0;
   overflow: hidden;
 }
@@ -511,10 +511,11 @@ watch(
   gap: 12px;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 16px 18px;
   background: var(--el-bg-color-overlay);
   border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  border-radius: 20px;
+  box-shadow: 0 12px 28px rgba(9, 9, 11, 0.06);
 }
 
 .planner-page__header-main {
@@ -558,7 +559,7 @@ watch(
   display: grid;
   flex: 1;
   grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.4fr);
-  gap: 20px;
+  gap: 16px;
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -593,7 +594,7 @@ watch(
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  padding: 12px;
+  padding: 16px;
   overflow: hidden;
 }
 
@@ -604,10 +605,10 @@ watch(
 .planner-card__content--map {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   height: 100%;
   min-height: 0;
-  padding: 12px;
+  padding: 16px;
   overflow: hidden;
 }
 
@@ -619,6 +620,10 @@ watch(
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--el-fill-color-light) 92%, transparent);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 16px;
 }
 
 .planner-card__map-body {
@@ -632,11 +637,14 @@ watch(
 .planner-overlay {
   position: absolute;
   z-index: 5;
-  padding: 6px 10px;
+  max-width: min(420px, calc(100% - 24px));
+  padding: 8px 12px;
   color: var(--el-text-color-regular);
-  background: var(--el-bg-color-overlay);
+  background: color-mix(in srgb, var(--el-bg-color-overlay) 92%, transparent);
   border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  border-radius: 999px;
+  box-shadow: 0 12px 24px rgba(9, 9, 11, 0.1);
+  backdrop-filter: blur(12px);
 }
 
 .planner-overlay--hint {
@@ -666,10 +674,10 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px;
+  padding: 12px 14px;
   background: var(--el-fill-color-light);
   border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  border-radius: 16px;
 }
 
 .route-dispatch-dialog__summary-item span {
@@ -698,12 +706,12 @@ watch(
   gap: 8px;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: 10px 12px;
   margin-bottom: 12px;
   color: var(--el-text-color-secondary);
   background: var(--el-fill-color-light);
   border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  border-radius: 14px;
 }
 
 .route-dispatch-dialog__status.is-error {
@@ -712,13 +720,13 @@ watch(
 }
 
 .route-dispatch-dialog__tip {
-  padding: 8px 10px;
+  padding: 10px 12px;
   font-size: 12px;
   line-height: 1.6;
   color: var(--el-text-color-secondary);
   background: var(--el-fill-color-light);
   border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  border-radius: 14px;
 }
 
 .detail-empty-card__footer {

@@ -1,18 +1,11 @@
 <template>
   <div class="app-container flex flex-col gap-6 py-6">
     <FlightPageHeader
-      eyebrow="Mission Command"
+      eyebrow="任务管理"
       title="任务管理"
-      description="统一编排巡检任务、航线资源与执行窗口，让值守人员在进入表格前先看清任务节奏、执行压力和异常风险。"
+      description="查看巡检任务、执行状态和计划时间。"
       action-label="新增任务"
       @action="handleCreateClick"
-    />
-
-    <TaskSummaryCards
-      :total-count="totalCount"
-      :active-task-count="activeTaskCount"
-      :completed-task-count="completedTaskCount"
-      :attention-task-count="attentionTaskCount"
     />
 
     <TaskFilterBar :query-params="queryParams" @query="handleQuery" @reset="handleResetQuery" />
@@ -95,7 +88,6 @@ import TaskDataTable from "@/views/flight/task/components/TaskDataTable.vue";
 import TaskDetailDialog from "@/views/flight/task/components/TaskDetailDialog.vue";
 import TaskEditorSheet from "@/views/flight/task/components/TaskEditorSheet.vue";
 import TaskFilterBar from "@/views/flight/task/components/TaskFilterBar.vue";
-import TaskSummaryCards from "@/views/flight/task/components/TaskSummaryCards.vue";
 
 defineOptions({
   name: "FlightTask",
@@ -115,8 +107,6 @@ const loading = ref(false);
 // 已删除的 ID 集合（用于修正统计）
 const deletedIds = ref(new Set<number>());
 
-/** 任务总量：API total 减去已删除的 */
-const totalCount = computed(() => Math.max(0, total.value - deletedIds.value.size));
 const submitLoading = ref(false);
 const ids = ref<number[]>([]);
 const liveUrlMap = ref<Record<number, string>>({});
@@ -125,12 +115,6 @@ const hasActiveFilters = computed(() =>
   Boolean(queryParams.name || queryParams.status !== undefined)
 );
 const activeTaskCount = computed(() => tableData.value.filter((item) => item.status === 1).length);
-const completedTaskCount = computed(
-  () => tableData.value.filter((item) => item.status === 2).length
-);
-const attentionTaskCount = computed(
-  () => tableData.value.filter((item) => item.status === 0).length
-);
 
 // 弹窗状态
 const dialogState = reactive({
