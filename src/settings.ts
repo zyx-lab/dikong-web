@@ -2,11 +2,11 @@
  * 应用配置
  */
 
+import type { AppSettings } from "@/types/ui";
 import { LayoutMode, ComponentSize, SidebarColor, ThemeMode, LanguageEnum } from "@/enums";
 
 const env = import.meta.env;
 const { pkg } = __APP_INFO__;
-const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
 // ============================================
 // 应用配置
@@ -23,19 +23,25 @@ export const appConfig = {
 // ============================================
 // 用户偏好默认值
 // ============================================
-export const defaults = {
-  theme: prefersDark ? ThemeMode.DARK : ThemeMode.LIGHT,
-  themeColor: "#2B5B9E",
-  sidebarColorScheme: SidebarColor.MINIMAL_WHITE,
-  layout: LayoutMode.LEFT,
-  size: ComponentSize.DEFAULT,
-  language: LanguageEnum.ZH_CN,
+export const defaultSettings: AppSettings = {
+  title: pkg.name,
+  version: pkg.version,
+  showSettings: true,
   showTagsView: true,
   showAppLogo: true,
+  layout: LayoutMode.MIX,
+  theme: ThemeMode.LIGHT,
+  size: ComponentSize.DEFAULT,
+  language: LanguageEnum.ZH_CN,
+  themeColor: "#2B5B9E",
   showWatermark: false,
-  pageSwitchingAnimation: "fade-slide",
-  showSettings: true,
   watermarkContent: pkg.name,
+  sidebarColorScheme: SidebarColor.MINIMAL_WHITE,
+};
+
+export const defaults = {
+  ...defaultSettings,
+  pageSwitchingAnimation: "fade-slide",
 } as const;
 
 // ============================================
