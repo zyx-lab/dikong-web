@@ -1,7 +1,0 @@
-interface:
-  display_name: "Youlai Admin Page"
-  short_description: "Build consistent Youlai-style admin pages from repo patterns"
-  default_prompt: "Use $youlai-admin-page to build or update this backend management page by cloning the closest existing repo pattern and keeping the UI style consistent."
-
-policy:
-  allow_implicit_invocation: true
