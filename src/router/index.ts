@@ -141,6 +141,12 @@ export const constantRoutes: RouteRecordRaw[] = [
         meta: { title: "直播播放", hidden: true },
       },
       {
+        path: "record/video-player/:mediaId",
+        name: "VideoPlayer",
+        component: () => import("@/views/flight/record/video-player.vue"),
+        meta: { title: "视频回放", hidden: true },
+      },
+      {
         path: "record",
         component: () => import("@/views/flight/record/index.vue"),
         name: "FlightRecord",

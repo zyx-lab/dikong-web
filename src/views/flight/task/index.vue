@@ -77,6 +77,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { useRouter } from "vue-router";
 import type { TaskPageQuery, TaskVO, TaskForm, RouteOption, MemberOption } from "@/api/flight/task";
 import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
 import { Badge } from "@/components/ui/badge";
@@ -93,6 +94,8 @@ defineOptions({
   name: "FlightTask",
   inheritAttrs: false,
 });
+
+const router = useRouter();
 
 // 查询参数
 const queryParams = reactive<TaskPageQuery>({
@@ -317,6 +320,21 @@ function handleSelectionIdsChange(nextIds: number[]): void {
   ids.value = nextIds;
 }
 
+function setLiveUrl(taskId: number, url: string): void {
+  liveUrlMap.value[taskId] = url;
+  sessionStorage.setItem(`live_${taskId}`, url);
+}
+
+function getLiveUrl(taskId: number): string | undefined {
+  if (liveUrlMap.value[taskId]) return liveUrlMap.value[taskId];
+  const stored = sessionStorage.getItem(`live_${taskId}`);
+  if (stored) {
+    liveUrlMap.value[taskId] = stored;
+    return stored;
+  }
+  return undefined;
+}
+
 /**
  * 批量删除
  */
@@ -394,7 +412,7 @@ async function handleAdvance(row: TaskVO): Promise<void> {
         video_quality: 1,
       };
       const res = await DroneAPI.liveStart(row.droneId!, liveBody);
-      liveUrlMap.value[row.id] = res?.hls_url ?? "";
+      setLiveUrl(row.id, res?.hls_url ?? "");
     } else if (newStatus === 2 && oldStatus !== 2) {
       // 执行中 → 执行完成，需等 advance + liveStop 都完成
       const liveBody = {
@@ -417,18 +435,22 @@ async function handleAdvance(row: TaskVO): Promise<void> {
 /**
  * 直播画面
  */
-function handleLiveStream(url?: string): void {
+function handleLiveStream(url?: string, taskId?: number): void {
   if (!url) {
     ElMessage.warning("暂无直播地址，请先推进任务");
     return;
   }
-  // 拼接完整绝对路径，避免被 SPA 路由拦截
-  const base = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "");
-  window.open(`${base}/live.html?url=${encodeURIComponent(url)}`, "_blank");
+  router.push({
+    path: "/flight/task/hls-player",
+    query: {
+      url,
+      ...(taskId ? { taskId: String(taskId) } : {}),
+    },
+  });
 }
 
 function handleLiveFromRow(row: TaskVO): void {
-  handleLiveStream(liveUrlMap.value[row.id]);
+  handleLiveStream(getLiveUrl(row.id), row.id);
 }
 
 onMounted(() => {

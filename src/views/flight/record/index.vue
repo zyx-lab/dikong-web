@@ -6,7 +6,13 @@
       description="查看飞行记录、媒体资料和核实状态。"
     />
 
-    <RecordFilterBar :query-params="queryParams" @query="handleQuery" @reset="handleResetQuery" />
+    <RecordFilterBar
+      :query-params="queryParams"
+      :drone-options="droneOptions"
+      :pilot-options="pilotOptions"
+      @query="handleQuery"
+      @reset="handleResetQuery"
+    />
 
     <Card data-testid="record-table-shell" class="border-border/70 shadow-none">
       <CardContent class="space-y-4 pt-6">
@@ -61,6 +67,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { useRouter } from "vue-router";
+import TaskAPI, { type MemberOption } from "@/api/flight/task";
+import DroneAPI from "@/api/resource/drone";
 import FlightRecordAPI from "@/api/flight/record";
 import type { FlightRecordInfo, FlightRecordQuery } from "@/api/flight/types";
 import FlightPageHeader from "@/components/flight/FlightPageHeader.vue";
@@ -73,10 +82,14 @@ import RecordFilterBar from "@/views/flight/record/components/RecordFilterBar.vu
 
 defineOptions({ name: "FlightRecord", inheritAttrs: false });
 
+const router = useRouter();
+
 const queryParams = reactive<FlightRecordQuery>({
   pageNum: 1,
   pageSize: 10,
   flightNo: undefined,
+  droneId: undefined,
+  pilotId: undefined,
   status: undefined,
 });
 
@@ -86,12 +99,19 @@ const loading = ref(false);
 const submitLoading = ref(false);
 const ids = ref<number[]>([]);
 const deletedIds = ref(new Set<number>());
+const droneOptions = ref<{ id: number; name: string }[]>([]);
+const pilotOptions = ref<MemberOption[]>([]);
 
 /** 飞行记录总量：API total 减去已删除的 */
 const totalCount = computed(() => Math.max(0, total.value - deletedIds.value.size));
 
 const hasActiveFilters = computed(() =>
-  Boolean(queryParams.flightNo || queryParams.status !== undefined)
+  Boolean(
+    queryParams.flightNo ||
+    queryParams.droneId !== undefined ||
+    queryParams.pilotId !== undefined ||
+    queryParams.status !== undefined
+  )
 );
 
 // Detail dialog
@@ -136,9 +156,30 @@ function handleQuery(): void {
 
 function handleResetQuery(): void {
   queryParams.flightNo = undefined;
+  queryParams.droneId = undefined;
+  queryParams.pilotId = undefined;
   queryParams.status = undefined;
   queryParams.pageNum = 1;
   fetchData();
+}
+
+async function loadDropdownOptions(): Promise<void> {
+  try {
+    const [drones, members] = await Promise.all([
+      DroneAPI.getPage({ pageNum: 1, pageSize: 1000 }),
+      TaskAPI.getMembers(),
+    ]);
+    droneOptions.value = (drones.list ?? []).map((drone: any) => ({
+      id: drone.id,
+      name: drone.name,
+    }));
+    pilotOptions.value = members.filter((member: MemberOption) =>
+      member.roleCodes.includes("pilot_operator")
+    );
+  } catch (err) {
+    console.error(err);
+    ElMessage.warning("筛选选项加载失败");
+  }
 }
 
 function handleSelectionIdsChange(nextIds: number[]): void {
@@ -244,11 +285,8 @@ async function handleDelete(id: number): Promise<void> {
 /** 视频回放 */
 async function handleVideo(row: FlightRecordInfo): Promise<void> {
   try {
-    // 第一步：获取飞行记录详情，从中取 media_files 里视频的 id
     const detail = await FlightRecordAPI.getDetail(row.id);
     const mediaFiles: Array<{ id: number; media_type: number }> = (detail as any).media_files ?? [];
-
-    // 找视频类型（media_type=2）的第一条
     const video = mediaFiles.find((m: { media_type: number }) => m.media_type === 2);
 
     if (!video) {
@@ -256,26 +294,14 @@ async function handleVideo(row: FlightRecordInfo): Promise<void> {
       return;
     }
 
-    // 第二步：用 media id 调用 playback-url 接口获取可播放 URL
-    const res = await FlightRecordAPI.getPlaybackUrl(video.id);
-    console.log("[handleVideo] playback-url response:", res);
-
-    // 提取 playback_url：响应可能是 { playback_url: "..." } 或 { data: { playback_url: "..." } }
-    const url =
-      (res as any)?.playback_url ?? (res as any)?.data?.playback_url ?? (res as any)?.data ?? null;
-
-    if (!url) {
-      ElMessage.warning("暂无视频回放地址");
-      return;
-    }
-
-    window.location.href = url;
+    router.push({ path: `/flight/record/video-player/${video.id}` });
   } catch {
     // 接口调用失败，错误已在拦截器里处理
   }
 }
 
 onMounted(() => {
+  loadDropdownOptions();
   fetchData();
 });
 </script>

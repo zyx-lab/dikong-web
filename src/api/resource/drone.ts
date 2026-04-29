@@ -36,10 +36,19 @@ function mapFormToWire(form: DroneForm): Record<string, any> {
 const DroneAPI = {
   // List claimed drones (tenant-scoped)
   async getPage(queryParams: DroneQuery) {
+    const params: Record<string, unknown> = {
+      pageNum: queryParams.pageNum,
+      pageSize: queryParams.pageSize,
+    };
+    if (queryParams.code) params.code = queryParams.code;
+    if (queryParams.deviceSn) params.device_sn = queryParams.deviceSn;
+    if (queryParams.model) params.model = queryParams.model;
+    if (queryParams.name) params.name = queryParams.name;
+
     const raw = await request<any, any>({
       url: `${DRONE_BASE_URL}`,
       method: "get",
-      params: queryParams,
+      params,
     });
 
     // support multiple shapes: { results, count } | { list, total } | direct array

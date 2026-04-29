@@ -549,8 +549,14 @@ function addWaypointEntities(
   points: RouteRecordModel["points"]
 ) {
   points.forEach((point, index) => {
+    const groundCartographic = Cesium.Cartographic.fromDegrees(point.lng, point.lat);
+    const groundHeight = viewerRef.value?.scene.globe.getHeight(groundCartographic) ?? 0;
     const pointPosition = Cesium.Cartesian3.fromDegrees(point.lng, point.lat, point.alt);
-    const groundPosition = Cesium.Cartesian3.fromDegrees(point.lng, point.lat, 0);
+    const groundPosition = Cesium.Cartesian3.fromRadians(
+      groundCartographic.longitude,
+      groundCartographic.latitude,
+      groundHeight
+    );
 
     entities.add({
       position: pointPosition,
@@ -576,6 +582,7 @@ function addWaypointEntities(
     entities.add({
       polyline: {
         positions: [pointPosition, groundPosition],
+        arcType: Cesium.ArcType.NONE,
         width: 1.5,
         material: new Cesium.PolylineDashMaterialProperty({
           color: Cesium.Color.fromCssColorString(DASH_LINE_COLOR).withAlpha(0.48),

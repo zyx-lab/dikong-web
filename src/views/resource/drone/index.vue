@@ -62,6 +62,24 @@
           />
         </el-form-item>
 
+        <el-form-item label="设备序列号" prop="deviceSn">
+          <el-input
+            v-model="queryParams.deviceSn"
+            placeholder="请输入设备序列号"
+            clearable
+            @keyup.enter="handleQuery"
+          />
+        </el-form-item>
+
+        <el-form-item label="型号" prop="model">
+          <el-input
+            v-model="queryParams.model"
+            placeholder="请输入型号"
+            clearable
+            @keyup.enter="handleQuery"
+          />
+        </el-form-item>
+
         <el-form-item class="search-buttons">
           <Button size="sm" @click="handleQuery">查询</Button>
           <Button size="sm" variant="outline" @click="handleResetQuery">重置</Button>
@@ -309,6 +327,8 @@ const queryParams = reactive<DroneQuery>({
   pageSize: 10,
   code: undefined,
   name: undefined,
+  deviceSn: undefined,
+  model: undefined,
 });
 
 const tableData = ref<DroneInfo[]>([]);
@@ -317,7 +337,9 @@ const loading = ref(false);
 const selectedIds = ref<number[]>([]);
 
 const dialogWidth = computed(() => (width.value < 768 ? "92%" : "860px"));
-const hasActiveFilters = computed(() => Boolean(queryParams.code || queryParams.name));
+const hasActiveFilters = computed(() =>
+  Boolean(queryParams.code || queryParams.name || queryParams.deviceSn || queryParams.model)
+);
 const onlineCount = computed(() => tableData.value.filter((d) => d.djiOnline === true).length);
 const offlineCount = computed(() => Math.max((total.value || 0) - onlineCount.value, 0));
 const payloadBoundCount = computed(
@@ -362,6 +384,8 @@ function handleQuery(): void {
 
 function handleResetQuery(): void {
   queryFormRef.value?.resetFields();
+  queryParams.deviceSn = undefined;
+  queryParams.model = undefined;
   queryParams.pageNum = 1;
   fetchData();
 }

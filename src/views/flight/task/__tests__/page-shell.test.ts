@@ -1,6 +1,12 @@
 import { render, screen } from "@testing-library/vue";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("vue-router", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
+
 vi.mock("@/api/flight/task", () => ({
   default: {
     getPage: vi.fn().mockResolvedValue({
@@ -57,7 +63,6 @@ describe("TaskPage shadcn shell", () => {
     });
 
     expect(await screen.findByRole("heading", { name: "任务管理", level: 1 })).not.toBeNull();
-    expect(screen.getAllByTestId("flight-metric-card")).toHaveLength(4);
     expect(screen.getByTestId("task-filter-bar")).not.toBeNull();
     expect(screen.getByTestId("flight-empty-state")).not.toBeNull();
     expect(screen.getByTestId("task-table-shell")).not.toBeNull();
