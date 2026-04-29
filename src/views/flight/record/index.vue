@@ -42,32 +42,50 @@
     </section>
 
     <div class="filter-section">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
-        <el-form-item label="架次编号" prop="flightNo">
+      <el-form :model="queryParams" :inline="true">
+        <el-form-item label="飞行记录编号" prop="flightNo">
           <el-input
             v-model="queryParams.flightNo"
-            placeholder="请输入架次编号"
+            placeholder="请输入飞行记录编号"
             clearable
             @keyup.enter="handleQuery"
           />
         </el-form-item>
-
-        <el-form-item label="飞行状态" prop="status">
+        <el-form-item label="无人机" prop="droneId">
           <el-select
-            v-model="queryParams.status"
-            placeholder="请选择"
+            v-model="queryParams.droneId"
+            placeholder="全部"
             clearable
-            class="filter-field"
+            filterable
+            class="filter-field filter-field--md"
           >
-            <el-option label="飞行中" :value="0" />
-            <el-option label="已完成" :value="1" />
-            <el-option label="异常终止" :value="2" />
+            <el-option
+              v-for="opt in droneOptions"
+              :key="opt.id"
+              :label="opt.name"
+              :value="opt.id"
+            />
           </el-select>
         </el-form-item>
-
+        <el-form-item label="飞手" prop="pilotId">
+          <el-select
+            v-model="queryParams.pilotId"
+            placeholder="全部"
+            clearable
+            filterable
+            class="filter-field filter-field--md"
+          >
+            <el-option
+              v-for="opt in pilotOptions"
+              :key="opt.memberId"
+              :label="opt.displayName"
+              :value="opt.memberId"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item class="search-buttons">
-          <el-button type="primary" icon="Search" @click="handleQuery">查询</el-button>
-          <el-button icon="Refresh" @click="handleResetQuery">重置</el-button>
+          <el-button type="primary" icon="search" @click="handleQuery">查询</el-button>
+          <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -96,7 +114,7 @@
         <el-table-column
           label="飞行记录编号"
           prop="flightNo"
-          min-width="170"
+          min-width="100"
           show-overflow-tooltip
         />
         <el-table-column
@@ -114,18 +132,26 @@
         />
         <el-table-column label="设备序列号" prop="deviceSn" min-width="180" show-overflow-tooltip />
         <el-table-column label="飞手姓名" prop="pilotName" min-width="120" align="center" />
-        <el-table-column label="开始时间" min-width="170">
-          <template #default="{ row }">{{ formatTime(row.startTime) }}</template>
-        </el-table-column>
-        <el-table-column label="结束时间" min-width="170">
-          <template #default="{ row }">{{ formatTime(row.endTime) }}</template>
+        <el-table-column label="飞行时间" min-width="120">
+          <template #default="{ row }">
+            <div v-if="row.startTime || row.endTime">
+              <div class="time-row">
+                <span class="time-label">起</span>
+                <span class="time-value">{{ formatTime(row.startTime) }}</span>
+              </div>
+              <div class="time-row">
+                <span class="time-label">止</span>
+                <span class="time-value">{{ formatTime(row.endTime) }}</span>
+              </div>
+            </div>
+            <span v-else class="time-value">{{ formatTime(row.startTime) }}</span>
+          </template>
         </el-table-column>
         <el-table-column label="飞行时长" width="100" align="center">
           <template #default="{ row }">
             {{ formatDuration(row.flightDuration) }}
           </template>
         </el-table-column>
-        <el-table-column label="照片数量" prop="photoCount" width="90" align="center" />
         <el-table-column label="视频数量" prop="videoCount" width="90" align="center" />
         <el-table-column fixed="right" label="操作" align="center" width="240">
           <template #default="scope">
@@ -160,6 +186,7 @@
         v-model:total="total"
         v-model:page="queryParams.pageNum"
         v-model:limit="queryParams.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
         @pagination="fetchData"
       />
     </el-card>
@@ -225,7 +252,6 @@
                 {{ formatDuration(row.flightDuration) }}
               </template>
             </el-table-column>
-            <el-table-column prop="photoCount" label="照片数量" width="90" align="center" />
             <el-table-column prop="videoCount" label="视频数量" width="90" align="center" />
           </el-table>
         </template>
@@ -263,9 +289,6 @@
         <el-form-item label="飞行时长(秒)" prop="flightDuration">
           <el-input-number v-model="editForm.flightDuration" :min="0" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="照片数量" prop="photoCount">
-          <el-input-number v-model="editForm.photoCount" :min="0" style="width: 100%" />
-        </el-form-item>
         <el-form-item label="视频数量" prop="videoCount">
           <el-input-number v-model="editForm.videoCount" :min="0" style="width: 100%" />
         </el-form-item>
@@ -280,22 +303,31 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 import { useWindowSize } from "@vueuse/core";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
 import FlightRecordAPI from "@/api/flight/record";
+import TaskAPI from "@/api/flight/task";
+import DroneAPI from "@/api/resource/drone";
 import type { FlightRecordInfo, FlightRecordQuery } from "@/api/flight/types";
+import type { MemberOption } from "@/api/flight/task";
 
 defineOptions({ name: "FlightRecord", inheritAttrs: false });
 
+const router = useRouter();
 const { width } = useWindowSize();
 
-const queryFormRef = ref<FormInstance>();
 const editFormRef = ref<FormInstance>();
+
+const droneOptions = ref<{ id: number; name: string }[]>([]);
+const pilotOptions = ref<MemberOption[]>([]);
 
 const queryParams = reactive<FlightRecordQuery>({
   pageNum: 1,
   pageSize: 10,
   flightNo: undefined,
+  droneId: undefined,
+  pilotId: undefined,
   status: undefined,
 });
 
@@ -311,7 +343,12 @@ const totalCount = computed(() => Math.max(0, total.value - deletedIds.value.siz
 
 const dialogWidth = computed(() => (width.value < 768 ? "92%" : "800px"));
 const hasActiveFilters = computed(() =>
-  Boolean(queryParams.flightNo || queryParams.status !== undefined)
+  Boolean(
+    queryParams.flightNo ||
+    queryParams.droneId !== undefined ||
+    queryParams.pilotId !== undefined ||
+    queryParams.status !== undefined
+  )
 );
 
 const pendingRecordCount = computed(
@@ -319,7 +356,7 @@ const pendingRecordCount = computed(
 );
 const pendingAlarmCount = computed(() => 0);
 const mediaAssetCount = computed(() =>
-  tableData.value.reduce((sum, r) => sum + (r.photoCount ?? 0) + (r.videoCount ?? 0), 0)
+  tableData.value.reduce((sum, r) => sum + ((r as any).photoCount ?? 0) + (r.videoCount ?? 0), 0)
 );
 
 // Detail dialog
@@ -339,7 +376,6 @@ const editForm = reactive({
   droneName: "",
   pilotName: "",
   flightDuration: 0,
-  photoCount: 0,
   videoCount: 1,
 });
 
@@ -365,7 +401,10 @@ function handleQuery(): void {
 }
 
 function handleResetQuery(): void {
-  queryFormRef.value?.resetFields();
+  queryParams.flightNo = undefined;
+  queryParams.droneId = undefined;
+  queryParams.pilotId = undefined;
+  queryParams.status = undefined;
   queryParams.pageNum = 1;
   fetchData();
 }
@@ -414,7 +453,6 @@ function handleEdit(row: FlightRecordInfo): void {
   editForm.droneName = row.droneName ?? "";
   editForm.pilotName = row.pilotName ?? "";
   editForm.flightDuration = row.flightDuration ?? 0;
-  editForm.photoCount = row.photoCount ?? 0;
   editForm.videoCount = row.videoCount ?? 1;
   editDialog.visible = true;
 }
@@ -432,7 +470,6 @@ async function handleUpdate(): Promise<void> {
       drone_name: editForm.droneName,
       pilot_name: editForm.pilotName,
       flight_duration: editForm.flightDuration,
-      photo_count: editForm.photoCount,
       video_count: editForm.videoCount,
     });
     ElMessage.success("修改成功");
@@ -470,11 +507,8 @@ async function handleDelete(id: number): Promise<void> {
 /** 视频回放 */
 async function handleVideo(row: FlightRecordInfo): Promise<void> {
   try {
-    // 第一步：获取飞行记录详情，从中取 media_files 里视频的 id
     const detail = await FlightRecordAPI.getDetail(row.id);
     const mediaFiles: Array<{ id: number; media_type: number }> = (detail as any).media_files ?? [];
-
-    // 找视频类型（media_type=2）的第一条
     const video = mediaFiles.find((m: { media_type: number }) => m.media_type === 2);
 
     if (!video) {
@@ -482,30 +516,42 @@ async function handleVideo(row: FlightRecordInfo): Promise<void> {
       return;
     }
 
-    // 第二步：用 media id 调用 playback-url 接口获取可播放 URL
-    const res = await FlightRecordAPI.getPlaybackUrl(video.id);
-    console.log("[handleVideo] playback-url response:", res);
-
-    // 提取 playback_url：响应可能是 { playback_url: "..." } 或 { data: { playback_url: "..." } }
-    const url =
-      (res as any)?.playback_url ?? (res as any)?.data?.playback_url ?? (res as any)?.data ?? null;
-
-    if (!url) {
-      ElMessage.warning("暂无视频回放地址");
-      return;
-    }
-
-    window.location.href = url;
+    router.push({ path: `/flight/record/video-player/${video.id}` });
   } catch {
     // 接口调用失败，错误已在拦截器里处理
   }
 }
 
+async function loadDropdownOptions(): Promise<void> {
+  const [drones, members] = await Promise.all([
+    DroneAPI.getPage({ pageNum: 1, pageSize: 1000 }),
+    TaskAPI.getMembers(),
+  ]);
+  droneOptions.value = (drones.list ?? []).map((d: any) => ({ id: d.id, name: d.name }));
+  pilotOptions.value = (members ?? []).filter((m: MemberOption) =>
+    m.roleCodes.includes("pilot_operator")
+  );
+}
+
 onMounted(() => {
+  loadDropdownOptions();
   fetchData();
 });
 </script>
 
 <style scoped lang="scss">
 // styles moved to global scope
+.time-row {
+  display: flex;
+  align-items: center;
+  line-height: 1.4;
+}
+.time-label {
+  min-width: 22px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.time-value {
+  font-size: 13px;
+}
 </style>

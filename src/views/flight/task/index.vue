@@ -42,7 +42,7 @@
     </section>
 
     <div class="filter-section">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+      <el-form :model="queryParams" :inline="true">
         <el-form-item label="任务名称" prop="name">
           <el-input
             v-model="queryParams.name"
@@ -51,7 +51,55 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
-        <el-form-item label="执行状态" prop="status">
+        <el-form-item label="航线名称" prop="route_id">
+          <el-select
+            v-model="queryParams.route_id"
+            placeholder="全部"
+            clearable
+            filterable
+            class="filter-field filter-field--md"
+          >
+            <el-option
+              v-for="opt in routeOptions"
+              :key="opt.id"
+              :label="opt.name"
+              :value="opt.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="无人机" prop="drone_name">
+          <el-select
+            v-model="queryParams.drone_name"
+            placeholder="全部"
+            clearable
+            filterable
+            class="filter-field filter-field--md"
+          >
+            <el-option
+              v-for="opt in droneOptions"
+              :key="opt.id"
+              :label="opt.name"
+              :value="opt.name"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="飞手" prop="pilot_name">
+          <el-select
+            v-model="queryParams.pilot_name"
+            placeholder="全部"
+            clearable
+            filterable
+            class="filter-field filter-field--md"
+          >
+            <el-option
+              v-for="opt in pilotOptions"
+              :key="opt.memberId"
+              :label="opt.displayName"
+              :value="opt.displayName"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="执行状态">
           <el-select
             v-model="queryParams.status"
             placeholder="全部"
@@ -61,8 +109,20 @@
             <el-option label="待执行" :value="0" />
             <el-option label="执行中" :value="1" />
             <el-option label="执行完成" :value="2" />
-            <el-option label="飞行中" :value="3" />
+            <el-option label="异常终止" :value="3" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="执行时间">
+          <el-date-picker
+            v-model="queryParams.scheduled_range"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            class="filter-field filter-field--lg"
+            clearable
+          />
         </el-form-item>
         <el-form-item class="search-buttons">
           <el-button type="primary" icon="search" @click="handleQuery">查询</el-button>
@@ -111,25 +171,30 @@
           min-width="120"
           show-overflow-tooltip
         />
-        <el-table-column label="计划执行时间" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.scheduledAt) }}</template>
+        <el-table-column label="执行时间" min-width="150">
+          <template #default="{ row }">
+            <div v-if="row.startedAt || row.finishedAt">
+              <div class="time-row">
+                <span class="time-label">起</span>
+                <span class="time-value">{{ formatTime(row.startedAt) }}</span>
+              </div>
+              <div class="time-row">
+                <span class="time-label">止</span>
+                <span class="time-value">{{ formatTime(row.finishedAt) }}</span>
+              </div>
+            </div>
+            <div v-else class="time-row">
+              <span class="time-label">计划</span>
+              <span class="time-value">{{ formatTime(row.scheduledAt) }}</span>
+            </div>
+          </template>
         </el-table-column>
         <el-table-column label="任务状态" align="center" width="100">
           <template #default="{ row }">
-            {{ formatStatus(row.status) }}
+            <el-tag :type="statusTagType(row.status)" size="small">
+              {{ formatStatus(row.status) }}
+            </el-tag>
           </template>
-        </el-table-column>
-        <el-table-column label="创建时间" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-        </el-table-column>
-        <el-table-column label="更新时间" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
-        </el-table-column>
-        <el-table-column label="开始时间" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.startedAt) }}</template>
-        </el-table-column>
-        <el-table-column label="结束时间" min-width="160">
-          <template #default="{ row }">{{ formatTime(row.finishedAt) }}</template>
         </el-table-column>
         <el-table-column label="备注" prop="remark" min-width="120" show-overflow-tooltip />
         <el-table-column fixed="right" label="操作" align="center" width="280">
@@ -149,14 +214,21 @@
             <el-button type="danger" link size="small" @click.stop="handleDelete(scope.row.id)">
               删除
             </el-button>
-            <el-button type="primary" link size="small" @click.stop="handleAdvance(scope.row)">
-              推进任务
-            </el-button>
             <el-button
+              v-if="scope.row.status !== 2 && scope.row.status !== 3 && scope.row.status !== 4"
               type="primary"
               link
               size="small"
-              @click.stop="handleLiveStream(liveUrlMap[scope.row.id])"
+              @click.stop="handleAdvance(scope.row)"
+            >
+              {{ scope.row.status === 0 ? "开始任务" : "结束任务" }}
+            </el-button>
+            <el-button
+              v-if="scope.row.status === 1"
+              type="primary"
+              link
+              size="small"
+              @click.stop="handleLiveStream(getLiveUrl(scope.row.id), scope.row.id)"
             >
               直播画面
             </el-button>
@@ -177,6 +249,7 @@
         v-model:total="total"
         v-model:page="queryParams.pageNum"
         v-model:limit="queryParams.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
         @pagination="fetchData"
       />
     </el-card>
@@ -299,7 +372,9 @@
             </el-table-column>
             <el-table-column label="任务状态" width="100" align="center">
               <template #default="{ row }">
-                {{ formatStatus(row.status) }}
+                <el-tag :type="statusTagType(row.status)" size="small">
+                  {{ formatStatus(row.status) }}
+                </el-tag>
               </template>
             </el-table-column>
             <el-table-column label="创建时间" min-width="160">
@@ -323,6 +398,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 import { useWindowSize } from "@vueuse/core";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -335,16 +411,27 @@ defineOptions({
   inheritAttrs: false,
 });
 
+const router = useRouter();
 const { width } = useWindowSize();
 
 // 表单引用
-const queryFormRef = ref<FormInstance>();
 const dataFormRef = ref<FormInstance>();
 
 // 查询参数
 const queryParams = reactive<TaskPageQuery>({
   pageNum: 1,
   pageSize: 10,
+  name: undefined,
+  status: undefined,
+  route_id: undefined,
+  route_name: undefined,
+  drone_name: undefined,
+  pilot_name: undefined,
+  scheduled_range: undefined,
+  started_at_start: undefined,
+  started_at_end: undefined,
+  finished_at_start: undefined,
+  finished_at_end: undefined,
 });
 
 // 列表数据
@@ -358,11 +445,40 @@ const deletedIds = ref(new Set<number>());
 const totalCount = computed(() => Math.max(0, total.value - deletedIds.value.size));
 const submitLoading = ref(false);
 const ids = ref<number[]>([]);
+
+/** 直播 URL 缓存（sessionStorage，刷新页面不丢） */
 const liveUrlMap = ref<Record<number, string>>({});
+
+function setLiveUrl(taskId: number, url: string) {
+  liveUrlMap.value[taskId] = url;
+  sessionStorage.setItem(`live_${taskId}`, url);
+}
+
+function getLiveUrl(taskId: number): string | undefined {
+  if (liveUrlMap.value[taskId]) return liveUrlMap.value[taskId];
+  const stored = sessionStorage.getItem(`live_${taskId}`);
+  if (stored) {
+    liveUrlMap.value[taskId] = stored;
+    return stored;
+  }
+  return undefined;
+}
 
 const dialogWidth = computed(() => (width.value < 768 ? "92%" : "600px"));
 const hasActiveFilters = computed(() =>
-  Boolean(queryParams.name || queryParams.status !== undefined)
+  Boolean(
+    queryParams.name ||
+    queryParams.status !== undefined ||
+    queryParams.route_id ||
+    queryParams.route_name ||
+    queryParams.drone_name ||
+    queryParams.pilot_name ||
+    queryParams.scheduled_range ||
+    queryParams.started_at_start ||
+    queryParams.started_at_end ||
+    queryParams.finished_at_start ||
+    queryParams.finished_at_end
+  )
 );
 const activeTaskCount = computed(() => tableData.value.filter((item) => item.status === 1).length);
 const completedTaskCount = computed(
@@ -410,7 +526,16 @@ const rules: FormRules = {
 async function fetchData(): Promise<void> {
   loading.value = true;
   try {
-    const res = await TaskAPI.getPage(queryParams);
+    // 日期范围拆分为 started_at 和 finished_at 起止参数
+    const { scheduled_range: range, ...rest } = queryParams;
+    const params = {
+      ...rest,
+      started_at_start: Array.isArray(range) ? range[0] : undefined,
+      started_at_end: Array.isArray(range) ? range[1] : undefined,
+      finished_at_start: Array.isArray(range) ? range[0] : undefined,
+      finished_at_end: Array.isArray(range) ? range[1] : undefined,
+    };
+    const res = await TaskAPI.getPage(params);
     const list = (res?.list ?? []) as TaskVO[];
     tableData.value = list;
     total.value = res?.total ?? list.length;
@@ -434,8 +559,17 @@ function handleQuery(): void {
  * 重置查询
  */
 function handleResetQuery(): void {
-  queryFormRef.value?.resetFields();
-  queryParams.status = undefined; // 强制重置
+  queryParams.name = undefined;
+  queryParams.status = undefined;
+  queryParams.route_id = undefined;
+  queryParams.route_name = undefined;
+  queryParams.drone_name = undefined;
+  queryParams.pilot_name = undefined;
+  queryParams.scheduled_range = undefined;
+  queryParams.started_at_start = undefined;
+  queryParams.started_at_end = undefined;
+  queryParams.finished_at_start = undefined;
+  queryParams.finished_at_end = undefined;
   queryParams.pageNum = 1;
   fetchData();
 }
@@ -449,7 +583,17 @@ function formatTime(value: string | undefined | null): string {
 }
 
 function formatStatus(status: number | undefined): string {
-  return ["待执行", "执行中", "执行完成", "飞行中"][status ?? -1] ?? "-";
+  return ["待执行", "执行中", "执行完成", "异常终止"][status ?? -1] ?? "-";
+}
+
+function statusTagType(status: number | undefined): "info" | "warning" | "success" | "danger" {
+  return (
+    (["info", "warning", "success", "danger"][status ?? -1] as
+      | "info"
+      | "warning"
+      | "success"
+      | "danger") ?? "info"
+  );
 }
 
 /**
@@ -629,7 +773,7 @@ async function handleDelete(id: number): Promise<void> {
 }
 
 /**
- * 推进任务
+ * 开始/结束任务
  */
 async function handleAdvance(row: TaskVO): Promise<void> {
   const oldStatus = row.status;
@@ -649,7 +793,7 @@ async function handleAdvance(row: TaskVO): Promise<void> {
         video_quality: 1,
       };
       const res = await DroneAPI.liveStart(row.droneId!, liveBody);
-      liveUrlMap.value[row.id] = res?.hls_url ?? "";
+      setLiveUrl(row.id, res?.hls_url ?? "");
     } else if (newStatus === 2 && oldStatus !== 2) {
       // 执行中 → 执行完成，需等 advance + liveStop 都完成
       const liveBody = {
@@ -672,17 +816,16 @@ async function handleAdvance(row: TaskVO): Promise<void> {
 /**
  * 直播画面
  */
-function handleLiveStream(url?: string): void {
+function handleLiveStream(url?: string, taskId?: number): void {
   if (!url) {
     ElMessage.warning("暂无直播地址，请先推进任务");
     return;
   }
-  // 拼接完整绝对路径，避免被 SPA 路由拦截
-  const base = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "");
-  window.open(`${base}/live.html?url=${encodeURIComponent(url)}`, "_blank");
+  router.push({ path: "/flight/task/hls-player", query: { url, taskId: String(taskId) } });
 }
 
 onMounted(() => {
+  loadDropdownOptions();
   handleQuery();
 });
 </script>
@@ -690,5 +833,18 @@ onMounted(() => {
 <style scoped>
 .w-full {
   width: 100%;
+}
+.time-row {
+  display: flex;
+  align-items: center;
+  line-height: 1.6;
+}
+.time-label {
+  min-width: 26px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.time-value {
+  font-size: 13px;
 }
 </style>

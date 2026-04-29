@@ -19,7 +19,7 @@
         <div class="command-page__metrics">
           <div class="command-page__metric command-page__metric--accent">
             <div class="command-page__metric-label">无人机总量</div>
-            <div class="command-page__metric-value">{{ total }}</div>
+            <div class="command-page__metric-value">{{ totalCount }}</div>
             <div class="command-page__metric-note">当前筛选范围内的机队资源</div>
           </div>
           <div class="command-page__metric">
@@ -45,7 +45,7 @@
     </section>
 
     <div class="filter-section">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="auto">
+      <el-form :model="queryParams" :inline="true">
         <el-form-item label="无人机编号" prop="code">
           <el-input
             v-model="queryParams.code"
@@ -54,7 +54,6 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
-
         <el-form-item label="无人机名称" prop="name">
           <el-input
             v-model="queryParams.name"
@@ -63,7 +62,22 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
-
+        <el-form-item label="设备序列号" prop="deviceSn">
+          <el-input
+            v-model="queryParams.deviceSn"
+            placeholder="请输入设备序列号"
+            clearable
+            @keyup.enter="handleQuery"
+          />
+        </el-form-item>
+        <el-form-item label="型号" prop="model">
+          <el-input
+            v-model="queryParams.model"
+            placeholder="请输入型号"
+            clearable
+            @keyup.enter="handleQuery"
+          />
+        </el-form-item>
         <el-form-item class="search-buttons">
           <el-button type="primary" icon="search" @click="handleQuery">查询</el-button>
           <el-button icon="refresh" @click="handleResetQuery">重置</el-button>
@@ -86,7 +100,7 @@
         </div>
         <div class="table-section__toolbar--right">
           <div class="table-toolbar-summary">
-            <el-tag type="info">共 {{ total }} 架无人机</el-tag>
+            <el-tag type="info">共 {{ totalCount }} 架无人机</el-tag>
             <el-tag v-if="selectedIds.length > 0" type="primary">
               已选 {{ selectedIds.length }} 项
             </el-tag>
@@ -113,7 +127,7 @@
         <el-table-column
           label="固件版本"
           prop="firmwareVersion"
-          min-width="140"
+          min-width="80"
           show-overflow-tooltip
         />
         <el-table-column label="在线状态" width="90" align="center">
@@ -159,6 +173,7 @@
         v-model:total="total"
         v-model:page="queryParams.pageNum"
         v-model:limit="queryParams.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
         @pagination="fetchData"
       />
     </el-card>
@@ -286,7 +301,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { useWindowSize } from "@vueuse/core";
-import { ElMessage, ElMessageBox, type FormInstance } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import type { DroneInfo, DroneQuery } from "@/api/resource/types";
 import DroneAPI from "@/api/resource/drone";
 
@@ -296,23 +311,30 @@ defineOptions({
 });
 
 const { width } = useWindowSize();
-const queryFormRef = ref<FormInstance>();
 
 const queryParams = reactive<DroneQuery>({
   pageNum: 1,
   pageSize: 10,
   code: undefined,
   name: undefined,
+  deviceSn: undefined,
+  model: undefined,
 });
 
 const tableData = ref<DroneInfo[]>([]);
 const total = ref(0);
 const loading = ref(false);
 const selectedIds = ref<number[]>([]);
+const deletedIds = ref(new Set<string>());
+
+/** 无人机总量：API total 减去已删除的 */
+const totalCount = computed(() => Math.max(0, total.value - deletedIds.value.size));
+const onlineCount = computed(() => tableData.value.filter((d) => d.djiOnline === true).length);
 
 const dialogWidth = computed(() => (width.value < 768 ? "92%" : "860px"));
-const hasActiveFilters = computed(() => Boolean(queryParams.code || queryParams.name));
-const onlineCount = computed(() => tableData.value.filter((d) => d.djiOnline === true).length);
+const hasActiveFilters = computed(() =>
+  Boolean(queryParams.code || queryParams.name || queryParams.deviceSn || queryParams.model)
+);
 
 const claimDialog = reactive({
   visible: false,
@@ -351,7 +373,10 @@ function handleQuery(): void {
 }
 
 function handleResetQuery(): void {
-  queryFormRef.value?.resetFields();
+  queryParams.code = undefined;
+  queryParams.name = undefined;
+  queryParams.deviceSn = undefined;
+  queryParams.model = undefined;
   queryParams.pageNum = 1;
   fetchData();
 }
@@ -480,6 +505,7 @@ function handleDelete(id?: number): void {
         }
         ElMessage.success("删除成功");
         selectedIds.value = [];
+        ids.forEach((i) => deletedIds.value.add(i));
         handleQuery();
       } catch (err) {
         console.error(err);

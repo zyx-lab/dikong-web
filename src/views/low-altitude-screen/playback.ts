@@ -518,6 +518,7 @@ export function getPlaybackState(mission: PlaybackMission, elapsedSeconds: numbe
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function buildPlaybackSceneModel(mission: PlaybackMission, state: PlaybackState) {
   computeBounds(mission.pathCoordinates);
 
@@ -860,6 +861,7 @@ function computeBounds(coordinates: PlaybackCoordinate[]) {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function normalizeCoordinate(
   bounds: { minLng: number; maxLng: number; minLat: number; maxLat: number },
   coordinate: PlaybackCoordinate

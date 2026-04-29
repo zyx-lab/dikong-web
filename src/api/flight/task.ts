@@ -62,6 +62,15 @@ export interface TaskVO {
 export interface TaskPageQuery extends BaseQueryParams {
   name?: string;
   status?: number;
+  route_id?: number;
+  route_name?: string;
+  drone_name?: string;
+  pilot_name?: string;
+  scheduled_range?: string[];
+  started_at_start?: string;
+  started_at_end?: string;
+  finished_at_start?: string;
+  finished_at_end?: string;
 }
 
 /**
@@ -238,6 +247,24 @@ const TaskAPI = {
       list.push(...raw.data.list);
     }
     return list.map((r: any) => ({ id: r.id, name: r.name })) as RouteOption[];
+  },
+
+  /** 获取任务列表（用于下拉选择） */
+  async getMissions() {
+    const raw = await request<any, any>({
+      url: "/api/v1/missions",
+      method: "get",
+      params: { pageNum: 1, pageSize: 1000 },
+    });
+    let list: TaskWire[] = [];
+    if (Array.isArray(raw?.list)) {
+      list = raw.list;
+    } else if (Array.isArray(raw?.results)) {
+      list = raw.results;
+    } else if (Array.isArray(raw?.data?.list)) {
+      list = raw.data.list;
+    }
+    return list.map(mapTaskWireToVO);
   },
 
   /** 获取租户成员列表（用于下拉选择飞手） */

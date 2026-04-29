@@ -81,7 +81,8 @@
                   v-if="baseMapMode === 'terrain' && !hasTerrainSource"
                   class="planner-overlay planner-overlay--warn"
                 >
-                  未配置 `VITE_CESIUM_TERRAIN_URL` 或 `VITE_CESIUM_ION_TOKEN`，当前显示地形底图，但未启用真实地形高程。
+                  未配置 `VITE_CESIUM_TERRAIN_URL` 或
+                  `VITE_CESIUM_ION_TOKEN`，当前显示地形底图，但未启用真实地形高程。
                 </div>
               </div>
             </el-card>

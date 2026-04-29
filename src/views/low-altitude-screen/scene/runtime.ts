@@ -214,9 +214,7 @@ function syncSharedRendererSize(renderer: THREE.WebGLRenderer, canvas: HTMLCanva
   renderer.setViewport(0, 0, width, height);
 }
 
-function getSparkTerrainUniforms(
-  sparkRenderer: SparkRenderer
-): SparkTerrainUniformMap | undefined {
+function getSparkTerrainUniforms(sparkRenderer: SparkRenderer): SparkTerrainUniformMap | undefined {
   return (sparkRenderer as SparkRenderer & { uniforms?: SparkTerrainUniformMap }).uniforms;
 }
 
@@ -437,7 +435,7 @@ function buildKeepOutMaskTexture(
 }
 
 function getPagedActiveSplatCount(splat: SceneSplatMesh) {
-  return ((splat as SceneSplatMesh & { paged?: PagedSplatHandle }).paged?.numSplats ?? 0);
+  return (splat as SceneSplatMesh & { paged?: PagedSplatHandle }).paged?.numSplats ?? 0;
 }
 
 function createTerrainOcclusionState(
@@ -481,11 +479,11 @@ function createTerrainOcclusionState(
   uniforms.terrainDepthBias.value = state.biasMeters;
   state.keepOutUniformsAvailable = Boolean(
     uniforms.terrainDepthKeepOutEnable &&
-      uniforms.terrainDepthKeepOutFootprintMin &&
-      uniforms.terrainDepthKeepOutFootprintMax &&
-      uniforms.terrainDepthKeepOutMaskTexture &&
-      uniforms.terrainDepthKeepOutClipToView &&
-      uniforms.terrainDepthKeepOutViewToLocal
+    uniforms.terrainDepthKeepOutFootprintMin &&
+    uniforms.terrainDepthKeepOutFootprintMax &&
+    uniforms.terrainDepthKeepOutMaskTexture &&
+    uniforms.terrainDepthKeepOutClipToView &&
+    uniforms.terrainDepthKeepOutViewToLocal
   );
 
   if (!state.keepOutUniformsAvailable) {
@@ -510,21 +508,17 @@ function createTerrainOcclusionState(
 
   state.keepOutBoundsMin = splatLocalBounds.min.clone();
   state.keepOutBoundsMax = splatLocalBounds.max.clone();
-  state.keepOutFootprintMin = new THREE.Vector2(
-    state.keepOutBoundsMin.x,
-    state.keepOutBoundsMin.z
-  );
-  state.keepOutFootprintMax = new THREE.Vector2(
-    state.keepOutBoundsMax.x,
-    state.keepOutBoundsMax.z
-  );
+  state.keepOutFootprintMin = new THREE.Vector2(state.keepOutBoundsMin.x, state.keepOutBoundsMin.z);
+  state.keepOutFootprintMax = new THREE.Vector2(state.keepOutBoundsMax.x, state.keepOutBoundsMax.z);
 
-  const keepOutMask = buildKeepOutMaskTexture(splat, state.keepOutBoundsMin, state.keepOutBoundsMax);
+  const keepOutMask = buildKeepOutMaskTexture(
+    splat,
+    state.keepOutBoundsMin,
+    state.keepOutBoundsMax
+  );
   if (!keepOutMask || keepOutMask.coverage <= 0) {
     state.keepOutEnabled = false;
-    console.warn(
-      "[low-altitude-screen] Terrain keep-out mask generation produced an empty mask."
-    );
+    console.warn("[low-altitude-screen] Terrain keep-out mask generation produced an empty mask.");
     return state;
   }
 
@@ -559,16 +553,18 @@ function getCesiumTerrainFrustumInfo(viewer: Cesium.Viewer): {
     }
   ).context?.uniformState;
   const frustum = uniformState?.currentFrustum;
-  const near = typeof (frustum as { x?: number } | undefined)?.x === "number"
-    ? (frustum as { x: number }).x
-    : Array.isArray(frustum)
-      ? frustum[0]
-      : undefined;
-  const far = typeof (frustum as { y?: number } | undefined)?.y === "number"
-    ? (frustum as { y: number }).y
-    : Array.isArray(frustum)
-      ? frustum[1]
-      : undefined;
+  const near =
+    typeof (frustum as { x?: number } | undefined)?.x === "number"
+      ? (frustum as { x: number }).x
+      : Array.isArray(frustum)
+        ? frustum[0]
+        : undefined;
+  const far =
+    typeof (frustum as { y?: number } | undefined)?.y === "number"
+      ? (frustum as { y: number }).y
+      : Array.isArray(frustum)
+        ? frustum[1]
+        : undefined;
 
   if (
     typeof near !== "number" ||
@@ -646,9 +642,7 @@ function syncTerrainOcclusionUniforms(
   terrainDepthViewport.value.set(canvas.width, canvas.height);
   terrainDepthNear.value = frustumInfo.near;
   terrainDepthFar.value = frustumInfo.far;
-  terrainDepthLog2FarDepthFromNearPlusOne.value = Math.log2(
-    frustumInfo.far - frustumInfo.near + 1
-  );
+  terrainDepthLog2FarDepthFromNearPlusOne.value = Math.log2(frustumInfo.far - frustumInfo.near + 1);
   terrainDepthBias.value = state.biasMeters;
   terrainDepthEnable.value = true;
 

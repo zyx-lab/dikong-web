@@ -290,6 +290,7 @@ const SCENE_MESH_URL = "/video+xyz/JNU.obj";
 const DRONE_MODEL_URL = "/video+xyz/dji-mavic-pro-for-element-3d.fbx";
 const VIDEO_URL = "/simulated_data/5_DJI-Air_5.browser.mp4";
 const POSE_JSON_URL = "/simulated_data/5_DJI-Air_5.json";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const WIND_DATA_URL = "/generated/secondWindSpeed_GHH234012_20260116.processed.json";
 const DEFAULT_VIDEO_WIDTH = 1920;
 const DEFAULT_VIDEO_HEIGHT = 1080;
@@ -701,6 +702,7 @@ const trajectoryEndPoint = computed(() => trajectoryPoints2D.value.at(-1));
 const radarFrameCount = computed(() => radarData.value?.frames.length ?? 0);
 const radarDurationSeconds = computed(() => radarData.value?.meta.durationSeconds ?? 0);
 const currentRadarFrame = computed(() => radarData.value?.frames[radarFrameIndex.value]);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const currentRadarTimeText = computed(() =>
   radarDurationSeconds.value > 0
     ? formatDuration(
@@ -711,6 +713,7 @@ const currentRadarTimeText = computed(() =>
       )
     : "--:--"
 );
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const radarStatusText = computed(() => {
   switch (radarStatus.value) {
     case "loading":
@@ -725,6 +728,7 @@ const radarStatusText = computed(() => {
       return "风廓线未就绪";
   }
 });
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const radarLegendStops = computed(() => {
   const maxSpeed = Math.max(radarData.value?.meta.maxHorizontalSpeed ?? 0, 0);
   if (maxSpeed <= 0) return [];
@@ -749,6 +753,7 @@ const radarLegendStops = computed(() => {
     };
   });
 });
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const radarLegendGradient = computed(
   () =>
     `linear-gradient(to top, ${getRadarColorStyle(0)} 0%, ${getRadarColorStyle(0.5)} 50%, ${getRadarColorStyle(1)} 100%)`
@@ -1004,6 +1009,7 @@ function buildRadarGuideLines(outerLayer: ProcessedWindLayer): THREE.LineSegment
   return guides;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createRadarVisualization(data: ProcessedWindData): THREE.Group {
   const root = new THREE.Group();
   root.name = "RadarWindField";
@@ -1167,6 +1173,7 @@ function createRadarVisualization(data: ProcessedWindData): THREE.Group {
   return root;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function updateRadarVisualization(animationTimeSeconds: number): void {
   const data = radarData.value;
   const particles = viewerRadarParticles;
