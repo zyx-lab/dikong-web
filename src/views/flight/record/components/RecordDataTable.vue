@@ -18,7 +18,7 @@
           <TableHead>飞行时长</TableHead>
           <TableHead>照片数量</TableHead>
           <TableHead>视频数量</TableHead>
-          <TableHead class="min-w-56 text-right">操作</TableHead>
+          <TableHead class="min-w-72 text-right">操作</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -47,6 +47,7 @@
                 <Button variant="ghost" size="sm" @click="emit('detail', row)">详情</Button>
                 <Button variant="ghost" size="sm" @click="emit('edit', row)">编辑</Button>
                 <Button variant="ghost" size="sm" @click="emit('delete', row.id)">删除</Button>
+                <Button variant="ghost" size="sm" @click="emit('images', row)">查看图片</Button>
                 <Button variant="ghost" size="sm" @click="emit('video', row)">视频回放</Button>
               </div>
             </TableCell>
@@ -96,6 +97,7 @@ const emit = defineEmits<{
   detail: [row: FlightRecordInfo];
   edit: [row: FlightRecordInfo];
   delete: [id: number];
+  images: [row: FlightRecordInfo];
   video: [row: FlightRecordInfo];
   clearFilters: [];
 }>();

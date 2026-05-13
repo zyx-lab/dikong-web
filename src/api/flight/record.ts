@@ -78,7 +78,13 @@ const FlightRecordAPI = {
     // 返回原始数据（含 media_files），normalize 只处理顶级字段
     const base = normalize(raw as FlightRecordWire);
     // media_files 直接透传
-    return { ...base, media_files: (raw as any).media_files ?? [] };
+    const mediaFiles =
+      (raw as any).media_files ??
+      (raw as any).mediaFiles ??
+      (raw as any).files ??
+      (raw as any).media ??
+      [];
+    return { ...base, media_files: mediaFiles };
   },
 
   update(id: number, data: Record<string, any>) {

@@ -30,6 +30,7 @@
             @detail="handleDetail"
             @edit="handleEdit"
             @delete="handleDelete"
+            @images="handleImages"
             @video="handleVideo"
             @clear-filters="handleResetQuery"
           />
@@ -280,6 +281,11 @@ async function handleDelete(id: number): Promise<void> {
       ElMessage.error(err?.message || "删除失败");
     }
   }
+}
+
+/** 查看图片 */
+function handleImages(row: FlightRecordInfo): void {
+  router.push({ path: `/flight/record/images/${row.id}` });
 }
 
 /** 视频回放 */

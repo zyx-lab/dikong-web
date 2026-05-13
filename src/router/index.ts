@@ -147,6 +147,12 @@ export const constantRoutes: RouteRecordRaw[] = [
         meta: { title: "视频回放", hidden: true },
       },
       {
+        path: "record/images/:recordId",
+        name: "RecordImageViewer",
+        component: () => import("@/views/flight/record/image-viewer.vue"),
+        meta: { title: "图片查看", hidden: true },
+      },
+      {
         path: "record",
         component: () => import("@/views/flight/record/index.vue"),
         name: "FlightRecord",

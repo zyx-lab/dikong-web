@@ -71,6 +71,7 @@ Thumbs.db
 # Lint cache
 .eslintcache
 .stylelintcache
+dev-server.*.log
 
 # Test coverage
 coverage/
