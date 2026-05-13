@@ -16,7 +16,6 @@
         <el-carousel
           ref="carouselRef"
           class="record-image-page__carousel"
-          height="clamp(300px, 62vh, 680px)"
           arrow="always"
           indicator-position="outside"
           trigger="click"
@@ -58,41 +57,11 @@ import { useRoute, useRouter } from "vue-router";
 import FlightRecordAPI from "@/api/flight/record";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
-type RecordMediaFile = {
-  id?: number;
-  media_type?: number | string;
-  mediaType?: number | string;
-  type?: number | string | null;
-  mime_type?: string | null;
-  mimeType?: string | null;
-  content_type?: string | null;
-  contentType?: string | null;
-  file_name?: string | null;
-  fileName?: string | null;
-  name?: string | null;
-  preview_url?: string | null;
-  previewUrl?: string | null;
-  media_url?: string | null;
-  mediaUrl?: string | null;
-  playback_url?: string | null;
-  playbackUrl?: string | null;
-  signed_url?: string | null;
-  signedUrl?: string | null;
-  file_url?: string | null;
-  fileUrl?: string | null;
-  download_url?: string | null;
-  downloadUrl?: string | null;
-  original_url?: string | null;
-  originalUrl?: string | null;
-  url?: string | null;
-};
-
-type RecordImageItem = {
-  id: number;
-  name: string;
-  url: string;
-};
+import {
+  getRecordImageItems,
+  type RecordImageItem,
+  type RecordMediaFile,
+} from "@/views/flight/record/utils/media";
 
 const route = useRoute();
 const router = useRouter();
@@ -104,64 +73,6 @@ const images = ref<RecordImageItem[]>([]);
 const activeIndex = ref(0);
 
 const headingText = computed(() => flightNo.value || "飞行记录现场图片");
-
-function isImageFilePath(value?: string | null): boolean {
-  if (!value) return false;
-  const normalized = value.split("?")[0].split("#")[0].toLowerCase();
-  return /\.(avif|bmp|gif|jpe?g|png|svg|webp)$/.test(normalized);
-}
-
-function isImageMedia(media: RecordMediaFile): boolean {
-  const mediaType = media.media_type ?? media.mediaType;
-  const typeValues = [
-    mediaType,
-    media.type,
-    media.mime_type,
-    media.mimeType,
-    media.content_type,
-    media.contentType,
-  ]
-    .filter((value) => value !== undefined && value !== null)
-    .map((value) => String(value).toLowerCase());
-
-  return (
-    Number(mediaType) === 1 ||
-    typeValues.some((value) =>
-      ["image", "photo", "picture", "jpg", "jpeg", "png"].includes(value)
-    ) ||
-    typeValues.some((value) => value.startsWith("image/")) ||
-    isImageFilePath(getMediaUrl(media)) ||
-    isImageFilePath(media.file_name ?? media.fileName ?? media.name)
-  );
-}
-
-function getMediaName(media: RecordMediaFile, index: number): string {
-  return media.file_name ?? media.fileName ?? media.name ?? `图片 ${index + 1}`;
-}
-
-function getMediaUrl(media: RecordMediaFile): string {
-  const candidates = [
-    media.preview_url,
-    media.previewUrl,
-    media.media_url,
-    media.mediaUrl,
-    media.playback_url,
-    media.playbackUrl,
-    media.signed_url,
-    media.signedUrl,
-    media.file_url,
-    media.fileUrl,
-    media.download_url,
-    media.downloadUrl,
-    media.original_url,
-    media.originalUrl,
-    media.url,
-  ];
-
-  return (
-    candidates.find((url): url is string => typeof url === "string" && url.trim() !== "") ?? ""
-  );
-}
 
 async function loadImages(): Promise<void> {
   const recordId = Number(route.params.recordId);
@@ -179,19 +90,9 @@ async function loadImages(): Promise<void> {
     const detail = await FlightRecordAPI.getDetail(recordId);
     flightNo.value = detail.flightNo;
     const mediaFiles: RecordMediaFile[] = (detail as any).media_files ?? [];
-    const imageFiles = mediaFiles.filter(isImageMedia);
+    const resolvedImages = getRecordImageItems(mediaFiles);
 
-    if (imageFiles.length === 0) {
-      errorMessage.value = "暂无图片";
-      return;
-    }
-
-    const resolvedImages = imageFiles.map((media, index): RecordImageItem | null => {
-      const url = getMediaUrl(media);
-      return url ? { id: media.id ?? index, name: getMediaName(media, index), url } : null;
-    });
-
-    images.value = resolvedImages.filter((image): image is RecordImageItem => image !== null);
+    images.value = resolvedImages;
     if (images.value.length === 0) {
       errorMessage.value = "暂无可预览图片";
     }
@@ -263,29 +164,43 @@ onMounted(() => {
 }
 
 .record-image-page__carousel {
+  width: min(100%, 1040px);
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.record-image-page__carousel :deep(.el-carousel__container) {
+  height: auto !important;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   background: #101214;
   border-radius: 8px;
 }
 
 .record-image-page__slide {
+  position: relative;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
   width: 100%;
   height: 100%;
   margin: 0;
 }
 
 .record-image-page__image {
+  box-sizing: border-box;
   align-self: center;
   justify-self: center;
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
 .record-image-page__caption {
-  min-height: 38px;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  min-height: 36px;
   padding: 10px 16px;
   overflow: hidden;
   text-overflow: ellipsis;

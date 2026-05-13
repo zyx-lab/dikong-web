@@ -80,6 +80,7 @@ import RecordDataTable from "@/views/flight/record/components/RecordDataTable.vu
 import RecordDetailDialog from "@/views/flight/record/components/RecordDetailDialog.vue";
 import RecordEditSheet from "@/views/flight/record/components/RecordEditSheet.vue";
 import RecordFilterBar from "@/views/flight/record/components/RecordFilterBar.vue";
+import { countRecordImages, type RecordMediaFile } from "@/views/flight/record/utils/media";
 
 defineOptions({ name: "FlightRecord", inheritAttrs: false });
 
@@ -136,11 +137,29 @@ const editForm = reactive({
   videoCount: 1,
 });
 
+async function loadAccuratePhotoCounts(rows: FlightRecordInfo[]): Promise<FlightRecordInfo[]> {
+  return Promise.all(
+    rows.map(async (row) => {
+      try {
+        const detail = await FlightRecordAPI.getDetail(row.id);
+        const mediaFiles: RecordMediaFile[] = (detail as any).media_files ?? [];
+        return {
+          ...row,
+          photoCount: countRecordImages(mediaFiles),
+        };
+      } catch (err) {
+        console.error(err);
+        return row;
+      }
+    })
+  );
+}
+
 async function fetchData(): Promise<void> {
   loading.value = true;
   try {
     const res = await FlightRecordAPI.getPage(queryParams as FlightRecordQuery);
-    tableData.value = res.list ?? [];
+    tableData.value = await loadAccuratePhotoCounts(res.list ?? []);
     total.value = res.total ?? 0;
   } catch (err) {
     console.error(err);
