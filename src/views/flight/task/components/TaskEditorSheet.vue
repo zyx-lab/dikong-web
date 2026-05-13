@@ -72,6 +72,8 @@
               placeholder="选择计划执行时间"
               format="YYYY-MM-DD HH:mm:ss"
               value-format="YYYY-MM-DD HH:mm:ss"
+              :teleported="false"
+              popper-class="task-schedule-picker"
               class="w-full"
             />
           </div>
